@@ -166,6 +166,22 @@ export async function listarEmpresas(input: {
   status?: string | undefined;
   uf?: string | undefined;
   listId?: string | undefined;
+  // filtros avançados abaixo
+  cidade?: string | undefined;
+  bairro?: string | undefined;
+  cnae?: string | undefined;
+  porte?: string | undefined;
+  situacao?: string | undefined;
+  naturezaJuridica?: string | undefined;
+  setor?: string | undefined;
+  comTelefone?: boolean | undefined;
+  comEmail?: boolean | undefined;
+  comSite?: boolean | undefined;
+  comDecisor?: boolean | undefined;
+  capitalMin?: number | undefined;
+  capitalMax?: number | undefined;
+  aberturaDe?: string | undefined;
+  aberturaAte?: string | undefined;
   page?: number | undefined;
   perPage?: number | undefined;
 }) {
@@ -184,6 +200,25 @@ export async function listarEmpresas(input: {
   if (input.status && input.status !== "todos") q = q.eq("status", input.status);
   if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
   if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
+  if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
+  if (input.bairro?.trim()) q = q.ilike("bairro", `%${input.bairro.trim()}%`);
+  if (input.cnae?.trim()) {
+    const t = input.cnae.trim();
+    q = q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`);
+  }
+  if (input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
+  if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
+  if (input.naturezaJuridica?.trim())
+    q = q.ilike("natureza_juridica", `%${input.naturezaJuridica.trim()}%`);
+  if (input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
+  if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
+  if (input.comSite) q = q.not("melhor_site", "is", null);
+  if (input.comEmail) q = q.not("email_receita", "is", null);
+  if (input.comDecisor) q = q.neq("decisores", "[]");
+  if (typeof input.capitalMin === "number") q = q.gte("capital_social", input.capitalMin);
+  if (typeof input.capitalMax === "number") q = q.lte("capital_social", input.capitalMax);
+  if (input.aberturaDe) q = q.gte("data_abertura", input.aberturaDe);
+  if (input.aberturaAte) q = q.lte("data_abertura", input.aberturaAte);
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
@@ -318,4 +353,68 @@ export async function exportarEmpresas(input: {
     if (empresas.length < 100) break;
   }
   return out;
+}
+
+/** Consulta em lote por chaves misturadas (site, e-mail ou CNPJ). */
+export async function consultarChaves(input: {
+  chaves: string[];
+  listId?: string | null | undefined;
+}): Promise<{ itens: LookupItem[] }> {
+  const vistos = new Set<string>();
+  const chaves = input.chaves
+    .map((c) => c.trim())
+    .filter((c) => c && !vistos.has(c.toLowerCase()) && vistos.add(c.toLowerCase()));
+
+  const cnpjs = chaves.filter((c) => formatCnpjApi(c));
+  const outros = chaves.filter((c) => !formatCnpjApi(c));
+
+  const itens: LookupItem[] = [];
+  if (cnpjs.length) {
+    const r = await consultarCnpjs({ cnpjs, listId: input.listId ?? null });
+    itens.push(...r.itens);
+  }
+  for (const chaveTxt of outros.slice(0, 50)) {
+    const ehEmail = chaveTxt.includes("@");
+    const item = await consultarChave(
+      ehEmail
+        ? { email: chaveTxt, listId: input.listId ?? null }
+        : { site: chaveTxt.replace(/^https?:\/\//i, "").replace(/\/.*$/, ""), listId: input.listId ?? null },
+    );
+    itens.push({ ...item, cnpj: item.encontrada ? item.cnpj : chaveTxt });
+  }
+  return { itens };
+}
+
+/** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
+export async function opcoesFiltro() {
+  const { data } = await supabaseAdmin
+    .from("companies")
+    .select("uf, cidade, porte_estimado, situacao, setores")
+    .limit(5000);
+  const ufs = new Set<string>();
+  const cidades = new Set<string>();
+  const portes = new Set<string>();
+  const situacoes = new Set<string>();
+  const setores = new Set<string>();
+  for (const r of (data ?? []) as Array<{
+    uf: string | null;
+    cidade: string | null;
+    porte_estimado: string | null;
+    situacao: string | null;
+    setores: string[] | null;
+  }>) {
+    if (r.uf) ufs.add(r.uf);
+    if (r.cidade) cidades.add(r.cidade);
+    if (r.porte_estimado) portes.add(r.porte_estimado);
+    if (r.situacao) situacoes.add(r.situacao);
+    for (const s of r.setores ?? []) if (s) setores.add(s);
+  }
+  const ord = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  return {
+    ufs: ord(ufs),
+    cidades: ord(cidades).slice(0, 300),
+    portes: ord(portes),
+    situacoes: ord(situacoes),
+    setores: ord(setores).slice(0, 200),
+  };
 }

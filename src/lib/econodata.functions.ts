@@ -40,14 +40,51 @@ export const consultarChaveFn = createServerFn({ method: "POST" })
     return consultarChave(data);
   });
 
-export const listarEmpresasFn = createServerFn({ method: "GET" })
+const filtrosSchema = z.object({
+  busca: z.string().max(120).optional(),
+  status: z.string().max(30).optional(),
+  uf: z.string().max(10).optional(),
+  listId: z.string().max(40).optional(),
+  cidade: z.string().max(80).optional(),
+  bairro: z.string().max(80).optional(),
+  cnae: z.string().max(80).optional(),
+  porte: z.string().max(40).optional(),
+  situacao: z.string().max(40).optional(),
+  naturezaJuridica: z.string().max(120).optional(),
+  setor: z.string().max(80).optional(),
+  comTelefone: z.boolean().optional(),
+  comEmail: z.boolean().optional(),
+  comSite: z.boolean().optional(),
+  comDecisor: z.boolean().optional(),
+  capitalMin: z.number().nonnegative().optional(),
+  capitalMax: z.number().nonnegative().optional(),
+  aberturaDe: z.string().max(10).optional(),
+  aberturaAte: z.string().max(10).optional(),
+});
+
+export const consultarChavesFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
-        busca: z.string().max(120).optional(),
-        status: z.string().max(30).optional(),
-        uf: z.string().max(10).optional(),
-        listId: z.string().max(40).optional(),
+        chaves: z.array(z.string().max(200)).min(1).max(100),
+        listId: z.string().uuid().nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { consultarChaves } = await import("./repo.server");
+    return consultarChaves(data);
+  });
+
+export const opcoesFiltroFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { opcoesFiltro } = await import("./repo.server");
+  return opcoesFiltro();
+});
+
+export const listarEmpresasFn = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) =>
+    filtrosSchema
+      .extend({
         page: z.number().int().min(1).optional(),
         perPage: z.number().int().min(1).max(100).optional(),
       })
@@ -116,16 +153,7 @@ export const obterPainelFn = createServerFn({ method: "GET" }).handler(async () 
 });
 
 export const exportarEmpresasFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
-    z
-      .object({
-        busca: z.string().max(120).optional(),
-        status: z.string().max(30).optional(),
-        uf: z.string().max(10).optional(),
-        listId: z.string().max(40).optional(),
-      })
-      .parse(d ?? {}),
-  )
+  .inputValidator((d: unknown) => filtrosSchema.parse(d ?? {}))
   .handler(async ({ data }) => {
     const { exportarEmpresas } = await import("./repo.server");
     return exportarEmpresas(data);
