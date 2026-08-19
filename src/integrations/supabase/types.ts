@@ -14,7 +14,191 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          bairro: string | null
+          capital_social: number | null
+          cep: string | null
+          cidade: string | null
+          cnae_codigo: string | null
+          cnae_descricao: string | null
+          cnpj: string
+          complemento: string | null
+          contatos: Json
+          created_at: string
+          data_abertura: string | null
+          decisores: Json
+          email_receita: string | null
+          emails: string[]
+          enquadramento_porte: string[]
+          faturamento_presumido: string | null
+          link_detalhe: string | null
+          list_id: string | null
+          logradouro: string | null
+          melhor_site: string | null
+          melhor_telefone: string | null
+          natureza_juridica: string | null
+          nome_fantasia: string | null
+          notas: string
+          numero: string | null
+          porte_estimado: string | null
+          qtd_funcionarios_estimada: string | null
+          raw: Json
+          razao_social: string
+          setores: string[]
+          sites: string[]
+          situacao: string | null
+          status: string
+          synced_at: string
+          tags: string[]
+          telefones: string[]
+          tipo_unidade: string | null
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          bairro?: string | null
+          capital_social?: number | null
+          cep?: string | null
+          cidade?: string | null
+          cnae_codigo?: string | null
+          cnae_descricao?: string | null
+          cnpj: string
+          complemento?: string | null
+          contatos?: Json
+          created_at?: string
+          data_abertura?: string | null
+          decisores?: Json
+          email_receita?: string | null
+          emails?: string[]
+          enquadramento_porte?: string[]
+          faturamento_presumido?: string | null
+          link_detalhe?: string | null
+          list_id?: string | null
+          logradouro?: string | null
+          melhor_site?: string | null
+          melhor_telefone?: string | null
+          natureza_juridica?: string | null
+          nome_fantasia?: string | null
+          notas?: string
+          numero?: string | null
+          porte_estimado?: string | null
+          qtd_funcionarios_estimada?: string | null
+          raw?: Json
+          razao_social?: string
+          setores?: string[]
+          sites?: string[]
+          situacao?: string | null
+          status?: string
+          synced_at?: string
+          tags?: string[]
+          telefones?: string[]
+          tipo_unidade?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string | null
+          capital_social?: number | null
+          cep?: string | null
+          cidade?: string | null
+          cnae_codigo?: string | null
+          cnae_descricao?: string | null
+          cnpj?: string
+          complemento?: string | null
+          contatos?: Json
+          created_at?: string
+          data_abertura?: string | null
+          decisores?: Json
+          email_receita?: string | null
+          emails?: string[]
+          enquadramento_porte?: string[]
+          faturamento_presumido?: string | null
+          link_detalhe?: string | null
+          list_id?: string | null
+          logradouro?: string | null
+          melhor_site?: string | null
+          melhor_telefone?: string | null
+          natureza_juridica?: string | null
+          nome_fantasia?: string | null
+          notas?: string
+          numero?: string | null
+          porte_estimado?: string | null
+          qtd_funcionarios_estimada?: string | null
+          raw?: Json
+          razao_social?: string
+          setores?: string[]
+          sites?: string[]
+          situacao?: string | null
+          status?: string
+          synced_at?: string
+          tags?: string[]
+          telefones?: string[]
+          tipo_unidade?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "company_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_lists: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      query_log: {
+        Row: {
+          created_at: string
+          entrada: string
+          id: string
+          mensagem: string | null
+          quantidade: number
+          resultado: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          entrada: string
+          id?: string
+          mensagem?: string | null
+          quantidade?: number
+          resultado: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          entrada?: string
+          id?: string
+          mensagem?: string | null
+          quantidade?: number
+          resultado?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
