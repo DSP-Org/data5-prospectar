@@ -19,8 +19,8 @@ async function logQuery(entry: {
   tipo: string;
   entrada: string;
   resultado: string;
-  mensagem?: string | null;
-  quantidade?: number;
+  mensagem?: string | null | undefined;
+  quantidade?: number | undefined;
 }) {
   await supabaseAdmin.from("query_log").insert({
     tipo: entry.tipo,
@@ -54,8 +54,8 @@ async function persistir(mapped: ReturnType<typeof mapCompany>[], listId: string
 
 export async function consultarCnpjs(input: {
   cnpjs: string[];
-  listId?: string | null;
-  salvar?: boolean;
+  listId?: string | null | undefined;
+  salvar?: boolean | undefined;
 }): Promise<{ itens: LookupItem[] }> {
   const invalidos: string[] = [];
   const validos: string[] = [];
@@ -131,10 +131,10 @@ export async function consultarCnpjs(input: {
 }
 
 export async function consultarChave(input: {
-  site?: string;
-  email?: string;
-  listId?: string | null;
-  salvar?: boolean;
+  site?: string | undefined;
+  email?: string | undefined;
+  listId?: string | null | undefined;
+  salvar?: boolean | undefined;
 }): Promise<LookupItem> {
   const tipo = input.site ? "site" : "email";
   const entrada = (input.site ?? input.email ?? "").trim();
@@ -162,12 +162,12 @@ export async function consultarChave(input: {
 }
 
 export async function listarEmpresas(input: {
-  busca?: string;
-  status?: string;
-  uf?: string;
-  listId?: string;
-  page?: number;
-  perPage?: number;
+  busca?: string | undefined;
+  status?: string | undefined;
+  uf?: string | undefined;
+  listId?: string | undefined;
+  page?: number | undefined;
+  perPage?: number | undefined;
 }) {
   const page = Math.max(1, input.page ?? 1);
   const perPage = Math.min(100, input.perPage ?? 25);
@@ -210,10 +210,10 @@ export async function obterEmpresa(cnpj: string) {
 
 export async function atualizarEmpresa(input: {
   cnpj: string;
-  status?: Status;
-  notas?: string;
-  listId?: string | null;
-  tags?: string[];
+  status?: Status | undefined;
+  notas?: string | undefined;
+  listId?: string | null | undefined;
+  tags?: string[] | undefined;
 }) {
   const patch: Row = {};
   if (input.status) patch["status"] = input.status;
@@ -306,10 +306,10 @@ export async function obterPainel() {
 }
 
 export async function exportarEmpresas(input: {
-  status?: string;
-  uf?: string;
-  listId?: string;
-  busca?: string;
+  status?: string | undefined;
+  uf?: string | undefined;
+  listId?: string | undefined;
+  busca?: string | undefined;
 }) {
   const out: Company[] = [];
   for (let page = 1; page <= 40; page += 1) {

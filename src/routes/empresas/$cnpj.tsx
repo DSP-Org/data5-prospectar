@@ -54,9 +54,13 @@ function Campo({ label, valor }: { label: string; valor?: string | null }) {
   );
 }
 
+function txt(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
 function emailsDe(c: Contato): string[] {
   const raw = c.emails ?? c.email;
-  if (Array.isArray(raw)) return raw.filter((e): e is string => Boolean(e));
+  if (Array.isArray(raw)) return raw.filter((e): e is string => typeof e === "string" && e !== "");
   return typeof raw === "string" && raw ? [raw] : [];
 }
 
@@ -275,9 +279,9 @@ function Detalhe() {
                   </p>
                   {pessoas.map((p, i) => (
                     <div key={`${p.nome ?? "pessoa"}-${i}`} className="rounded-sm border border-border p-3">
-                      <p className="text-sm font-medium">{p.nome ?? "Sem nome"}</p>
+                      <p className="text-sm font-medium">{txt(p.nome) || "Sem nome"}</p>
                       <p className="text-xs text-muted-foreground">
-                        {p.qualificacao ?? p.cargo ?? p.key ?? "—"}
+                        {txt(p.qualificacao) || txt(p.cargo) || txt(p.key) || "—"}
                       </p>
                       {emailsDe(p).map((m) => (
                         <a
