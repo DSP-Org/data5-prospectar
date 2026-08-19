@@ -9,16 +9,18 @@ export const STATUS_LABEL: Record<Status, string> = {
   descartado: "Descartado",
 };
 
+export type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
+
 export type Contato = {
-  key?: string | null;
-  nome?: string | null;
-  qualificacao?: string | null;
-  cargo?: string | null;
-  cpf?: string | null;
-  dataEntradaSociedade?: string | null;
-  emails?: (string | null)[] | null;
-  email?: (string | null)[] | string | null;
-  [k: string]: unknown;
+  key?: Json;
+  nome?: Json;
+  qualificacao?: Json;
+  cargo?: Json;
+  cpf?: Json;
+  dataEntradaSociedade?: Json;
+  emails?: Json;
+  email?: Json;
+  [k: string]: Json | undefined;
 };
 
 export type Company = {
