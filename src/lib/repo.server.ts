@@ -198,8 +198,12 @@ export async function listarEmpresas(input: {
   };
 }
 
+function chave(cnpj: string) {
+  return formatCnpjApi(cnpj) ?? cnpj;
+}
+
 export async function obterEmpresa(cnpj: string) {
-  const { data, error } = await supabaseAdmin.from("companies").select("*").eq("cnpj", cnpj).maybeSingle();
+  const { data, error } = await supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj)).maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
@@ -219,7 +223,7 @@ export async function atualizarEmpresa(input: {
   const { data, error } = await supabaseAdmin
     .from("companies")
     .update(patch as never)
-    .eq("cnpj", input.cnpj)
+    .eq("cnpj", chave(input.cnpj))
     .select("*")
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -227,7 +231,7 @@ export async function atualizarEmpresa(input: {
 }
 
 export async function excluirEmpresa(cnpj: string) {
-  const { error } = await supabaseAdmin.from("companies").delete().eq("cnpj", cnpj);
+  const { error } = await supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
   if (error) throw new Error(error.message);
   return { ok: true };
 }
