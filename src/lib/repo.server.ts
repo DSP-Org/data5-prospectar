@@ -166,6 +166,7 @@ export async function listarEmpresas(input: {
   status?: string | undefined;
   uf?: string | undefined;
   listId?: string | undefined;
+  // filtros avançados abaixo
   cidade?: string | undefined;
   bairro?: string | undefined;
   cnae?: string | undefined;
