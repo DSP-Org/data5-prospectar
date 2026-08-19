@@ -10,33 +10,79 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConsultaRouteImport } from './routes/consulta'
+import { Route as ListasRouteImport } from './routes/listas'
+import { Route as EmpresasIndexRouteImport } from './routes/empresas/index'
+import { Route as EmpresasCnpjRouteImport } from './routes/empresas/$cnpj'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsultaRoute = ConsultaRouteImport.update({
+  id: '/consulta',
+  path: '/consulta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListasRoute = ListasRouteImport.update({
+  id: '/listas',
+  path: '/listas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasIndexRoute = EmpresasIndexRouteImport.update({
+  id: '/empresas/',
+  path: '/empresas/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasCnpjRoute = EmpresasCnpjRouteImport.update({
+  id: '/empresas/$cnpj',
+  path: '/empresas/$cnpj',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/consulta': typeof ConsultaRoute
+  '/listas': typeof ListasRoute
+  '/empresas/$cnpj': typeof EmpresasCnpjRoute
+  '/empresas/': typeof EmpresasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/consulta': typeof ConsultaRoute
+  '/listas': typeof ListasRoute
+  '/empresas/$cnpj': typeof EmpresasCnpjRoute
+  '/empresas': typeof EmpresasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/consulta': typeof ConsultaRoute
+  '/listas': typeof ListasRoute
+  '/empresas/$cnpj': typeof EmpresasCnpjRoute
+  '/empresas/': typeof EmpresasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/consulta' | '/listas' | '/empresas/$cnpj' | '/empresas/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/consulta' | '/listas' | '/empresas/$cnpj' | '/empresas'
+  id:
+    | '__root__'
+    | '/'
+    | '/consulta'
+    | '/listas'
+    | '/empresas/$cnpj'
+    | '/empresas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConsultaRoute: typeof ConsultaRoute
+  ListasRoute: typeof ListasRoute
+  EmpresasCnpjRoute: typeof EmpresasCnpjRoute
+  EmpresasIndexRoute: typeof EmpresasIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +94,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/consulta': {
+      id: '/consulta'
+      path: '/consulta'
+      fullPath: '/consulta'
+      preLoaderRoute: typeof ConsultaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listas': {
+      id: '/listas'
+      path: '/listas'
+      fullPath: '/listas'
+      preLoaderRoute: typeof ListasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas/': {
+      id: '/empresas/'
+      path: '/empresas'
+      fullPath: '/empresas/'
+      preLoaderRoute: typeof EmpresasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas/$cnpj': {
+      id: '/empresas/$cnpj'
+      path: '/empresas/$cnpj'
+      fullPath: '/empresas/$cnpj'
+      preLoaderRoute: typeof EmpresasCnpjRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConsultaRoute: ConsultaRoute,
+  ListasRoute: ListasRoute,
+  EmpresasCnpjRoute: EmpresasCnpjRoute,
+  EmpresasIndexRoute: EmpresasIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
