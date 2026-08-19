@@ -166,6 +166,21 @@ export async function listarEmpresas(input: {
   status?: string | undefined;
   uf?: string | undefined;
   listId?: string | undefined;
+  cidade?: string | undefined;
+  bairro?: string | undefined;
+  cnae?: string | undefined;
+  porte?: string | undefined;
+  situacao?: string | undefined;
+  naturezaJuridica?: string | undefined;
+  setor?: string | undefined;
+  comTelefone?: boolean | undefined;
+  comEmail?: boolean | undefined;
+  comSite?: boolean | undefined;
+  comDecisor?: boolean | undefined;
+  capitalMin?: number | undefined;
+  capitalMax?: number | undefined;
+  aberturaDe?: string | undefined;
+  aberturaAte?: string | undefined;
   page?: number | undefined;
   perPage?: number | undefined;
 }) {
@@ -184,6 +199,25 @@ export async function listarEmpresas(input: {
   if (input.status && input.status !== "todos") q = q.eq("status", input.status);
   if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
   if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
+  if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
+  if (input.bairro?.trim()) q = q.ilike("bairro", `%${input.bairro.trim()}%`);
+  if (input.cnae?.trim()) {
+    const t = input.cnae.trim();
+    q = q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`);
+  }
+  if (input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
+  if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
+  if (input.naturezaJuridica?.trim())
+    q = q.ilike("natureza_juridica", `%${input.naturezaJuridica.trim()}%`);
+  if (input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
+  if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
+  if (input.comSite) q = q.not("melhor_site", "is", null);
+  if (input.comEmail) q = q.not("email_receita", "is", null);
+  if (input.comDecisor) q = q.neq("decisores", "[]");
+  if (typeof input.capitalMin === "number") q = q.gte("capital_social", input.capitalMin);
+  if (typeof input.capitalMax === "number") q = q.lte("capital_social", input.capitalMax);
+  if (input.aberturaDe) q = q.gte("data_abertura", input.aberturaDe);
+  if (input.aberturaAte) q = q.lte("data_abertura", input.aberturaAte);
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
