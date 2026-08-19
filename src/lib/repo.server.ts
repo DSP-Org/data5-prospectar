@@ -9,8 +9,6 @@ import {
 } from "./econodata.server";
 import type { Company, CompanyList, LookupItem, QueryLogEntry, Status } from "./types";
 
-const db = () => supabaseAdmin as unknown as ReturnType<typeof supabaseAdmin.schema>;
-
 type Row = Record<string, unknown>;
 
 function asCompany(row: Row): Company {
@@ -303,9 +301,17 @@ export async function obterPainel() {
   };
 }
 
-export async function exportarCsv(input: { status?: string; uf?: string; listId?: string; busca?: string }) {
-  const { empresas } = await listarEmpresas({ ...input, page: 1, perPage: 100 });
-  return empresas;
+export async function exportarEmpresas(input: {
+  status?: string;
+  uf?: string;
+  listId?: string;
+  busca?: string;
+}) {
+  const out: Company[] = [];
+  for (let page = 1; page <= 40; page += 1) {
+    const { empresas } = await listarEmpresas({ ...input, page, perPage: 100 });
+    out.push(...empresas);
+    if (empresas.length < 100) break;
+  }
+  return out;
 }
-
-export { db };
