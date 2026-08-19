@@ -354,3 +354,67 @@ export async function exportarEmpresas(input: {
   }
   return out;
 }
+
+/** Consulta em lote por chaves misturadas (site, e-mail ou CNPJ). */
+export async function consultarChaves(input: {
+  chaves: string[];
+  listId?: string | null | undefined;
+}): Promise<{ itens: LookupItem[] }> {
+  const vistos = new Set<string>();
+  const chaves = input.chaves
+    .map((c) => c.trim())
+    .filter((c) => c && !vistos.has(c.toLowerCase()) && vistos.add(c.toLowerCase()));
+
+  const cnpjs = chaves.filter((c) => formatCnpjApi(c));
+  const outros = chaves.filter((c) => !formatCnpjApi(c));
+
+  const itens: LookupItem[] = [];
+  if (cnpjs.length) {
+    const r = await consultarCnpjs({ cnpjs, listId: input.listId ?? null });
+    itens.push(...r.itens);
+  }
+  for (const chaveTxt of outros.slice(0, 50)) {
+    const ehEmail = chaveTxt.includes("@");
+    const item = await consultarChave(
+      ehEmail
+        ? { email: chaveTxt, listId: input.listId ?? null }
+        : { site: chaveTxt.replace(/^https?:\/\//i, "").replace(/\/.*$/, ""), listId: input.listId ?? null },
+    );
+    itens.push({ ...item, cnpj: item.encontrada ? item.cnpj : chaveTxt });
+  }
+  return { itens };
+}
+
+/** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
+export async function opcoesFiltro() {
+  const { data } = await supabaseAdmin
+    .from("companies")
+    .select("uf, cidade, porte_estimado, situacao, setores")
+    .limit(5000);
+  const ufs = new Set<string>();
+  const cidades = new Set<string>();
+  const portes = new Set<string>();
+  const situacoes = new Set<string>();
+  const setores = new Set<string>();
+  for (const r of (data ?? []) as Array<{
+    uf: string | null;
+    cidade: string | null;
+    porte_estimado: string | null;
+    situacao: string | null;
+    setores: string[] | null;
+  }>) {
+    if (r.uf) ufs.add(r.uf);
+    if (r.cidade) cidades.add(r.cidade);
+    if (r.porte_estimado) portes.add(r.porte_estimado);
+    if (r.situacao) situacoes.add(r.situacao);
+    for (const s of r.setores ?? []) if (s) setores.add(s);
+  }
+  const ord = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  return {
+    ufs: ord(ufs),
+    cidades: ord(cidades).slice(0, 300),
+    portes: ord(portes),
+    situacoes: ord(situacoes),
+    setores: ord(setores).slice(0, 200),
+  };
+}
