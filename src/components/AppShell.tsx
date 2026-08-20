@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span>
               <span className="block font-display text-base font-semibold leading-none">
-                Econodata Hub
+                Prospectar360
               </span>
               <span className="text-xs text-sidebar-foreground/60">Inteligência de empresas</span>
             </span>
