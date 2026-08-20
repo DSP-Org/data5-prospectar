@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/" className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-sidebar-primary font-display text-sm font-bold text-sidebar-primary-foreground">
-              ED
+              P3
             </span>
             <span>
               <span className="block font-display text-base font-semibold leading-none">
