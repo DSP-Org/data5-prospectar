@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, Search, Tags } from "lucide-react";
+import { Building2, LayoutDashboard, Search, Tags, Target } from "lucide-react";
 import type { ReactNode } from "react";
 
 const nav = [
