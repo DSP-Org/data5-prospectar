@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, Search, Tags } from "lucide-react";
+import { Building2, LayoutDashboard, Search, Tags, Target } from "lucide-react";
 import type { ReactNode } from "react";
 
 const nav = [
@@ -15,8 +15,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-border bg-sidebar text-sidebar-foreground">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-sidebar-primary font-display text-sm font-bold text-sidebar-primary-foreground">
-              P3
+            <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-sidebar-primary text-sidebar-primary-foreground">
+              <Target className="h-5 w-5" strokeWidth={2.5} />
             </span>
             <span>
               <span className="block font-display text-base font-semibold leading-none">
