@@ -259,11 +259,36 @@ function Empresas() {
         </div>
         <div className="flex gap-2">
         <ImportarEmpresas />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Columns3 className="h-4 w-4" />
+              Colunas
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Exibir colunas</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {COLUNAS.map((c) => (
+              <DropdownMenuCheckboxItem
+                key={c.key}
+                checked={colunas.includes(c.key)}
+                onSelect={(ev) => ev.preventDefault()}
+                onCheckedChange={(v) =>
+                  setColunas((s) => (v ? [...s, c.key] : s.filter((k) => k !== c.key)))
+                }
+              >
+                {c.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button variant="outline" onClick={baixarCsv} disabled={exportando || total === 0}>
           {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Exportar CSV
         </Button>
         </div>
+
       </header>
 
       <Card>
