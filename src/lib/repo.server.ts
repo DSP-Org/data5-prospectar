@@ -152,8 +152,22 @@ export async function consultarChave(input: {
       return { cnpj: entrada, encontrada: false, erro: "Nenhuma empresa encontrada.", salva: false };
     }
     const mapped = mapCompany(res);
+    // Enriquece com as demais fontes ativas usando o CNPJ encontrado.
+    let final: Record<string, unknown> = {
+      ...(mapped as unknown as Record<string, unknown>),
+      fonte_principal: "econodata",
+      fontes: ["econodata"],
+    };
+    try {
+      const { empresas } = await buscarMultiFonte([mapped.cnpj]);
+      const m = empresas.get(mapped.cnpj);
+      if (m) final = m as unknown as Record<string, unknown>;
+    } catch {
+      /* mantém apenas o resultado da Econodata */
+    }
     const salvar = input.salvar !== false;
-    const salvas = salvar ? await persistir([mapped], input.listId ?? null) : [];
+    const salvas = salvar ? await persistir([final], input.listId ?? null) : [];
+
     await logQuery({ tipo, entrada, resultado: "ok", quantidade: 1 });
     return {
       cnpj: mapped.cnpj,
