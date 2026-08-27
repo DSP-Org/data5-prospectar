@@ -105,6 +105,51 @@ function Funil() {
         <p className="text-sm text-muted-foreground">Mova empresas entre os estágios do funil comercial.</p>
       </div>
 
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Filter className="h-4 w-4" /> Filtros
+          </div>
+          <Select value={listaId} onValueChange={setListaId}>
+            <SelectTrigger className="sm:w-64">
+              <SelectValue placeholder="Lista" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as listas</SelectItem>
+              <SelectItem value="sem_lista">Sem lista</SelectItem>
+              {(listas.data ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name} ({l.total ?? 0})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="Buscar por nome, CNPJ ou cidade…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="sm:w-72"
+          />
+          {temFiltro && (
+            <button
+              type="button"
+              onClick={() => {
+                setListaId("todas");
+                setBusca("");
+              }}
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" /> Limpar filtros
+            </button>
+          )}
+          {temFiltro && (
+            <span className="text-xs text-muted-foreground">
+              {empresasFiltradas.length} empresa(s) no filtro
+            </span>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid auto-cols-fr gap-4 md:grid-cols-5">
         {STATUSES.map((status) => {
           const lista = porStatus[status];
