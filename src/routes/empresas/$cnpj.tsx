@@ -14,6 +14,9 @@ import {
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Contato, type Status } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
+import { SOURCE_LABEL } from "@/lib/sources/catalog";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
