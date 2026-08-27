@@ -199,7 +199,8 @@ export async function listarEmpresas(input: {
   }
   if (input.status && input.status !== "todos") q = q.eq("status", input.status);
   if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
-  if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
+  if (input.listId === "sem_lista") q = q.is("list_id", null);
+  else if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
   if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
   if (input.bairro?.trim()) q = q.ilike("bairro", `%${input.bairro.trim()}%`);
   if (input.cnae?.trim()) {
