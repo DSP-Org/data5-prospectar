@@ -381,23 +381,28 @@ function Empresas() {
                   />
                 </TableHead>
                 <TableHead>Empresa</TableHead>
-                <TableHead className="hidden md:table-cell">Local</TableHead>
-                <TableHead className="hidden lg:table-cell">Porte</TableHead>
-                <TableHead className="hidden lg:table-cell">Contato</TableHead>
-                <TableHead>Status</TableHead>
+                {visiveis.map((c) => (
+                  <TableHead key={c.key}>{c.label}</TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {empresas.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={visiveis.length + 2}
+                    className="py-10 text-center text-muted-foreground"
+                  >
                     Carregando…
                   </TableCell>
                 </TableRow>
               )}
               {empresas.data?.empresas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={visiveis.length + 2}
+                    className="py-10 text-center text-muted-foreground"
+                  >
                     Nenhuma empresa encontrada com esses filtros.
                   </TableCell>
                 </TableRow>
@@ -425,22 +430,16 @@ function Empresas() {
                     </Link>
                     <p className="font-mono text-xs text-muted-foreground">{formatCnpj(e.cnpj)}</p>
                   </TableCell>
-                  <TableCell className="hidden text-sm md:table-cell">
-                    {e.cidade ?? "—"}/{e.uf ?? "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-sm lg:table-cell">
-                    {e.porte_estimado ?? "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-sm lg:table-cell">
-                    {e.melhor_telefone ?? e.emails[0] ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={e.status as Status} />
-                  </TableCell>
+                  {visiveis.map((col) => (
+                    <TableCell key={col.key} className={col.className ?? ""}>
+                      {col.cell(e)}
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
         </CardContent>
       </Card>
 
