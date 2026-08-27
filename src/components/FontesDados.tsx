@@ -1,0 +1,171 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { ArrowDown, ArrowUp, Database, RefreshCw, Save } from "lucide-react";
+import { toast } from "sonner";
+
+import {
+  listarFontesFn,
+  salvarFonteFn,
+  salvarPrioridadeFn,
+  testarFonteFn,
+} from "@/lib/sources.functions";
+import type { SourceId } from "@/lib/sources/catalog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+
+export function FontesDados() {
+  const qc = useQueryClient();
+  const fontes = useQuery({ queryKey: ["fontes"], queryFn: () => listarFontesFn() });
+  const salvarFonte = useServerFn(salvarFonteFn);
+  const testarFonte = useServerFn(testarFonteFn);
+  const salvarPrioridade = useServerFn(salvarPrioridadeFn);
+  const [chaves, setChaves] = useState<Record<string, string>>({});
+
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ["fontes"] });
+
+  const mutSalvar = useMutation({
+    mutationFn: (v: { id: SourceId; key?: string | null; enabled?: boolean }) =>
+      salvarFonte({ data: v }),
+    onSuccess: (_r, v) => {
+      setChaves((c) => ({ ...c, [v.id]: "" }));
+      invalidate();
+      toast.success("Fonte atualizada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const mutTestar = useMutation({
+    mutationFn: (v: { id: SourceId; key?: string | null }) => testarFonte({ data: v }),
+    onSuccess: (res) => (res.ok ? toast.success(res.mensagem) : toast.error(res.mensagem)),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const mutOrdem = useMutation({
+    mutationFn: (ordem: SourceId[]) => salvarPrioridade({ data: { ordem } }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Prioridade atualizada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const lista = fontes.data?.fontes ?? [];
+
+  const mover = (idx: number, delta: number) => {
+    const ordem = lista.map((f) => f.id as SourceId);
+    const alvo = idx + delta;
+    if (alvo < 0 || alvo >= ordem.length) return;
+    const copia = [...ordem];
+    const atual = copia[idx]!;
+    copia[idx] = copia[alvo]!;
+    copia[alvo] = atual;
+    mutOrdem.mutate(copia);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-primary" />
+          <CardTitle>Fontes de dados</CardTitle>
+        </div>
+        <CardDescription>
+          As fontes ativas são consultadas em paralelo e os dados são mesclados. Quando há conflito,
+          vence a fonte de maior prioridade (mais acima na lista).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {fontes.isLoading && <p className="text-sm text-muted-foreground">Carregando fontes…</p>}
+
+        {lista.map((f, idx) => (
+          <div key={f.id} className="rounded-lg border border-border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-semibold">
+                  {idx + 1}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{f.label}</span>
+                    {f.contatos && <Badge variant="outline">contatos</Badge>}
+                    {!f.requiresKey && <Badge variant="outline">sem chave</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{f.descricao}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Subir prioridade"
+                  disabled={idx === 0 || mutOrdem.isPending}
+                  onClick={() => mover(idx, -1)}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Descer prioridade"
+                  disabled={idx === lista.length - 1 || mutOrdem.isPending}
+                  onClick={() => mover(idx, 1)}
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+                <Switch
+                  checked={f.enabled}
+                  aria-label={`Ativar ${f.label}`}
+                  onCheckedChange={(v) => mutSalvar.mutate({ id: f.id as SourceId, enabled: v })}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Input
+                type="password"
+                placeholder={f.hasKey ? (f.maskedKey ?? "chave salva") : "Chave da API (opcional)"}
+                value={chaves[f.id] ?? ""}
+                onChange={(e) => setChaves((c) => ({ ...c, [f.id]: e.target.value }))}
+                className="max-w-xs"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={mutTestar.isPending}
+                onClick={() =>
+                  mutTestar.mutate({ id: f.id as SourceId, key: chaves[f.id]?.trim() || null })
+                }
+              >
+                <RefreshCw className="mr-1 h-4 w-4" />
+                Testar
+              </Button>
+              <Button
+                size="sm"
+                disabled={mutSalvar.isPending || !(chaves[f.id] ?? "").trim()}
+                onClick={() =>
+                  mutSalvar.mutate({ id: f.id as SourceId, key: (chaves[f.id] ?? "").trim() })
+                }
+              >
+                <Save className="mr-1 h-4 w-4" />
+                Salvar chave
+              </Button>
+              {f.hasKey && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => mutSalvar.mutate({ id: f.id as SourceId, key: null })}
+                >
+                  Remover chave
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
