@@ -105,6 +105,24 @@ function Empresas() {
     placeholderData: keepPreviousData,
   });
   const exportar = useServerFn(exportarEmpresasFn);
+  const vincular = useServerFn(vincularEmpresasListaFn);
+  const qc = useQueryClient();
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+
+  const linhas = empresas.data?.empresas ?? [];
+  const todosMarcados = linhas.length > 0 && linhas.every((e) => selecionados.includes(e.cnpj));
+
+  const mutVincular = useMutation({
+    mutationFn: (listId: string | null) => vincular({ data: { cnpjs: selecionados, listId } }),
+    onSuccess: (r) => {
+      toast.success(`${r.total} empresa(s) atualizada(s).`);
+      setSelecionados([]);
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: ["listas"] });
+      qc.invalidateQueries({ queryKey: ["sem-lista"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   const total = empresas.data?.total ?? 0;
   const paginas = Math.max(1, Math.ceil(total / 25));
