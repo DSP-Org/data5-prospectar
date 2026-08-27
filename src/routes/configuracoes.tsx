@@ -16,6 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { FontesDados } from "@/components/FontesDados";
+
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -190,6 +192,9 @@ function Configuracoes() {
           </div>
         </CardContent>
       </Card>
+
+      <FontesDados />
+
     </div>
   );
 }
