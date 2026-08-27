@@ -78,7 +78,11 @@ export async function listarFontes(): Promise<{ fontes: SourceConfig[]; priorida
   return { fontes, prioridade };
 }
 
-export async function salvarFonte(input: { id: SourceId; key?: string | null; enabled?: boolean }) {
+export async function salvarFonte(input: {
+  id: SourceId;
+  key?: string | null | undefined;
+  enabled?: boolean | undefined;
+}) {
   if (input.key !== undefined) {
     if (input.key === null || input.key === "") await gravar(keyKey(input.id), "");
     else await gravar(keyKey(input.id), input.key);
