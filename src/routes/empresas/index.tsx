@@ -13,6 +13,7 @@ import {
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -157,10 +158,13 @@ function Empresas() {
             {total} empresa(s) salva(s) a partir da Econodata.
           </p>
         </div>
+        <div className="flex gap-2">
+        <ImportarEmpresas />
         <Button variant="outline" onClick={baixarCsv} disabled={exportando || total === 0}>
           {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Exportar CSV
         </Button>
+        </div>
       </header>
 
       <Card>
