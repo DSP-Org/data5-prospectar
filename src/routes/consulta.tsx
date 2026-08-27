@@ -31,18 +31,22 @@ import {
 export const Route = createFileRoute("/consulta")({
   head: () => ({
     meta: [
-      { title: "Consulta de empresas | Econodata Hub" },
+      { title: "Consulta de empresas | Prospectar360" },
       {
         name: "description",
         content:
-          "Consulte empresas por CNPJ (individual ou em lote), site ou e-mail direto na API Econodata e salve na sua base.",
+          "Consulte empresas por CNPJ (individual ou em lote), site ou e-mail e salve na sua base.",
       },
-      { property: "og:title", content: "Consulta de empresas | Econodata Hub" },
+      { property: "og:title", content: "Consulta de empresas | Prospectar360" },
       {
         property: "og:description",
-        content: "Consulta de CNPJ, site e e-mail na base Econodata com salvamento automático.",
+        content: "Consulta de CNPJ, site e e-mail com salvamento automático no Prospectar360.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://data5-prospectar.lovable.app/consulta" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/consulta" }],
   }),
   component: Consulta,
 });
