@@ -29,17 +29,19 @@ import {
 export const Route = createFileRoute("/empresas/$cnpj")({
   head: () => ({
     meta: [
-      { title: "Ficha da empresa | Econodata Hub" },
+      { title: "Ficha da empresa | Prospectar360" },
       {
         name: "description",
         content:
           "Ficha completa da empresa: cadastro, CNAE, porte, telefones, sites, sócios e anotações comerciais.",
       },
-      { property: "og:title", content: "Ficha da empresa | Econodata Hub" },
+      { property: "og:title", content: "Ficha da empresa | Prospectar360" },
       {
         property: "og:description",
-        content: "Dados cadastrais, contatos e gestão comercial da empresa.",
+        content: "Dados cadastrais, contatos e gestão comercial da empresa no Prospectar360.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Detalhe,
