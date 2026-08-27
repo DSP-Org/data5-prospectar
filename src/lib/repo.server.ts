@@ -7,7 +7,7 @@ import {
   validarToken,
 } from "./econodata.server";
 import { buscarMultiFonte } from "./sources/registry.server";
-import type { Company, CompanyList, LookupItem, QueryLogEntry, Status } from "./types";
+import type { ActivityType, Company, CompanyList, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
 
 
 type Row = Record<string, unknown>;
@@ -522,3 +522,123 @@ export async function testarChaveApi(key: string) {
     return { ok: false as const, erro: err.message ?? "Falha desconhecida", status: err.status ?? 0 };
   }
 }
+
+// =============================================================================
+// Atividades de prospecção
+// =============================================================================
+
+export type ActivityInput = {
+  company_cnpj: string;
+  tipo: ActivityType;
+  observacao?: string | undefined;
+  responsavel?: string | null | undefined;
+  scheduled_at?: string | null | undefined;
+  completed_at?: string | null | undefined;
+};
+
+function asActivity(row: Row): ProspectionActivity {
+  return row as unknown as ProspectionActivity;
+}
+
+export async function listarAtividades(input: {
+  cnpj?: string | undefined;
+  tipo?: string | undefined;
+  de?: string | undefined;
+  ate?: string | undefined;
+  responsavel?: string | undefined;
+  pendente?: boolean | undefined;
+  limit?: number | undefined;
+}) {
+  let q = supabaseAdmin.from("prospection_activities").select("*").order("created_at", { ascending: false });
+  if (input.cnpj) q = q.eq("company_cnpj", chave(input.cnpj));
+  if (input.tipo && input.tipo !== "todos") q = q.eq("tipo", input.tipo);
+  if (input.de) q = q.gte("created_at", input.de);
+  if (input.ate) q = q.lte("created_at", `${input.ate}T23:59:59`);
+  if (input.responsavel?.trim()) q = q.ilike("responsavel", `%${input.responsavel.trim()}%`);
+  if (input.pendente) q = q.is("completed_at", null);
+  if (input.limit) q = q.limit(input.limit);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => asActivity(r as Row));
+}
+
+export async function criarAtividade(input: ActivityInput) {
+  const payload: Row = {
+    company_cnpj: chave(input.company_cnpj),
+    tipo: input.tipo,
+    observacao: input.observacao ?? "",
+    responsavel: input.responsavel ?? null,
+    scheduled_at: input.scheduled_at ?? null,
+    completed_at: input.completed_at ?? null,
+  };
+  const { data, error } = await supabaseAdmin.from("prospection_activities").insert(payload as never).select("*").single();
+  if (error) throw new Error(error.message);
+  return asActivity(data as Row);
+}
+
+export async function atualizarAtividade(id: string, patch: Partial<Omit<ActivityInput, "company_cnpj" | "tipo">>) {
+  const payload: Row = {};
+  if (patch.observacao !== undefined) payload["observacao"] = patch.observacao;
+  if (patch.responsavel !== undefined) payload["responsavel"] = patch.responsavel;
+  if (patch.scheduled_at !== undefined) payload["scheduled_at"] = patch.scheduled_at ?? null;
+  if (patch.completed_at !== undefined) payload["completed_at"] = patch.completed_at ?? null;
+  if (Object.keys(payload).length === 0) return null;
+  const { data, error } = await supabaseAdmin.from("prospection_activities").update(payload as never).eq("id", id).select("*").single();
+  if (error) throw new Error(error.message);
+  return data ? asActivity(data as Row) : null;
+}
+
+
+export async function excluirAtividade(id: string) {
+  const { error } = await supabaseAdmin.from("prospection_activities").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+export async function obterUltimasAtividadesPorEmpresa() {
+  const { data, error } = await supabaseAdmin
+    .from("prospection_activities")
+    .select("company_cnpj, tipo, created_at, completed_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const map = new Map<string, { tipo: ActivityType; created_at: string }>();
+  for (const r of (data ?? []) as Array<{ company_cnpj: string; tipo: ActivityType; created_at: string }>) {
+    if (!map.has(r.company_cnpj)) map.set(r.company_cnpj, { tipo: r.tipo, created_at: r.created_at });
+  }
+  return map;
+}
+
+export async function funilDados() {
+  const { data, error } = await supabaseAdmin
+    .from("companies")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  const empresas = (data ?? []).map((r) => asCompany(r as Row));
+  const ultimas = await obterUltimasAtividadesPorEmpresa();
+  return {
+    empresas,
+    ultimas: Object.fromEntries(
+      Array.from(ultimas.entries()).map(([k, v]) => [k, v]),
+    ) as Record<string, { tipo: ActivityType; created_at: string }>,
+  };
+}
+
+export async function relatorioAtividades(input: { de?: string | undefined; ate?: string | undefined }) {
+  const atividades = await listarAtividades({ de: input.de, ate: input.ate, limit: 10000 });
+  const porTipo: Record<string, number> = {};
+  const porDia: Record<string, number> = {};
+  let pendentes = 0;
+  let concluidas = 0;
+  for (const a of atividades) {
+    porTipo[a.tipo] = (porTipo[a.tipo] ?? 0) + 1;
+    const dia = a.created_at.slice(0, 10);
+    porDia[dia] = (porDia[dia] ?? 0) + 1;
+    if (a.completed_at) concluidas += 1;
+    else pendentes += 1;
+  }
+  const dias = Object.keys(porDia).sort();
+  return { total: atividades.length, porTipo, porDia, dias, pendentes, concluidas };
+}
+

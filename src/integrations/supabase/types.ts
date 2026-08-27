@@ -193,6 +193,50 @@ export type Database = {
         }
         Relationships: []
       }
+      prospection_activities: {
+        Row: {
+          company_cnpj: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          observacao: string
+          responsavel: string | null
+          scheduled_at: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          company_cnpj: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          observacao?: string
+          responsavel?: string | null
+          scheduled_at?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          company_cnpj?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          observacao?: string
+          responsavel?: string | null
+          scheduled_at?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospection_activities_company_cnpj_fkey"
+            columns: ["company_cnpj"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["cnpj"]
+          },
+        ]
+      }
       query_log: {
         Row: {
           created_at: string

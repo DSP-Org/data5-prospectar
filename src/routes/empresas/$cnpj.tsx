@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,7 +12,12 @@ import {
   listarListasFn,
   obterEmpresaFn,
 } from "@/lib/econodata.functions";
-import { STATUS_LABEL, formatCnpj, type Contato, type Status } from "@/lib/types";
+import {
+  criarAtividadeFn,
+  listarAtividadesFn,
+  atualizarAtividadeFn,
+} from "@/lib/prospection.functions";
+import { STATUS_LABEL, ACTIVITY_LABEL, ACTIVITY_TYPES, formatCnpj, type ActivityType, type Contato, type Status } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { SOURCE_LABEL } from "@/lib/sources/catalog";
@@ -28,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 
 export const Route = createFileRoute("/empresas/$cnpj")({
   head: () => ({
@@ -85,11 +91,21 @@ function Detalhe() {
   const reconsultar = useServerFn(consultarCnpjsFn);
 
   const [notas, setNotas] = useState("");
+  const [tipoAtividade, setTipoAtividade] = useState<ActivityType>("ligacao");
+  const [obsAtividade, setObsAtividade] = useState("");
+  const [respAtividade, setRespAtividade] = useState("");
+  const [agendadaAtividade, setAgendadaAtividade] = useState("");
   const e = empresa.data;
 
   useEffect(() => {
     if (e) setNotas(e.notas);
   }, [e]);
+
+  const atividades = useQuery({
+    queryKey: ["atividades", cnpj],
+    queryFn: () => listarAtividadesFn({ data: { cnpj, limit: 50 } }),
+    enabled: Boolean(e),
+  });
 
   const mutSalvar = useMutation({
     mutationFn: (patch: { status?: Status; notas?: string; listId?: string | null }) =>
@@ -102,6 +118,43 @@ function Detalhe() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  const criarAtividade = useServerFn(criarAtividadeFn);
+  const mutAtividade = useMutation({
+    mutationFn: () =>
+      criarAtividade({
+        data: {
+          company_cnpj: cnpj,
+          tipo: tipoAtividade,
+          observacao: obsAtividade,
+          responsavel: respAtividade || null,
+          scheduled_at: agendadaAtividade ? new Date(agendadaAtividade).toISOString() : null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Atividade registrada.");
+      setObsAtividade("");
+      setRespAtividade("");
+      setAgendadaAtividade("");
+      void qc.invalidateQueries({ queryKey: ["atividades", cnpj] });
+      void qc.invalidateQueries({ queryKey: ["funil"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const atualizarAtividade = useServerFn(atualizarAtividadeFn);
+  const mutConcluir = useMutation({
+    mutationFn: (id: string) =>
+      atualizarAtividade({
+        data: { id, completed_at: new Date().toISOString() },
+      }),
+    onSuccess: () => {
+      toast.success("Atividade concluída.");
+      void qc.invalidateQueries({ queryKey: ["atividades", cnpj] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
 
   const mutSync = useMutation({
     mutationFn: () => reconsultar({ data: { cnpjs: [cnpj] } }),
@@ -384,7 +437,105 @@ function Detalhe() {
               </p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Atividades</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="tipo">Nova atividade</Label>
+                <Select value={tipoAtividade} onValueChange={(v) => setTipoAtividade(v as ActivityType)}>
+                  <SelectTrigger id="tipo">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTIVITY_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {ACTIVITY_LABEL[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="obs">Observação</Label>
+                <Textarea
+                  id="obs"
+                  rows={3}
+                  value={obsAtividade}
+                  onChange={(ev) => setObsAtividade(ev.target.value)}
+                  placeholder="Resumo da ligação, e-mail enviado, próxima ação…"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="resp">Responsável</Label>
+                <input
+                  id="resp"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={respAtividade}
+                  onChange={(ev) => setRespAtividade(ev.target.value)}
+                  placeholder="Nome do responsável"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="agendada">Agendada para</Label>
+                <input
+                  id="agendada"
+                  type="datetime-local"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={agendadaAtividade}
+                  onChange={(ev) => setAgendadaAtividade(ev.target.value)}
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => mutAtividade.mutate()}
+                disabled={mutAtividade.isPending || !obsAtividade.trim()}
+              >
+                <Plus className="h-4 w-4" /> Registrar atividade
+              </Button>
+
+              {atividades.isLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando atividades…</p>
+              ) : atividades.data && atividades.data.length > 0 ? (
+                <div className="space-y-2">
+                  {atividades.data.slice(0, 6).map((a) => (
+                    <div key={a.id} className="rounded-sm border border-border p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium">{ACTIVITY_LABEL[a.tipo]}</span>
+                        {!a.completed_at && (
+                          <button
+                            onClick={() => mutConcluir.mutate(a.id)}
+                            className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700"
+                            title="Marcar como concluída"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Concluir
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(a.created_at).toLocaleString("pt-BR")}
+                      </p>
+                      {a.observacao && <p className="text-xs">{a.observacao}</p>}
+                      {a.scheduled_at && (
+                        <p className="text-xs text-amber-600">
+                          Agendada: {new Date(a.scheduled_at).toLocaleString("pt-BR")}
+                        </p>
+                      )}
+                      {a.completed_at && (
+                        <p className="text-xs text-green-600">Concluída</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma atividade registrada.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
+
       </div>
     </div>
   );

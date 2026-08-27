@@ -99,6 +99,40 @@ export function formatCnpj(value: string): string {
   return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
 }
 
+export const ACTIVITY_TYPES = ["ligacao", "email", "whatsapp", "reuniao", "tarefa", "nota"] as const;
+export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+
+export const ACTIVITY_LABEL: Record<ActivityType, string> = {
+  ligacao: "Ligação",
+  email: "E-mail",
+  whatsapp: "WhatsApp",
+  reuniao: "Reunião",
+  tarefa: "Tarefa",
+  nota: "Nota",
+};
+
+export const ACTIVITY_COLOR: Record<ActivityType, string> = {
+  ligacao: "bg-blue-100 text-blue-700",
+  email: "bg-purple-100 text-purple-700",
+  whatsapp: "bg-green-100 text-green-700",
+  reuniao: "bg-amber-100 text-amber-700",
+  tarefa: "bg-slate-100 text-slate-700",
+  nota: "bg-zinc-100 text-zinc-700",
+};
+
+export type ProspectionActivity = {
+  id: string;
+  company_cnpj: string;
+  tipo: ActivityType;
+  observacao: string;
+  responsavel: string | null;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+
 export function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
