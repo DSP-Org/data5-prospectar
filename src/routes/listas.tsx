@@ -97,12 +97,20 @@ function Listas() {
         )}
         {(listas.data ?? []).map((l) => (
           <Card key={l.id}>
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="font-medium">{l.name}</p>
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{l.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Criada em {new Date(l.created_at).toLocaleDateString("pt-BR")}
+                  {l.total ?? 0} empresa(s) · criada em{" "}
+                  {new Date(l.created_at).toLocaleDateString("pt-BR")}
                 </p>
+                <Link
+                  to="/empresas"
+                  search={{ lista: l.id }}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  Ver empresas <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
               <Button
                 variant="ghost"
@@ -115,6 +123,22 @@ function Listas() {
             </CardContent>
           </Card>
         ))}
+
+        <Card className="border-dashed">
+          <CardContent className="p-4">
+            <p className="font-medium">Sem lista</p>
+            <p className="text-xs text-muted-foreground">
+              {semLista.data ?? 0} empresa(s) ainda não agrupadas
+            </p>
+            <Link
+              to="/empresas"
+              search={{ lista: "sem_lista" }}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Ver empresas <ArrowRight className="h-3 w-3" />
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
