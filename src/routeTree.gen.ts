@@ -10,15 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AtividadesRouteImport } from './routes/atividades'
+import { Route as CalculadoraRouteImport } from './routes/calculadora'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ConsultaRouteImport } from './routes/consulta'
+import { Route as FunilRouteImport } from './routes/funil'
 import { Route as ListasRouteImport } from './routes/listas'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as EmpresasIndexRouteImport } from './routes/empresas/index'
 import { Route as EmpresasCnpjRouteImport } from './routes/empresas/$cnpj'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtividadesRoute = AtividadesRouteImport.update({
+  id: '/atividades',
+  path: '/atividades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalculadoraRoute = CalculadoraRouteImport.update({
+  id: '/calculadora',
+  path: '/calculadora',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
@@ -31,9 +45,19 @@ const ConsultaRoute = ConsultaRouteImport.update({
   path: '/consulta',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FunilRoute = FunilRouteImport.update({
+  id: '/funil',
+  path: '/funil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListasRoute = ListasRouteImport.update({
   id: '/listas',
   path: '/listas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmpresasIndexRoute = EmpresasIndexRouteImport.update({
@@ -49,26 +73,38 @@ const EmpresasCnpjRoute = EmpresasCnpjRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/atividades': typeof AtividadesRoute
+  '/calculadora': typeof CalculadoraRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/consulta': typeof ConsultaRoute
+  '/funil': typeof FunilRoute
   '/listas': typeof ListasRoute
+  '/relatorios': typeof RelatoriosRoute
   '/empresas/$cnpj': typeof EmpresasCnpjRoute
   '/empresas/': typeof EmpresasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/atividades': typeof AtividadesRoute
+  '/calculadora': typeof CalculadoraRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/consulta': typeof ConsultaRoute
+  '/funil': typeof FunilRoute
   '/listas': typeof ListasRoute
+  '/relatorios': typeof RelatoriosRoute
   '/empresas/$cnpj': typeof EmpresasCnpjRoute
   '/empresas': typeof EmpresasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/atividades': typeof AtividadesRoute
+  '/calculadora': typeof CalculadoraRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/consulta': typeof ConsultaRoute
+  '/funil': typeof FunilRoute
   '/listas': typeof ListasRoute
+  '/relatorios': typeof RelatoriosRoute
   '/empresas/$cnpj': typeof EmpresasCnpjRoute
   '/empresas/': typeof EmpresasIndexRoute
 }
@@ -76,34 +112,50 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/atividades'
+    | '/calculadora'
     | '/configuracoes'
     | '/consulta'
+    | '/funil'
     | '/listas'
+    | '/relatorios'
     | '/empresas/$cnpj'
     | '/empresas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/atividades'
+    | '/calculadora'
     | '/configuracoes'
     | '/consulta'
+    | '/funil'
     | '/listas'
+    | '/relatorios'
     | '/empresas/$cnpj'
     | '/empresas'
   id:
     | '__root__'
     | '/'
+    | '/atividades'
+    | '/calculadora'
     | '/configuracoes'
     | '/consulta'
+    | '/funil'
     | '/listas'
+    | '/relatorios'
     | '/empresas/$cnpj'
     | '/empresas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AtividadesRoute: typeof AtividadesRoute
+  CalculadoraRoute: typeof CalculadoraRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ConsultaRoute: typeof ConsultaRoute
+  FunilRoute: typeof FunilRoute
   ListasRoute: typeof ListasRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   EmpresasCnpjRoute: typeof EmpresasCnpjRoute
   EmpresasIndexRoute: typeof EmpresasIndexRoute
 }
@@ -115,6 +167,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atividades': {
+      id: '/atividades'
+      path: '/atividades'
+      fullPath: '/atividades'
+      preLoaderRoute: typeof AtividadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calculadora': {
+      id: '/calculadora'
+      path: '/calculadora'
+      fullPath: '/calculadora'
+      preLoaderRoute: typeof CalculadoraRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -131,11 +197,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsultaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/funil': {
+      id: '/funil'
+      path: '/funil'
+      fullPath: '/funil'
+      preLoaderRoute: typeof FunilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listas': {
       id: '/listas'
       path: '/listas'
       fullPath: '/listas'
       preLoaderRoute: typeof ListasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/empresas/': {
@@ -157,9 +237,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AtividadesRoute: AtividadesRoute,
+  CalculadoraRoute: CalculadoraRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ConsultaRoute: ConsultaRoute,
+  FunilRoute: FunilRoute,
   ListasRoute: ListasRoute,
+  RelatoriosRoute: RelatoriosRoute,
   EmpresasCnpjRoute: EmpresasCnpjRoute,
   EmpresasIndexRoute: EmpresasIndexRoute,
 }

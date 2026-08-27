@@ -1,0 +1,1 @@
+CREATE POLICY "Service role manages prospection activities" ON public.prospection_activities FOR ALL TO service_role USING (true) WITH CHECK (true);
