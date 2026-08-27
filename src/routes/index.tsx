@@ -14,18 +14,22 @@ const conexaoQuery = queryOptions({ queryKey: ["conexao"], queryFn: () => testar
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Painel | Econodata Hub" },
+      { title: "Painel | Prospectar360" },
       {
         name: "description",
         content:
-          "Visão geral da sua base de empresas Econodata: total salvo, status comercial e últimas consultas.",
+          "Visão geral da sua base de empresas: total salvo, status comercial e últimas consultas.",
       },
-      { property: "og:title", content: "Painel | Econodata Hub" },
+      { property: "og:title", content: "Painel | Prospectar360" },
       {
         property: "og:description",
-        content: "Visão geral da base de empresas consultadas na Econodata.",
+        content: "Visão geral da base de empresas consultadas no Prospectar360.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://data5-prospectar.lovable.app/" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/" }],
   }),
   loader: ({ context }) => {
     void context.queryClient.ensureQueryData(painelQuery);
