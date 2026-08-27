@@ -69,6 +69,7 @@ export type CompanyList = {
   name: string;
   color: string;
   created_at: string;
+  total?: number;
 };
 
 export type QueryLogEntry = {
