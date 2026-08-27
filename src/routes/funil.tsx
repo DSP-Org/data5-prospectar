@@ -42,7 +42,11 @@ function formatDataHora(iso?: string | null) {
 function Funil() {
   const qc = useQueryClient();
   const dados = useQuery({ queryKey: ["funil"], queryFn: () => funilDadosFn() });
+  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const atualizar = useServerFn(atualizarEmpresaFn);
+
+  const [listaId, setListaId] = useState<string>("todas");
+  const [busca, setBusca] = useState("");
 
   const mutStatus = useMutation({
     mutationFn: ({ cnpj, status }: { cnpj: string; status: Status }) =>
@@ -56,6 +60,20 @@ function Funil() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const empresasFiltradas = useMemo(() => {
+    const empresas = dados.data?.empresas ?? [];
+    const termo = busca.trim().toLowerCase();
+    return empresas.filter((e) => {
+      if (listaId === "sem_lista" && e.list_id !== null) return false;
+      if (listaId !== "todas" && listaId !== "sem_lista" && e.list_id !== listaId) return false;
+      if (termo) {
+        const alvo = `${e.razao_social} ${e.nome_fantasia ?? ""} ${e.cnpj} ${e.cidade ?? ""}`.toLowerCase();
+        if (!alvo.includes(termo)) return false;
+      }
+      return true;
+    });
+  }, [dados.data, listaId, busca]);
+
   if (dados.isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -64,20 +82,21 @@ function Funil() {
     );
   }
 
-  const empresas = dados.data?.empresas ?? [];
   const ultimas = dados.data?.ultimas ?? {};
 
-  const porStatus: Record<Status, typeof empresas> = {
+  const porStatus: Record<Status, typeof empresasFiltradas> = {
     novo: [],
     em_contato: [],
     qualificado: [],
     cliente: [],
     descartado: [],
   };
-  for (const e of empresas) {
+  for (const e of empresasFiltradas) {
     const s = e.status as Status;
     if (porStatus[s]) porStatus[s].push(e);
   }
+
+  const temFiltro = listaId !== "todas" || busca.trim() !== "";
 
   return (
     <div className="space-y-4">
