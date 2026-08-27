@@ -418,3 +418,53 @@ export async function opcoesFiltro() {
     setores: ord(setores).slice(0, 200),
   };
 }
+
+/** Lê o status da chave da API Econodata salva no banco. Nunca retorna o valor completo. */
+export async function obterStatusChaveApi() {
+  const { data, error } = await supabaseAdmin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "econodata_api_key")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+
+  const value = data?.value ?? "";
+  const env = process.env["ECONODATA_API_KEY"] ?? "";
+  const configured = Boolean(env || value);
+  const source = value ? "database" : env ? "env" : "none";
+  const active = value || env;
+  const masked = active ? "••••••••••••••••" + active.slice(-4) : null;
+
+  return { configured, source, masked };
+}
+
+/** Salva a chave da API Econodata no banco. */
+export async function salvarChaveApi(key: string) {
+  const { error } = await supabaseAdmin.from("app_settings").upsert(
+    { key: "econodata_api_key", value: key } as never,
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+/** Migra a chave da variável de ambiente para o banco, quando disponível. */
+export async function migrarChaveDoAmbiente() {
+  const env = process.env["ECONODATA_API_KEY"];
+  if (!env) throw new Error("Nenhuma chave encontrada nas variáveis de ambiente.");
+  await salvarChaveApi(env);
+  return { ok: true, integracao: null };
+}
+
+/** Testa uma chave candidata contra a Econodata sem persisti-la. */
+export async function testarChaveApi(key: string) {
+  const { validarToken } = await import("./econodata.server");
+  try {
+    const info = await validarToken(key);
+    return { ok: true as const, cliente: info?.cd_cliente ?? null, integracao: info?.nm_integracao ?? null };
+  } catch (e) {
+    const err = e as EconodataError;
+    return { ok: false as const, erro: err.message ?? "Falha desconhecida", status: err.status ?? 0 };
+  }
+}

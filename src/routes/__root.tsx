@@ -79,13 +79,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Econodata Hub" },
+      { title: "Prospectar360" },
       {
         name: "description",
         content:
           "Consulte, salve e gerencie dados de empresas brasileiras da Econodata em um só lugar.",
       },
-      { property: "og:title", content: "Econodata Hub" },
+      { property: "og:title", content: "Prospectar360" },
       {
         property: "og:description",
         content: "Consulte, salve e gerencie dados de empresas brasileiras da Econodata.",

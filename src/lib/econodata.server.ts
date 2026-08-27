@@ -1,7 +1,10 @@
 // Cliente server-only da API Econodata (ecdt-api).
 // Contrato confirmado: header `Authorization: <token>` (token cru, sem "Bearer").
 
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
 const BASE = "https://api.econodata.com.br/ecdt-api";
+const SETTINGS_KEY = "econodata_api_key";
 
 export type FaixaEconodata = { min?: number | null; max?: number | null } | string | null;
 
@@ -64,16 +67,33 @@ const MENSAGENS: Record<number, string> = {
   500: "Erro interno da Econodata.",
 };
 
-async function call<T>(path: string, init: RequestInit): Promise<T> {
-  const token = process.env["ECONODATA_API_KEY"];
-  if (!token) throw new EconodataError(500, "Token da Econodata não configurado.");
+async function getEconodataToken(): Promise<string> {
+  // Prioriza a chave salva no banco; usa a variável de ambiente como fallback.
+  const { data, error } = await supabaseAdmin
+    .from("app_settings")
+    .select("value")
+    .eq("key", SETTINGS_KEY)
+    .maybeSingle();
+
+  if (error) throw new EconodataError(500, "Erro ao ler configuração da API Econodata.");
+  if (data?.value) return data.value;
+
+  const env = process.env["ECONODATA_API_KEY"];
+  if (env) return env;
+
+  throw new EconodataError(500, "Token da Econodata não configurado.");
+}
+
+async function call<T>(path: string, init: RequestInit, token?: string): Promise<T> {
+  const authToken = token ?? (await getEconodataToken());
+  if (!authToken) throw new EconodataError(500, "Token da Econodata não configurado.");
 
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
       ...init,
       headers: {
-        Authorization: token,
+        Authorization: authToken,
         "Content-Type": "application/json",
         ...(init.headers ?? {}),
       },
@@ -115,22 +135,22 @@ export type TokenInfo = {
   cd_token?: string;
 };
 
-export function validarToken() {
-  return call<TokenInfo>("/valid-token-integration", { method: "POST" });
+export function validarToken(token?: string) {
+  return call<TokenInfo>("/valid-token-integration", { method: "POST" }, token);
 }
 
 /** POST /companies — corpo é um array cru de CNPJs (máx. 100). */
-export function buscarPorCnpjs(cnpjs: string[]) {
+export function buscarPorCnpjs(cnpjs: string[], token?: string) {
   return call<EconodataCompany[]>("/companies", {
     method: "POST",
     body: JSON.stringify(cnpjs),
-  });
+  }, token);
 }
 
 /** POST /companies/search — busca por cnpj, site ou email. */
-export function buscarPorChave(params: { cnpj?: string; site?: string; email?: string }) {
+export function buscarPorChave(params: { cnpj?: string; site?: string; email?: string }, token?: string) {
   return call<EconodataCompany>("/companies/search", {
     method: "POST",
     body: JSON.stringify(params),
-  });
+  }, token);
 }

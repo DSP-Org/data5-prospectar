@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, Search, Tags, Target } from "lucide-react";
+import { Building2, LayoutDashboard, Search, Settings2, Tags, Target } from "lucide-react";
 import type { ReactNode } from "react";
 
 const nav = [
@@ -7,6 +7,7 @@ const nav = [
   { to: "/consulta", label: "Consulta", icon: Search },
   { to: "/empresas", label: "Base de empresas", icon: Building2 },
   { to: "/listas", label: "Listas", icon: Tags },
+  { to: "/configuracoes", label: "Configurações", icon: Settings2 },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
