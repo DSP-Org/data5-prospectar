@@ -90,7 +90,8 @@ function Empresas() {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState("todos");
   const [uf, setUf] = useState("todos");
-  const [lista, setLista] = useState("todas");
+  const { lista: listaInicial } = Route.useSearch();
+  const [lista, setLista] = useState(listaInicial ?? "todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
 
