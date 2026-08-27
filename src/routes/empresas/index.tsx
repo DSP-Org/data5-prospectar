@@ -36,6 +36,8 @@ const UFS = [
 ];
 
 export const Route = createFileRoute("/empresas/")({
+  validateSearch: (search: Record<string, unknown>): { lista?: string } =>
+    typeof search["lista"] === "string" ? { lista: search["lista"] } : {},
   head: () => ({
     meta: [
       { title: "Base de empresas | Prospectar360" },
