@@ -234,11 +234,49 @@ function Empresas() {
         </CardContent>
       </Card>
 
+      {selecionados.length > 0 && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 p-4">
+            <span className="text-sm font-medium">{selecionados.length} selecionada(s)</span>
+            <Select
+              value=""
+              onValueChange={(v) => mutVincular.mutate(v === "nenhuma" ? null : v)}
+              disabled={mutVincular.isPending}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Vincular à lista…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhuma">Remover da lista</SelectItem>
+                {(listas.data ?? []).map((l) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {mutVincular.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button variant="ghost" size="sm" onClick={() => setSelecionados([])}>
+              Limpar seleção
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={todosMarcados}
+                    onCheckedChange={(v) =>
+                      setSelecionados(v === true ? linhas.map((e) => e.cnpj) : [])
+                    }
+                    aria-label="Selecionar todas"
+                  />
+                </TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead className="hidden md:table-cell">Local</TableHead>
                 <TableHead className="hidden lg:table-cell">Porte</TableHead>
@@ -249,20 +287,31 @@ function Empresas() {
             <TableBody>
               {empresas.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     Carregando…
                   </TableCell>
                 </TableRow>
               )}
               {empresas.data?.empresas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     Nenhuma empresa encontrada com esses filtros.
                   </TableCell>
                 </TableRow>
               )}
-              {(empresas.data?.empresas ?? []).map((e) => (
+              {linhas.map((e) => (
                 <TableRow key={e.cnpj}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selecionados.includes(e.cnpj)}
+                      onCheckedChange={(v) =>
+                        setSelecionados((s) =>
+                          v === true ? [...s, e.cnpj] : s.filter((c) => c !== e.cnpj),
+                        )
+                      }
+                      aria-label={`Selecionar ${e.razao_social}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Link
                       to="/empresas/$cnpj"
