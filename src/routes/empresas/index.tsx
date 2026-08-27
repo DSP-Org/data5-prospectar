@@ -38,18 +38,22 @@ const UFS = [
 export const Route = createFileRoute("/empresas/")({
   head: () => ({
     meta: [
-      { title: "Base de empresas | Econodata Hub" },
+      { title: "Base de empresas | Prospectar360" },
       {
         name: "description",
         content:
-          "Filtre, acompanhe o status comercial e exporte em CSV todas as empresas salvas da Econodata.",
+          "Filtre, acompanhe o status comercial e exporte em CSV todas as empresas salvas.",
       },
-      { property: "og:title", content: "Base de empresas | Econodata Hub" },
+      { property: "og:title", content: "Base de empresas | Prospectar360" },
       {
         property: "og:description",
         content: "Filtros por status, estado e lista, com exportação CSV da base de empresas.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://data5-prospectar.lovable.app/empresas" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/empresas" }],
   }),
   component: Empresas,
 });

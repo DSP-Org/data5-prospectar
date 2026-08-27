@@ -31,8 +31,10 @@ export const Route = createFileRoute("/configuracoes")({
         content: "Gerencie a chave da API Econodata usada para enriquecer empresas.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://data5-prospectar.lovable.app/configuracoes" },
       { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/configuracoes" }],
   }),
   component: Configuracoes,
 });

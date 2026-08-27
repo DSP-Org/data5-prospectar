@@ -13,17 +13,21 @@ import { Input } from "@/components/ui/input";
 export const Route = createFileRoute("/listas")({
   head: () => ({
     meta: [
-      { title: "Listas | Econodata Hub" },
+      { title: "Listas | Prospectar360" },
       {
         name: "description",
         content: "Organize as empresas consultadas em listas de prospecção, carteiras e campanhas.",
       },
-      { property: "og:title", content: "Listas | Econodata Hub" },
+      { property: "og:title", content: "Listas | Prospectar360" },
       {
         property: "og:description",
-        content: "Crie listas para agrupar empresas por campanha ou carteira.",
+        content: "Crie listas para agrupar empresas por campanha ou carteira no Prospectar360.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://data5-prospectar.lovable.app/listas" },
+      { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/listas" }],
   }),
   component: Listas,
 });
