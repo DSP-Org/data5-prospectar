@@ -203,6 +203,7 @@ function Empresas() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as listas</SelectItem>
+              <SelectItem value="sem_lista">Sem lista</SelectItem>
               {(listas.data ?? []).map((l) => (
                 <SelectItem key={l.id} value={l.id}>
                   {l.name}
