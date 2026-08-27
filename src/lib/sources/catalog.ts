@@ -24,7 +24,7 @@ export const SOURCES: SourceMeta[] = [
   {
     id: "brasilapi",
     label: "BrasilAPI (Receita Federal)",
-    descricao: "Dados cadastrais oficiais gratuitos: razão social, endereço, CNAE, sócios e capital social.",
+    descricao: "Dados cadastrais oficiais gratuitos (BrasilAPI com espelho CNPJ.ws): razão social, endereço, CNAE, sócios e capital social.",
     requiresKey: false,
     defaultEnabled: true,
     contatos: false,

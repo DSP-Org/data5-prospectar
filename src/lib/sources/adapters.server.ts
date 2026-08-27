@@ -148,24 +148,107 @@ function mapBrasilApi(r: BrasilApiResp, cnpjFormatado: string): Partial2 {
   };
 }
 
+/* --------------------------------------------------- CNPJ.ws (espelho gratuito) */
+
+type CnpjWsResp = {
+  razao_social?: string;
+  capital_social?: string | number;
+  porte?: { descricao?: string };
+  natureza_juridica?: { descricao?: string };
+  socios?: Array<Record<string, unknown>>;
+  estabelecimento?: {
+    nome_fantasia?: string | null;
+    tipo?: string | null;
+    situacao_cadastral?: string | null;
+    tipo_logradouro?: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    bairro?: string | null;
+    cep?: string | null;
+    ddd1?: string | null;
+    telefone1?: string | null;
+    ddd2?: string | null;
+    telefone2?: string | null;
+    email?: string | null;
+    data_inicio_atividade?: string | null;
+    atividade_principal?: { subclasse?: string; descricao?: string };
+    atividades_secundarias?: Array<{ descricao?: string }>;
+    cidade?: { nome?: string };
+    estado?: { sigla?: string };
+  };
+};
+
+function mapCnpjWs(r: CnpjWsResp, cnpjFormatado: string): Partial2 {
+  const e = r.estabelecimento ?? {};
+  const tel = (ddd?: string | null, n?: string | null) =>
+    ddd && n ? `${ddd}${n}`.replace(/\s/g, "") : null;
+  const telefones = [tel(e.ddd1, e.telefone1), tel(e.ddd2, e.telefone2)].filter(
+    (t): t is string => Boolean(t),
+  );
+  const emails = e.email?.trim() ? [e.email.trim()] : [];
+  const rua = [e.tipo_logradouro, e.logradouro].filter(Boolean).join(" ").trim();
+  return {
+    cnpj: cnpjFormatado,
+    razao_social: r.razao_social ?? "",
+    nome_fantasia: e.nome_fantasia?.trim() || null,
+    tipo_unidade: e.tipo ?? null,
+    situacao: e.situacao_cadastral ?? null,
+    natureza_juridica: r.natureza_juridica?.descricao ?? null,
+    logradouro: rua || null,
+    numero: e.numero ?? null,
+    complemento: e.complemento?.trim() || null,
+    bairro: e.bairro ?? null,
+    cep: e.cep ?? null,
+    cidade: e.cidade?.nome ?? null,
+    uf: e.estado?.sigla ?? null,
+    cnae_codigo: e.atividade_principal?.subclasse ?? null,
+    cnae_descricao: e.atividade_principal?.descricao ?? null,
+    setores: (e.atividades_secundarias ?? [])
+      .map((a) => a?.descricao)
+      .filter((d): d is string => typeof d === "string" && d.trim() !== "")
+      .slice(0, 10),
+    porte_estimado: r.porte?.descricao ?? null,
+    capital_social: num(r.capital_social),
+    data_abertura: e.data_inicio_atividade ? e.data_inicio_atividade.slice(0, 10) : null,
+    melhor_telefone: telefones[0] ?? null,
+    telefones,
+    email_receita: emails[0] ?? null,
+    emails,
+    contatos: (r.socios ?? []) as unknown as Record<string, unknown>[],
+  };
+}
+
+/** Busca cadastral gratuita: tenta BrasilAPI e cai para o CNPJ.ws quando bloqueada. */
+async function buscarCadastralGratuita(cnpj: string): Promise<Partial2 | null> {
+  const d = digitos(cnpj);
+  const ua = { "User-Agent": "Prospectar360/1.0", Accept: "application/json" };
+  const b = (await getJson(`https://brasilapi.com.br/api/cnpj/v1/${d}`, ua)) as BrasilApiResp | null;
+  if (b?.razao_social) return mapBrasilApi(b, cnpj);
+  const w = (await getJson(`https://publica.cnpj.ws/cnpj/${d}`, ua)) as CnpjWsResp | null;
+  if (w?.razao_social) return mapCnpjWs(w, cnpj);
+  return null;
+}
+
 const brasilapi: DataSource = {
   id: "brasilapi",
   async fetchLote(cnpjs) {
     const out: LoteResultado = new Map();
-    await comLimite(cnpjs, 4, async (cnpj) => {
-      const d = digitos(cnpj);
-      const json = (await getJson(`https://brasilapi.com.br/api/cnpj/v1/${d}`)) as BrasilApiResp | null;
-      if (json?.razao_social) out.set(cnpj, mapBrasilApi(json, cnpj));
+    // O CNPJ.ws limita a 3 consultas por minuto: concorrência baixa.
+    await comLimite(cnpjs, 2, async (cnpj) => {
+      const mapped = await buscarCadastralGratuita(cnpj);
+      if (mapped) out.set(cnpj, mapped);
     });
     return out;
   },
   async testar() {
-    const json = await getJson("https://brasilapi.com.br/api/cnpj/v1/00000000000191");
-    return json
-      ? { ok: true, mensagem: "BrasilAPI respondendo normalmente." }
-      : { ok: false, mensagem: "BrasilAPI indisponível no momento." };
+    const r = await buscarCadastralGratuita("00.000.000/0001-91");
+    return r
+      ? { ok: true, mensagem: "Fonte cadastral gratuita respondendo normalmente." }
+      : { ok: false, mensagem: "Fontes cadastrais gratuitas indisponíveis no momento." };
   },
 };
+
 
 /* ------------------------------------------------------------------ CNPJá */
 
