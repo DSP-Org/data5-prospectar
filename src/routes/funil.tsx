@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useMemo, useState } from "react";
 import { formatCnpj, ACTIVITY_LABEL, STATUS_LABEL, STATUSES, type Status } from "@/lib/types";
 import { funilDadosFn } from "@/lib/prospection.functions";
-import { atualizarEmpresaFn } from "@/lib/econodata.functions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { atualizarEmpresaFn, listarListasFn } from "@/lib/econodata.functions";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone } from "lucide-react";
+import { Filter, Loader2, Phone, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/funil")({
@@ -40,7 +42,11 @@ function formatDataHora(iso?: string | null) {
 function Funil() {
   const qc = useQueryClient();
   const dados = useQuery({ queryKey: ["funil"], queryFn: () => funilDadosFn() });
+  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const atualizar = useServerFn(atualizarEmpresaFn);
+
+  const [listaId, setListaId] = useState<string>("todas");
+  const [busca, setBusca] = useState("");
 
   const mutStatus = useMutation({
     mutationFn: ({ cnpj, status }: { cnpj: string; status: Status }) =>
@@ -54,6 +60,20 @@ function Funil() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const empresasFiltradas = useMemo(() => {
+    const empresas = dados.data?.empresas ?? [];
+    const termo = busca.trim().toLowerCase();
+    return empresas.filter((e) => {
+      if (listaId === "sem_lista" && e.list_id !== null) return false;
+      if (listaId !== "todas" && listaId !== "sem_lista" && e.list_id !== listaId) return false;
+      if (termo) {
+        const alvo = `${e.razao_social} ${e.nome_fantasia ?? ""} ${e.cnpj} ${e.cidade ?? ""}`.toLowerCase();
+        if (!alvo.includes(termo)) return false;
+      }
+      return true;
+    });
+  }, [dados.data, listaId, busca]);
+
   if (dados.isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -62,20 +82,21 @@ function Funil() {
     );
   }
 
-  const empresas = dados.data?.empresas ?? [];
   const ultimas = dados.data?.ultimas ?? {};
 
-  const porStatus: Record<Status, typeof empresas> = {
+  const porStatus: Record<Status, typeof empresasFiltradas> = {
     novo: [],
     em_contato: [],
     qualificado: [],
     cliente: [],
     descartado: [],
   };
-  for (const e of empresas) {
+  for (const e of empresasFiltradas) {
     const s = e.status as Status;
     if (porStatus[s]) porStatus[s].push(e);
   }
+
+  const temFiltro = listaId !== "todas" || busca.trim() !== "";
 
   return (
     <div className="space-y-4">
@@ -83,6 +104,51 @@ function Funil() {
         <h1 className="text-2xl font-semibold">Funil de prospecção</h1>
         <p className="text-sm text-muted-foreground">Mova empresas entre os estágios do funil comercial.</p>
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Filter className="h-4 w-4" /> Filtros
+          </div>
+          <Select value={listaId} onValueChange={setListaId}>
+            <SelectTrigger className="sm:w-64">
+              <SelectValue placeholder="Lista" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as listas</SelectItem>
+              <SelectItem value="sem_lista">Sem lista</SelectItem>
+              {(listas.data ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name} ({l.total ?? 0})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="Buscar por nome, CNPJ ou cidade…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="sm:w-72"
+          />
+          {temFiltro && (
+            <button
+              type="button"
+              onClick={() => {
+                setListaId("todas");
+                setBusca("");
+              }}
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" /> Limpar filtros
+            </button>
+          )}
+          {temFiltro && (
+            <span className="text-xs text-muted-foreground">
+              {empresasFiltradas.length} empresa(s) no filtro
+            </span>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid auto-cols-fr gap-4 md:grid-cols-5">
         {STATUSES.map((status) => {
