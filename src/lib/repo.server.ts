@@ -2,12 +2,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { mapCompany } from "./company-mapper.server";
 import {
   buscarPorChave,
-  buscarPorCnpjs,
   EconodataError,
   formatCnpjApi,
   validarToken,
 } from "./econodata.server";
+import { buscarMultiFonte } from "./sources/registry.server";
 import type { Company, CompanyList, LookupItem, QueryLogEntry, Status } from "./types";
+
 
 type Row = Record<string, unknown>;
 
@@ -41,7 +42,9 @@ export async function testarConexao() {
   }
 }
 
-async function persistir(mapped: ReturnType<typeof mapCompany>[], listId: string | null) {
+type Persistivel = ReturnType<typeof mapCompany> | Record<string, unknown>;
+
+async function persistir(mapped: Persistivel[], listId: string | null) {
   if (mapped.length === 0) return [] as Company[];
   const payload = mapped.map((m) => (listId ? { ...m, list_id: listId } : m));
   const { data, error } = await supabaseAdmin
@@ -51,6 +54,7 @@ async function persistir(mapped: ReturnType<typeof mapCompany>[], listId: string
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => asCompany(r as Row));
 }
+
 
 export async function consultarCnpjs(input: {
   cnpjs: string[];
@@ -79,30 +83,32 @@ export async function consultarCnpjs(input: {
     return { itens };
   }
 
-  const lotes: string[][] = [];
-  for (let i = 0; i < validos.length; i += 100) lotes.push(validos.slice(i, i + 100));
-
-  const encontradas: ReturnType<typeof mapCompany>[] = [];
-  for (const lote of lotes) {
-    try {
-      const res = await buscarPorCnpjs(lote);
-      const lista = Array.isArray(res) ? res : [];
-      for (const c of lista) if (c?.cnpj) encontradas.push(mapCompany(c));
-      const achados = new Set(lista.map((c) => c?.cnpj));
-      for (const c of lote)
-        if (!achados.has(c))
-          itens.push({ cnpj: c, encontrada: false, erro: "Não encontrada na Econodata.", salva: false });
-    } catch (e) {
-      const err = e as EconodataError;
-      for (const c of lote) itens.push({ cnpj: c, encontrada: false, erro: err.message, salva: false });
-      await logQuery({
-        tipo: "cnpj",
-        entrada: lote.join(", "),
-        resultado: "erro",
-        mensagem: err.message,
-        quantidade: 0,
-      });
+  const encontradas: Record<string, unknown>[] = [];
+  try {
+    const { empresas, falhas } = await buscarMultiFonte(validos);
+    for (const c of validos) {
+      const m = empresas.get(c);
+      if (m) encontradas.push(m as unknown as Record<string, unknown>);
+      else
+        itens.push({
+          cnpj: c,
+          encontrada: false,
+          erro: falhas.length
+            ? `Não encontrada. Falhas: ${falhas.map((f) => `${f.fonte}: ${f.erro}`).join(" | ")}`
+            : "Não encontrada nas fontes ativas.",
+          salva: false,
+        });
     }
+  } catch (e) {
+    const err = e as EconodataError;
+    for (const c of validos) itens.push({ cnpj: c, encontrada: false, erro: err.message, salva: false });
+    await logQuery({
+      tipo: "cnpj",
+      entrada: validos.join(", "),
+      resultado: "erro",
+      mensagem: err.message,
+      quantidade: 0,
+    });
   }
 
   const salvar = input.salvar !== false;
@@ -110,14 +116,16 @@ export async function consultarCnpjs(input: {
   if (salvar) salvas = await persistir(encontradas, input.listId ?? null);
 
   for (const m of encontradas) {
-    const salva = salvas.find((s) => s.cnpj === m.cnpj);
+    const cnpj = String(m["cnpj"]);
+    const salva = salvas.find((s) => s.cnpj === cnpj);
     itens.push({
-      cnpj: m.cnpj,
+      cnpj,
       encontrada: true,
       company: salva ?? (m as unknown as Company),
       salva: Boolean(salva),
     });
   }
+
 
   if (encontradas.length)
     await logQuery({
@@ -145,8 +153,22 @@ export async function consultarChave(input: {
       return { cnpj: entrada, encontrada: false, erro: "Nenhuma empresa encontrada.", salva: false };
     }
     const mapped = mapCompany(res);
+    // Enriquece com as demais fontes ativas usando o CNPJ encontrado.
+    let final: Record<string, unknown> = {
+      ...(mapped as unknown as Record<string, unknown>),
+      fonte_principal: "econodata",
+      fontes: ["econodata"],
+    };
+    try {
+      const { empresas } = await buscarMultiFonte([mapped.cnpj]);
+      const m = empresas.get(mapped.cnpj);
+      if (m) final = m as unknown as Record<string, unknown>;
+    } catch {
+      /* mantém apenas o resultado da Econodata */
+    }
     const salvar = input.salvar !== false;
-    const salvas = salvar ? await persistir([mapped], input.listId ?? null) : [];
+    const salvas = salvar ? await persistir([final], input.listId ?? null) : [];
+
     await logQuery({ tipo, entrada, resultado: "ok", quantidade: 1 });
     return {
       cnpj: mapped.cnpj,

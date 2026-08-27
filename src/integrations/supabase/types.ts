@@ -50,6 +50,8 @@ export type Database = {
           emails: string[]
           enquadramento_porte: string[]
           faturamento_presumido: string | null
+          fonte_principal: string | null
+          fontes: string[]
           link_detalhe: string | null
           list_id: string | null
           logradouro: string | null
@@ -91,6 +93,8 @@ export type Database = {
           emails?: string[]
           enquadramento_porte?: string[]
           faturamento_presumido?: string | null
+          fonte_principal?: string | null
+          fontes?: string[]
           link_detalhe?: string | null
           list_id?: string | null
           logradouro?: string | null
@@ -132,6 +136,8 @@ export type Database = {
           emails?: string[]
           enquadramento_porte?: string[]
           faturamento_presumido?: string | null
+          fonte_principal?: string | null
+          fontes?: string[]
           link_detalhe?: string | null
           list_id?: string | null
           logradouro?: string | null

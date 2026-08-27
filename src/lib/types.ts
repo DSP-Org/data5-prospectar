@@ -55,6 +55,9 @@ export type Company = {
   contatos: Contato[];
   decisores: Contato[];
   link_detalhe: string | null;
+  fonte_principal: string | null;
+  fontes: string[];
+
   status: Status;
   notas: string;
   tags: string[];
