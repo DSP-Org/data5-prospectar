@@ -2,12 +2,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { mapCompany } from "./company-mapper.server";
 import {
   buscarPorChave,
-  buscarPorCnpjs,
   EconodataError,
   formatCnpjApi,
   validarToken,
 } from "./econodata.server";
+import { buscarMultiFonte } from "./sources/registry.server";
 import type { Company, CompanyList, LookupItem, QueryLogEntry, Status } from "./types";
+
 
 type Row = Record<string, unknown>;
 
