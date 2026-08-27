@@ -5,7 +5,12 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { criarListaFn, excluirListaFn, listarListasFn } from "@/lib/econodata.functions";
+import {
+  contarSemListaFn,
+  criarListaFn,
+  excluirListaFn,
+  listarListasFn,
+} from "@/lib/econodata.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
