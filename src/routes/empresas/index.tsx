@@ -36,6 +36,8 @@ const UFS = [
 ];
 
 export const Route = createFileRoute("/empresas/")({
+  validateSearch: (search: Record<string, unknown>): { lista?: string } =>
+    typeof search["lista"] === "string" ? { lista: search["lista"] } : {},
   head: () => ({
     meta: [
       { title: "Base de empresas | Prospectar360" },
@@ -88,7 +90,8 @@ function Empresas() {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState("todos");
   const [uf, setUf] = useState("todos");
-  const [lista, setLista] = useState("todas");
+  const { lista: listaInicial } = Route.useSearch();
+  const [lista, setLista] = useState(listaInicial ?? "todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
 
@@ -200,6 +203,7 @@ function Empresas() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as listas</SelectItem>
+              <SelectItem value="sem_lista">Sem lista</SelectItem>
               {(listas.data ?? []).map((l) => (
                 <SelectItem key={l.id} value={l.id}>
                   {l.name}

@@ -1,11 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { criarListaFn, excluirListaFn, listarListasFn } from "@/lib/econodata.functions";
+import {
+  contarSemListaFn,
+  criarListaFn,
+  excluirListaFn,
+  listarListasFn,
+} from "@/lib/econodata.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +41,7 @@ function Listas() {
   const qc = useQueryClient();
   const [nome, setNome] = useState("");
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const semLista = useQuery({ queryKey: ["sem-lista"], queryFn: () => contarSemListaFn() });
   const criar = useServerFn(criarListaFn);
   const excluir = useServerFn(excluirListaFn);
 
@@ -91,12 +97,20 @@ function Listas() {
         )}
         {(listas.data ?? []).map((l) => (
           <Card key={l.id}>
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="font-medium">{l.name}</p>
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{l.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Criada em {new Date(l.created_at).toLocaleDateString("pt-BR")}
+                  {l.total ?? 0} empresa(s) · criada em{" "}
+                  {new Date(l.created_at).toLocaleDateString("pt-BR")}
                 </p>
+                <Link
+                  to="/empresas"
+                  search={{ lista: l.id }}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  Ver empresas <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
               <Button
                 variant="ghost"
@@ -109,6 +123,22 @@ function Listas() {
             </CardContent>
           </Card>
         ))}
+
+        <Card className="border-dashed">
+          <CardContent className="p-4">
+            <p className="font-medium">Sem lista</p>
+            <p className="text-xs text-muted-foreground">
+              {semLista.data ?? 0} empresa(s) ainda não agrupadas
+            </p>
+            <Link
+              to="/empresas"
+              search={{ lista: "sem_lista" }}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Ver empresas <ArrowRight className="h-3 w-3" />
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
