@@ -126,6 +126,20 @@ export const excluirEmpresaFn = createServerFn({ method: "POST" })
     return excluirEmpresa(data.cnpj);
   });
 
+export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        cnpjs: z.array(z.string().min(14).max(20)).min(1).max(500),
+        listId: z.string().uuid().nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { vincularEmpresasLista } = await import("./repo.server");
+    return vincularEmpresasLista(data.cnpjs, data.listId);
+  });
+
 export const listarListasFn = createServerFn({ method: "GET" }).handler(async () => {
   const { listarListas } = await import("./repo.server");
   return listarListas();

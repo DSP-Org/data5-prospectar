@@ -266,6 +266,17 @@ export async function atualizarEmpresa(input: {
   return data ? asCompany(data as Row) : null;
 }
 
+export async function vincularEmpresasLista(cnpjs: string[], listId: string | null) {
+  const chaves = cnpjs.map((c) => chave(c));
+  if (chaves.length === 0) return { ok: true, total: 0 };
+  const { error } = await supabaseAdmin
+    .from("companies")
+    .update({ list_id: listId } as never)
+    .in("cnpj", chaves);
+  if (error) throw new Error(error.message);
+  return { ok: true, total: chaves.length };
+}
+
 export async function excluirEmpresa(cnpj: string) {
   const { error } = await supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
   if (error) throw new Error(error.message);

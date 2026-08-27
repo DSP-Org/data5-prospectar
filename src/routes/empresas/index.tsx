@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
@@ -9,11 +9,13 @@ import {
   exportarEmpresasFn,
   listarEmpresasFn,
   listarListasFn,
+  vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -103,6 +105,24 @@ function Empresas() {
     placeholderData: keepPreviousData,
   });
   const exportar = useServerFn(exportarEmpresasFn);
+  const vincular = useServerFn(vincularEmpresasListaFn);
+  const qc = useQueryClient();
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+
+  const linhas = empresas.data?.empresas ?? [];
+  const todosMarcados = linhas.length > 0 && linhas.every((e) => selecionados.includes(e.cnpj));
+
+  const mutVincular = useMutation({
+    mutationFn: (listId: string | null) => vincular({ data: { cnpjs: selecionados, listId } }),
+    onSuccess: (r) => {
+      toast.success(`${r.total} empresa(s) atualizada(s).`);
+      setSelecionados([]);
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: ["listas"] });
+      qc.invalidateQueries({ queryKey: ["sem-lista"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   const total = empresas.data?.total ?? 0;
   const paginas = Math.max(1, Math.ceil(total / 25));
@@ -214,11 +234,49 @@ function Empresas() {
         </CardContent>
       </Card>
 
+      {selecionados.length > 0 && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 p-4">
+            <span className="text-sm font-medium">{selecionados.length} selecionada(s)</span>
+            <Select
+              value=""
+              onValueChange={(v) => mutVincular.mutate(v === "nenhuma" ? null : v)}
+              disabled={mutVincular.isPending}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Vincular à lista…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhuma">Remover da lista</SelectItem>
+                {(listas.data ?? []).map((l) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {mutVincular.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button variant="ghost" size="sm" onClick={() => setSelecionados([])}>
+              Limpar seleção
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={todosMarcados}
+                    onCheckedChange={(v) =>
+                      setSelecionados(v === true ? linhas.map((e) => e.cnpj) : [])
+                    }
+                    aria-label="Selecionar todas"
+                  />
+                </TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead className="hidden md:table-cell">Local</TableHead>
                 <TableHead className="hidden lg:table-cell">Porte</TableHead>
@@ -229,20 +287,31 @@ function Empresas() {
             <TableBody>
               {empresas.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     Carregando…
                   </TableCell>
                 </TableRow>
               )}
               {empresas.data?.empresas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     Nenhuma empresa encontrada com esses filtros.
                   </TableCell>
                 </TableRow>
               )}
-              {(empresas.data?.empresas ?? []).map((e) => (
+              {linhas.map((e) => (
                 <TableRow key={e.cnpj}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selecionados.includes(e.cnpj)}
+                      onCheckedChange={(v) =>
+                        setSelecionados((s) =>
+                          v === true ? [...s, e.cnpj] : s.filter((c) => c !== e.cnpj),
+                        )
+                      }
+                      aria-label={`Selecionar ${e.razao_social}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Link
                       to="/empresas/$cnpj"
