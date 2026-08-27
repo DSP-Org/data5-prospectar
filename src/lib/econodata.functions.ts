@@ -158,3 +158,8 @@ export const exportarEmpresasFn = createServerFn({ method: "POST" })
     const { exportarEmpresas } = await import("./repo.server");
     return exportarEmpresas(data);
   });
+
+export const contarSemListaFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { contarSemLista } = await import("./repo.server");
+  return contarSemLista();
+});
