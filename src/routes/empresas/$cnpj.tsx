@@ -163,6 +163,17 @@ function Detalhe() {
           </div>
           <p className="mt-1 font-mono text-sm text-muted-foreground">{formatCnpj(e.cnpj)}</p>
           {e.nome_fantasia && <p className="text-sm text-muted-foreground">{e.nome_fantasia}</p>}
+          {(e.fontes?.length ?? 0) > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <span className="text-xs text-muted-foreground">Fontes:</span>
+              {e.fontes.map((f) => (
+                <Badge key={f} variant={f === e.fonte_principal ? "default" : "outline"}>
+                  {SOURCE_LABEL[f] ?? f}
+                </Badge>
+              ))}
+            </div>
+          )}
+
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => mutSync.mutate()} disabled={mutSync.isPending}>
