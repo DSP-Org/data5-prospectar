@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useMemo, useState } from "react";
 import { formatCnpj, ACTIVITY_LABEL, STATUS_LABEL, STATUSES, type Status } from "@/lib/types";
 import { funilDadosFn } from "@/lib/prospection.functions";
-import { atualizarEmpresaFn } from "@/lib/econodata.functions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { atualizarEmpresaFn, listarListasFn } from "@/lib/econodata.functions";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone } from "lucide-react";
+import { Filter, Loader2, Phone, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/funil")({
