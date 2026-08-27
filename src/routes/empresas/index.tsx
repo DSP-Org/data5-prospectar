@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Columns3, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,14 @@ import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -63,24 +71,110 @@ export const Route = createFileRoute("/empresas/")({
   component: Empresas,
 });
 
-function csv(rows: Company[]) {
+export function enderecoDe(c: Company): string {
+  const linha = [c.logradouro, c.numero, c.complemento].filter(Boolean).join(", ");
+  const local = [c.bairro, [c.cidade, c.uf].filter(Boolean).join("/")].filter(Boolean).join(" - ");
+  return [linha, local, c.cep].filter((p) => p && String(p).trim() !== "").join(" • ");
+}
+
+function atividadeDe(c: Company): string {
+  return [c.cnae_codigo, c.cnae_descricao].filter(Boolean).join(" - ");
+}
+
+type Coluna = {
+  key: string;
+  label: string;
+  padrao: boolean;
+  cell: (c: Company) => React.ReactNode;
+  csv: Array<[string, (c: Company) => string]>;
+  className?: string;
+};
+
+const COLUNAS: Coluna[] = [
+  {
+    key: "nome_fantasia",
+    label: "Nome fantasia",
+    padrao: false,
+    cell: (c) => c.nome_fantasia ?? "—",
+    csv: [["Nome fantasia", (c) => c.nome_fantasia ?? ""]],
+  },
+  {
+    key: "endereco",
+    label: "Endereço",
+    padrao: true,
+    cell: (c) => enderecoDe(c) || "—",
+    csv: [["Endereço", (c) => enderecoDe(c)]],
+    className: "max-w-[18rem] text-sm",
+  },
+  {
+    key: "atividade",
+    label: "Atividade principal",
+    padrao: true,
+    cell: (c) => atividadeDe(c) || "—",
+    csv: [["Atividade principal", (c) => atividadeDe(c)]],
+    className: "max-w-[18rem] text-sm",
+  },
+  {
+    key: "local",
+    label: "Local",
+    padrao: true,
+    cell: (c) => `${c.cidade ?? "—"}/${c.uf ?? "—"}`,
+    csv: [
+      ["Cidade", (c) => c.cidade ?? ""],
+      ["UF", (c) => c.uf ?? ""],
+    ],
+    className: "text-sm",
+  },
+  {
+    key: "situacao",
+    label: "Situação",
+    padrao: false,
+    cell: (c) => c.situacao ?? "—",
+    csv: [["Situação", (c) => c.situacao ?? ""]],
+    className: "text-sm",
+  },
+  {
+    key: "porte",
+    label: "Porte",
+    padrao: true,
+    cell: (c) => c.porte_estimado ?? "—",
+    csv: [
+      ["Porte", (c) => c.porte_estimado ?? ""],
+      ["Faturamento presumido", (c) => c.faturamento_presumido ?? ""],
+      ["Funcionários", (c) => c.qtd_funcionarios_estimada ?? ""],
+    ],
+    className: "text-sm",
+  },
+  {
+    key: "contato",
+    label: "Contato",
+    padrao: true,
+    cell: (c) => c.melhor_telefone ?? c.emails[0] ?? "—",
+    csv: [
+      ["Telefone", (c) => c.melhor_telefone ?? ""],
+      ["Telefones", (c) => c.telefones.join(" | ")],
+      ["Site", (c) => c.melhor_site ?? ""],
+      ["E-mails", (c) => c.emails.join(" | ")],
+    ],
+    className: "text-sm",
+  },
+  {
+    key: "status",
+    label: "Status",
+    padrao: true,
+    cell: (c) => <StatusBadge status={c.status as Status} />,
+    csv: [
+      ["Status", (c) => STATUS_LABEL[c.status as Status] ?? c.status],
+      ["Notas", (c) => c.notas],
+    ],
+  },
+];
+
+function csv(rows: Company[], visiveis: string[]) {
   const cols: Array<[string, (c: Company) => string]> = [
     ["CNPJ", (c) => c.cnpj],
     ["Razão social", (c) => c.razao_social],
-    ["Nome fantasia", (c) => c.nome_fantasia ?? ""],
-    ["Situação", (c) => c.situacao ?? ""],
-    ["CNAE", (c) => `${c.cnae_codigo ?? ""} ${c.cnae_descricao ?? ""}`.trim()],
-    ["Cidade", (c) => c.cidade ?? ""],
-    ["UF", (c) => c.uf ?? ""],
-    ["Porte", (c) => c.porte_estimado ?? ""],
-    ["Faturamento presumido", (c) => c.faturamento_presumido ?? ""],
-    ["Funcionários", (c) => c.qtd_funcionarios_estimada ?? ""],
-    ["Telefone", (c) => c.melhor_telefone ?? ""],
-    ["Telefones", (c) => c.telefones.join(" | ")],
-    ["Site", (c) => c.melhor_site ?? ""],
-    ["E-mails", (c) => c.emails.join(" | ")],
-    ["Status", (c) => STATUS_LABEL[c.status as Status] ?? c.status],
-    ["Notas", (c) => c.notas],
+    ...COLUNAS.filter((c) => visiveis.includes(c.key)).flatMap((c) => c.csv),
   ];
   const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
   return [
@@ -97,6 +191,10 @@ function Empresas() {
   const [lista, setLista] = useState(listaInicial ?? "todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
+  const [colunas, setColunas] = useState<string[]>(
+    COLUNAS.filter((c) => c.padrao).map((c) => c.key),
+  );
+  const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
   const filtros = { busca, status, uf, listId: lista };
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
@@ -132,7 +230,7 @@ function Empresas() {
     setExportando(true);
     try {
       const rows = await exportar({ data: filtros });
-      const blob = new Blob(["\ufeff" + csv(rows as Company[])], {
+      const blob = new Blob(["\ufeff" + csv(rows as Company[], colunas)], {
         type: "text/csv;charset=utf-8",
       });
       const url = URL.createObjectURL(blob);
@@ -149,6 +247,7 @@ function Empresas() {
     }
   }
 
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -160,11 +259,36 @@ function Empresas() {
         </div>
         <div className="flex gap-2">
         <ImportarEmpresas />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Columns3 className="h-4 w-4" />
+              Colunas
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Exibir colunas</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {COLUNAS.map((c) => (
+              <DropdownMenuCheckboxItem
+                key={c.key}
+                checked={colunas.includes(c.key)}
+                onSelect={(ev) => ev.preventDefault()}
+                onCheckedChange={(v) =>
+                  setColunas((s) => (v ? [...s, c.key] : s.filter((k) => k !== c.key)))
+                }
+              >
+                {c.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button variant="outline" onClick={baixarCsv} disabled={exportando || total === 0}>
           {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Exportar CSV
         </Button>
         </div>
+
       </header>
 
       <Card>
@@ -282,23 +406,28 @@ function Empresas() {
                   />
                 </TableHead>
                 <TableHead>Empresa</TableHead>
-                <TableHead className="hidden md:table-cell">Local</TableHead>
-                <TableHead className="hidden lg:table-cell">Porte</TableHead>
-                <TableHead className="hidden lg:table-cell">Contato</TableHead>
-                <TableHead>Status</TableHead>
+                {visiveis.map((c) => (
+                  <TableHead key={c.key}>{c.label}</TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {empresas.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={visiveis.length + 2}
+                    className="py-10 text-center text-muted-foreground"
+                  >
                     Carregando…
                   </TableCell>
                 </TableRow>
               )}
               {empresas.data?.empresas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={visiveis.length + 2}
+                    className="py-10 text-center text-muted-foreground"
+                  >
                     Nenhuma empresa encontrada com esses filtros.
                   </TableCell>
                 </TableRow>
@@ -326,22 +455,16 @@ function Empresas() {
                     </Link>
                     <p className="font-mono text-xs text-muted-foreground">{formatCnpj(e.cnpj)}</p>
                   </TableCell>
-                  <TableCell className="hidden text-sm md:table-cell">
-                    {e.cidade ?? "—"}/{e.uf ?? "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-sm lg:table-cell">
-                    {e.porte_estimado ?? "—"}
-                  </TableCell>
-                  <TableCell className="hidden text-sm lg:table-cell">
-                    {e.melhor_telefone ?? e.emails[0] ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={e.status as Status} />
-                  </TableCell>
+                  {visiveis.map((col) => (
+                    <TableCell key={col.key} className={col.className ?? ""}>
+                      {col.cell(e)}
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
         </CardContent>
       </Card>
 
