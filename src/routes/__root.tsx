@@ -74,6 +74,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+const LOGO_URL =
+  "https://data5-prospectar.lovable.app/__l5e/assets-v1/aa1d3e05-f44a-4517-b5db-20a53b6c07d0/logo-prospectar360.png";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -91,14 +94,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Consulte, salve e gerencie dados de empresas brasileiras da Econodata.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: LOGO_URL },
+      { property: "og:image:type", content: "image/png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Logo Prospectar360" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:image", content: LOGO_URL },
+      { name: "twitter:image:alt", content: "Logo Prospectar360" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
