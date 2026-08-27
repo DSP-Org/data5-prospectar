@@ -41,7 +41,9 @@ export async function testarConexao() {
   }
 }
 
-async function persistir(mapped: ReturnType<typeof mapCompany>[], listId: string | null) {
+type Persistivel = ReturnType<typeof mapCompany> | Record<string, unknown>;
+
+async function persistir(mapped: Persistivel[], listId: string | null) {
   if (mapped.length === 0) return [] as Company[];
   const payload = mapped.map((m) => (listId ? { ...m, list_id: listId } : m));
   const { data, error } = await supabaseAdmin
@@ -51,6 +53,7 @@ async function persistir(mapped: ReturnType<typeof mapCompany>[], listId: string
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => asCompany(r as Row));
 }
+
 
 export async function consultarCnpjs(input: {
   cnpjs: string[];
