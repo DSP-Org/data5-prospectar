@@ -85,7 +85,7 @@ function Calculadora() {
               <p className="text-2xl font-semibold">{clientesNecessarios}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Contatos/medições necessárias</p>
+              <p className="text-xs text-muted-foreground">Contatos necessários</p>
               <p className="text-2xl font-semibold">{contatosNecessarios}</p>
             </div>
             <div>

@@ -93,7 +93,7 @@ function Funil() {
                 <span className="text-sm font-medium">{STATUS_LABEL[status]}</span>
                 <Badge variant="secondary">{lista.length}</Badge>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
                 {lista.map((e) => {
                   const last = ultimas[e.cnpj];
                   return (
