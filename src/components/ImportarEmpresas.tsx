@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Upload } from "lucide-react";
+import { Download, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { consultarCnpjsFn, listarListasFn } from "@/lib/econodata.functions";
@@ -97,6 +97,22 @@ export function ImportarEmpresas() {
     }
   }
 
+  function baixarModelo() {
+    const conteudo = [
+      "CNPJ",
+      "00000000000191",
+      "00.360.305/0001-04",
+      "33.000.167/0001-01",
+    ].join("\n");
+    const blob = new Blob(["\ufeff" + conteudo], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo-importacao-cnpjs.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const importando = progresso !== null;
 
   return (
@@ -166,7 +182,11 @@ export function ImportarEmpresas() {
           ) : null}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <Button type="button" variant="ghost" onClick={baixarModelo}>
+            <Download className="h-4 w-4" />
+            Baixar modelo
+          </Button>
           <Button onClick={() => void importar()} disabled={importando || cnpjs.length === 0}>
             {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Importar {cnpjs.length > 0 ? `${cnpjs.length} CNPJ(s)` : ""}
