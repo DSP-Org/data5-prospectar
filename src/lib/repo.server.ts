@@ -278,7 +278,27 @@ export async function listarListas(): Promise<CompanyList[]> {
     .select("*")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as CompanyList[];
+
+  const { data: rows } = await supabaseAdmin.from("companies").select("list_id");
+  const contagem: Record<string, number> = {};
+  for (const r of (rows ?? []) as Array<{ list_id: string | null }>) {
+    const k = r.list_id ?? "sem_lista";
+    contagem[k] = (contagem[k] ?? 0) + 1;
+  }
+
+  return ((data ?? []) as unknown as CompanyList[]).map((l) => ({
+    ...l,
+    total: contagem[l.id] ?? 0,
+  }));
+}
+
+/** Quantidade de empresas ainda sem lista. */
+export async function contarSemLista() {
+  const { count } = await supabaseAdmin
+    .from("companies")
+    .select("cnpj", { count: "exact", head: true })
+    .is("list_id", null);
+  return count ?? 0;
 }
 
 export async function criarLista(name: string, color: string) {
