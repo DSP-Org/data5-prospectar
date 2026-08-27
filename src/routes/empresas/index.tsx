@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
@@ -9,11 +9,13 @@ import {
   exportarEmpresasFn,
   listarEmpresasFn,
   listarListasFn,
+  vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
