@@ -52,6 +52,59 @@ function chaveItem(v: unknown) {
 
 export type EntradaFonte = { fonte: SourceId; dados: Partial2 };
 
+/** Peso por campo: contatos e decisores valem mais que cadastro básico. */
+const PESO_ARRAY: Record<string, number> = {
+  telefones: 3,
+  emails: 3,
+  decisores: 5,
+  contatos: 4,
+  sites: 2,
+  setores: 1,
+  enquadramento_porte: 1,
+};
+
+const PESO_ESCALAR: Record<string, number> = {
+  melhor_telefone: 3,
+  melhor_site: 2,
+  email_receita: 3,
+  faturamento_presumido: 2,
+  qtd_funcionarios_estimada: 2,
+  porte_estimado: 1,
+};
+
+/** Pontua a riqueza dos dados trazidos por uma fonte. */
+export function pontuarFonte(dados: Partial2): number {
+  const r = dados as unknown as Record<string, unknown>;
+  let score = 0;
+  for (const campo of SCALAR_FIELDS) {
+    if (!vazio(r[campo])) score += PESO_ESCALAR[campo] ?? 1;
+  }
+  for (const campo of ARRAY_FIELDS) {
+    const lista = r[campo];
+    if (Array.isArray(lista) && lista.length > 0) {
+      score += (PESO_ARRAY[campo] ?? 1) * Math.min(lista.length, 5);
+    }
+  }
+  return score;
+}
+
+/**
+ * Fonte principal = a que trouxe mais dados úteis.
+ * Empate resolve pela ordem de prioridade (entradas já vêm ordenadas).
+ */
+function melhorFonte(entradas: EntradaFonte[]): SourceId {
+  let melhor = entradas[0]!;
+  let melhorScore = pontuarFonte(melhor.dados);
+  for (const e of entradas.slice(1)) {
+    const s = pontuarFonte(e.dados);
+    if (s > melhorScore) {
+      melhor = e;
+      melhorScore = s;
+    }
+  }
+  return melhor.fonte;
+}
+
 export type EmpresaMesclada = MappedCompany & {
   fonte_principal: string;
   fontes: string[];
