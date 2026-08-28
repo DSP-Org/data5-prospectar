@@ -449,6 +449,21 @@ function Empresas() {
               </SelectContent>
             </Select>
             {mutVincular.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button
+              size="sm"
+              disabled={mutProspectar.isPending}
+              onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: true })}
+            >
+              <Star className="h-4 w-4" /> Marcar como prospectar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={mutProspectar.isPending}
+              onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: false })}
+            >
+              Desmarcar
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelecionados([])}>
               Limpar seleção
             </Button>
@@ -519,6 +534,21 @@ function Empresas() {
                       {e.razao_social}
                     </Link>
                     <p className="font-mono text-xs text-muted-foreground">{formatCnpj(e.cnpj)}</p>
+                    <button
+                      type="button"
+                      onClick={() => mutProspectar.mutate({ cnpjs: [e.cnpj], valor: !e.prospectar })}
+                      disabled={mutProspectar.isPending}
+                      aria-label={
+                        e.prospectar ? "Remover dos clientes potenciais" : "Marcar como cliente potencial"
+                      }
+                      className={cn(
+                        "mt-1 inline-flex items-center gap-1 text-xs font-medium",
+                        e.prospectar ? "text-chart-3" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Star className={cn("h-3.5 w-3.5", e.prospectar && "fill-current")} />
+                      {e.prospectar ? "Cliente potencial" : "Prospectar"}
+                    </button>
                   </TableCell>
                   {visiveis.map((col) => (
                     <TableCell key={col.key} className={col.className ?? ""}>
