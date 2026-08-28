@@ -197,8 +197,8 @@
     position: static !important;
     width: auto;
     color: #111;
-    font-size: 10.5pt;
-    line-height: 1.4;
+    font-size: 9.5pt;
+    line-height: 1.32;
   }
 
   .ficha-cabecalho {
@@ -244,7 +244,7 @@
   }
 
   .ficha-razao {
-    font-size: 16pt;
+    font-size: 14pt;
     font-weight: 700;
     margin: 0;
   }
@@ -318,7 +318,7 @@
   }
 
   .ficha-valor {
-    font-size: 10pt;
+    font-size: 9pt;
   }
 
   .ficha-tabela {
