@@ -97,6 +97,8 @@ export function mesclar(cnpj: string, entradas: EntradaFonte[]): EmpresaMesclada
     raw[fonte] = (dados as { raw?: unknown }).raw ?? dados;
   }
 
+  out["natureza_juridica"] = canonizarNatureza(out["natureza_juridica"] as string | null);
+
   out["raw"] = raw;
   out["synced_at"] = new Date().toISOString();
   out["fontes"] = validas.map((v) => v.fonte);
