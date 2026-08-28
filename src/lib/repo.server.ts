@@ -187,7 +187,8 @@ export async function consultarChave(input: {
       fontes: ["econodata"],
     };
     try {
-      const { empresas } = await buscarMultiFonte([mapped.cnpj], { forcar: true });
+      // Respeita cache/TTL e Modo Econômico para não gastar crédito à toa.
+      const { empresas } = await buscarMultiFonte([mapped.cnpj]);
       const m = empresas.get(mapped.cnpj);
       if (m) final = m as unknown as Record<string, unknown>;
     } catch {
