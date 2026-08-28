@@ -174,18 +174,25 @@ function Pagina() {
                     {j.nao_encontrados} sem retorno · {j.erros} com erro
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={rodando !== null || pendentes === 0}
-                      onClick={() => void rodar(j.id)}
-                    >
-                      {rodando === j.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
+                    {rodando === j.id ? (
+                      <Button size="sm" variant="secondary" onClick={pausar}>
+                        <Pause className="h-4 w-4" />
+                        Pausar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={rodando !== null || pendentes === 0}
+                        onClick={() => void rodar(j.id)}
+                      >
                         <Play className="h-4 w-4" />
-                      )}
-                      {pendentes === 0 ? "Sem pendências" : "Processar"}
-                    </Button>
+                        {pendentes === 0
+                          ? "Sem pendências"
+                          : feitos > 0
+                            ? "Retomar"
+                            : "Processar"}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
