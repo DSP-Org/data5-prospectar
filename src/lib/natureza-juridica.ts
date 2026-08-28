@@ -138,6 +138,7 @@ const APELIDOS: Record<string, string> = {
   "empresa individual de responsabilidade limitada": "2305",
   "sociedade simples": "2232",
   "associacao privada": "3999",
+  "sociedade unipessoal de advocacia": "2321",
   "cartorio": "3034",
 };
 for (const [k, v] of Object.entries(APELIDOS)) POR_DESCRICAO.set(k, v);
