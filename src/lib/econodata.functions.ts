@@ -10,6 +10,12 @@ async function escopoDe(userId: string, unitId?: string | null) {
   return obterEscopo(userId, unitId ?? null);
 }
 
+/** Escopo restrito a uma unidade escolhida no seletor global. */
+async function escopoNaUnidade(userId: string, unitId?: string | null) {
+  const { restringirUnidade } = await import("./escopo.server");
+  return restringirUnidade(await escopoDe(userId, unitId), unitId ?? null);
+}
+
 export const testarConexaoFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
@@ -202,9 +208,10 @@ export const excluirListaFn = createServerFn({ method: "POST" })
 
 export const obterPainelFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { obterPainel } = await import("./repo.server");
-    return obterPainel(await escopoDe(context.userId));
+    return obterPainel(await escopoNaUnidade(context.userId, data.unidade));
   });
 
 export const exportarEmpresasFn = createServerFn({ method: "POST" })
