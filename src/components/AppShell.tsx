@@ -1,18 +1,24 @@
-import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   BarChart3,
+  Building,
   Building2,
   Calculator,
   Kanban,
   LayoutDashboard,
   ListTodo,
+  LogOut,
   Search,
   Settings2,
   Tags,
   Target,
+  Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +34,8 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { supabase } from "@/integrations/supabase/client";
+import { meFn } from "@/lib/auth.functions";
 
 const nav = [
   { to: "/", label: "Painel", icon: LayoutDashboard },
@@ -38,10 +46,23 @@ const nav = [
   { to: "/atividades", label: "Atividades", icon: ListTodo },
   { to: "/calculadora", label: "Calculadora", icon: Calculator },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/configuracoes", label: "Configurações", icon: Settings2 },
+] as const;
+
+const navAdmin = [
+  { to: "/unidades", label: "Unidades", icon: Building },
+  { to: "/usuarios", label: "Usuários", icon: Users, masterOnly: true },
+  { to: "/configuracoes", label: "Configurações", icon: Settings2, masterOnly: true },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
+
+  async function sair() {
+    await supabase.auth.signOut();
+    void navigate({ to: "/auth" });
+  }
+
   return (
     <SidebarProvider defaultOpen>
       <Sidebar collapsible="icon" variant="sidebar">
@@ -82,14 +103,53 @@ export function AppShell({ children }: { children: ReactNode }) {
               ))}
             </SidebarMenu>
           </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarMenu>
+              {navAdmin
+                .filter((item) => !("masterOnly" in item && item.masterOnly) || me?.master)
+                .map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild tooltip={item.label}>
+                      <Link to={item.to} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+          </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="text-xs text-sidebar-foreground/50">Prospectar360 © {new Date().getFullYear()}</SidebarFooter>
+        <SidebarFooter className="text-xs text-sidebar-foreground/50">
+          Prospectar360 © {new Date().getFullYear()}
+        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background px-4">
           <SidebarTrigger className="-ml-2" />
           <span className="text-sm text-muted-foreground">Prospectar360</span>
+          <div className="ml-auto flex items-center gap-3">
+            {me ? (
+              <>
+                <span className="hidden text-xs text-muted-foreground sm:inline">{me.nome || me.email}</span>
+                <Badge variant={me.master ? "default" : "secondary"} className="capitalize">
+                  {me.master ? "master" : me.papel}
+                </Badge>
+                <span className="hidden text-xs text-muted-foreground md:inline">
+                  {me.unidades.length === 0
+                    ? "sem unidade"
+                    : me.unidades.length === 1
+                      ? me.unidades[0]?.nome
+                      : `${me.unidades.length} unidades`}
+                </span>
+              </>
+            ) : null}
+            <Button variant="ghost" size="sm" onClick={() => void sair()}>
+              <LogOut className="mr-1 h-4 w-4" /> Sair
+            </Button>
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </SidebarInset>

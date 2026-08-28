@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const Route = createFileRoute("/consulta")({
+export const Route = createFileRoute("/_authenticated/consulta")({
   head: () => ({
     meta: [
       { title: "Consulta de empresas | Prospectar360" },

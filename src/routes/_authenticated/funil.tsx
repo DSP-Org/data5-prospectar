@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Filter, Loader2, Phone, X } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/funil")({
+export const Route = createFileRoute("/_authenticated/funil")({
   head: () => ({
     meta: [
       { title: "Funil de prospecção | Prospectar360" },

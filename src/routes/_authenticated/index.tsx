@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 const painelQuery = queryOptions({ queryKey: ["painel"], queryFn: () => obterPainelFn() });
 const conexaoQuery = queryOptions({ queryKey: ["conexao"], queryFn: () => testarConexaoFn() });
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Painel | Prospectar360" },

@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { FontesDados } from "@/components/FontesDados";
 
 
-export const Route = createFileRoute("/configuracoes")({
+export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
     meta: [
       { title: "Configurações | Prospectar360" },

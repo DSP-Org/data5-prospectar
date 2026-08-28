@@ -7,6 +7,7 @@ import {
   validarToken,
 } from "./econodata.server";
 import { buscarMultiFonte } from "./sources/registry.server";
+import { type Escopo, unidadeDeGravacao, unidadesFiltro } from "./escopo.server";
 import type { ActivityType, Company, CompanyList, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
 
 
@@ -44,9 +45,22 @@ export async function testarConexao() {
 
 type Persistivel = ReturnType<typeof mapCompany> | Record<string, unknown>;
 
-async function persistir(mapped: Persistivel[], listId: string | null) {
+async function persistir(mapped: Persistivel[], listId: string | null, unitId: string | null) {
   if (mapped.length === 0) return [] as Company[];
-  const payload = mapped.map((m) => (listId ? { ...m, list_id: listId } : m));
+  // Mantém a unidade já existente da empresa; só define unidade para registros novos.
+  const cnpjs = mapped.map((m) => String((m as Record<string, unknown>)["cnpj"] ?? ""));
+  const { data: existentes } = await supabaseAdmin
+    .from("companies")
+    .select("cnpj, unit_id")
+    .in("cnpj", cnpjs);
+  const unidadeAtual = new Map<string, string | null>(
+    ((existentes ?? []) as Array<{ cnpj: string; unit_id: string | null }>).map((r) => [r.cnpj, r.unit_id]),
+  );
+  const payload = mapped.map((m) => {
+    const cnpj = String((m as Record<string, unknown>)["cnpj"] ?? "");
+    const unit = unidadeAtual.get(cnpj) ?? unitId;
+    return { ...(m as Record<string, unknown>), ...(listId ? { list_id: listId } : {}), unit_id: unit };
+  });
   const { data, error } = await supabaseAdmin
     .from("companies")
     .upsert(payload as never, { onConflict: "cnpj" })
@@ -57,6 +71,8 @@ async function persistir(mapped: Persistivel[], listId: string | null) {
 
 
 export async function consultarCnpjs(input: {
+  escopo: Escopo;
+  unitId?: string | null | undefined;
   cnpjs: string[];
   listId?: string | null | undefined;
   salvar?: boolean | undefined;
@@ -115,7 +131,7 @@ export async function consultarCnpjs(input: {
 
   const salvar = input.salvar !== false;
   let salvas: Company[] = [];
-  if (salvar) salvas = await persistir(encontradas, input.listId ?? null);
+  if (salvar) salvas = await persistir(encontradas, input.listId ?? null, unidadeDeGravacao(input.escopo, input.unitId));
 
   for (const m of encontradas) {
     const cnpj = String(m["cnpj"]);
@@ -141,6 +157,8 @@ export async function consultarCnpjs(input: {
 }
 
 export async function consultarChave(input: {
+  escopo: Escopo;
+  unitId?: string | null | undefined;
   site?: string | undefined;
   email?: string | undefined;
   listId?: string | null | undefined;
@@ -169,7 +187,7 @@ export async function consultarChave(input: {
       /* mantém apenas o resultado da Econodata */
     }
     const salvar = input.salvar !== false;
-    const salvas = salvar ? await persistir([final], input.listId ?? null) : [];
+    const salvas = salvar ? await persistir([final], input.listId ?? null, unidadeDeGravacao(input.escopo, input.unitId)) : [];
 
     await logQuery({ tipo, entrada, resultado: "ok", quantidade: 1 });
     return {
@@ -186,6 +204,7 @@ export async function consultarChave(input: {
 }
 
 export async function listarEmpresas(input: {
+  escopo: Escopo;
   busca?: string | undefined;
   status?: string | undefined;
   uf?: string | undefined;
@@ -212,6 +231,8 @@ export async function listarEmpresas(input: {
   const page = Math.max(1, input.page ?? 1);
   const perPage = Math.min(100, input.perPage ?? 25);
   let q = supabaseAdmin.from("companies").select("*", { count: "exact" });
+  const unidades = unidadesFiltro(input.escopo);
+  if (unidades) q = q.in("unit_id", unidades);
 
   if (input.busca?.trim()) {
     const termo = input.busca.trim();
@@ -262,13 +283,17 @@ function chave(cnpj: string) {
   return formatCnpjApi(cnpj) ?? cnpj;
 }
 
-export async function obterEmpresa(cnpj: string) {
-  const { data, error } = await supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj)).maybeSingle();
+export async function obterEmpresa(cnpj: string, escopo: Escopo) {
+  let q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
 
 export async function atualizarEmpresa(input: {
+  escopo: Escopo;
   cnpj: string;
   status?: Status | undefined;
   notas?: string | undefined;
@@ -280,41 +305,44 @@ export async function atualizarEmpresa(input: {
   if (input.notas !== undefined) patch["notas"] = input.notas;
   if (input.listId !== undefined) patch["list_id"] = input.listId;
   if (input.tags) patch["tags"] = input.tags;
-  const { data, error } = await supabaseAdmin
-    .from("companies")
-    .update(patch as never)
-    .eq("cnpj", chave(input.cnpj))
-    .select("*")
-    .maybeSingle();
+  let uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
+  const unidadesUp = unidadesFiltro(input.escopo);
+  if (unidadesUp) uq = uq.in("unit_id", unidadesUp);
+  const { data, error } = await uq.select("*").maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
 
-export async function vincularEmpresasLista(cnpjs: string[], listId: string | null) {
+export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0 };
-  const { error } = await supabaseAdmin
-    .from("companies")
-    .update({ list_id: listId } as never)
-    .in("cnpj", chaves);
+  let q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true, total: chaves.length };
 }
 
-export async function excluirEmpresa(cnpj: string) {
-  const { error } = await supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
+export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
+  let q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true };
 }
 
-export async function listarListas(): Promise<CompanyList[]> {
-  const { data, error } = await supabaseAdmin
-    .from("company_lists")
-    .select("*")
-    .order("created_at", { ascending: true });
+export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
+  const unidades = unidadesFiltro(escopo);
+  let lq = supabaseAdmin.from("company_lists").select("*").order("created_at", { ascending: true });
+  if (unidades) lq = lq.in("unit_id", unidades);
+  const { data, error } = await lq;
   if (error) throw new Error(error.message);
 
-  const { data: rows } = await supabaseAdmin.from("companies").select("list_id");
+  let cq = supabaseAdmin.from("companies").select("list_id");
+  if (unidades) cq = cq.in("unit_id", unidades);
+  const { data: rows } = await cq;
   const contagem: Record<string, number> = {};
   for (const r of (rows ?? []) as Array<{ list_id: string | null }>) {
     const k = r.list_id ?? "sem_lista";
@@ -328,34 +356,42 @@ export async function listarListas(): Promise<CompanyList[]> {
 }
 
 /** Quantidade de empresas ainda sem lista. */
-export async function contarSemLista() {
-  const { count } = await supabaseAdmin
-    .from("companies")
-    .select("cnpj", { count: "exact", head: true })
-    .is("list_id", null);
+export async function contarSemLista(escopo: Escopo) {
+  let q = supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { count } = await q;
   return count ?? 0;
 }
 
-export async function criarLista(name: string, color: string) {
+export async function criarLista(name: string, color: string, escopo: Escopo, unitId?: string | null) {
   const { data, error } = await supabaseAdmin
     .from("company_lists")
-    .insert({ name, color } as never)
+    .insert({ name, color, unit_id: unidadeDeGravacao(escopo, unitId) } as never)
     .select("*")
     .single();
   if (error) throw new Error(error.message);
   return data as unknown as CompanyList;
 }
 
-export async function excluirLista(id: string) {
-  const { error } = await supabaseAdmin.from("company_lists").delete().eq("id", id);
+export async function excluirLista(id: string, escopo: Escopo) {
+  let q = supabaseAdmin.from("company_lists").delete().eq("id", id);
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true };
 }
 
-export async function obterPainel() {
-  const { count: total } = await supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true });
+export async function obterPainel(escopo: Escopo) {
+  const unidades = unidadesFiltro(escopo);
+  const escopar = <T extends { in: (c: string, v: string[]) => T }>(q: T): T => (unidades ? q.in("unit_id", unidades) : q);
 
-  const { data: statusRows } = await supabaseAdmin.from("companies").select("status, uf, created_at");
+  const { count: total } = await escopar(
+    supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }),
+  );
+
+  const { data: statusRows } = await escopar(supabaseAdmin.from("companies").select("status, uf, created_at"));
   const porStatus: Record<string, number> = {};
   const porUf: Record<string, number> = {};
   let ultimos30 = 0;
@@ -372,9 +408,7 @@ export async function obterPainel() {
     .order("created_at", { ascending: false })
     .limit(8);
 
-  const { data: recentes } = await supabaseAdmin
-    .from("companies")
-    .select("*")
+  const { data: recentes } = await escopar(supabaseAdmin.from("companies").select("*"))
     .order("created_at", { ascending: false })
     .limit(6);
 
@@ -397,6 +431,7 @@ export async function obterPainel() {
 }
 
 export async function exportarEmpresas(input: {
+  escopo: Escopo;
   status?: string | undefined;
   uf?: string | undefined;
   listId?: string | undefined;
@@ -413,6 +448,8 @@ export async function exportarEmpresas(input: {
 
 /** Consulta em lote por chaves misturadas (site, e-mail ou CNPJ). */
 export async function consultarChaves(input: {
+  escopo: Escopo;
+  unitId?: string | null | undefined;
   chaves: string[];
   listId?: string | null | undefined;
 }): Promise<{ itens: LookupItem[] }> {
@@ -426,15 +463,20 @@ export async function consultarChaves(input: {
 
   const itens: LookupItem[] = [];
   if (cnpjs.length) {
-    const r = await consultarCnpjs({ cnpjs, listId: input.listId ?? null });
+    const r = await consultarCnpjs({ escopo: input.escopo, unitId: input.unitId, cnpjs, listId: input.listId ?? null });
     itens.push(...r.itens);
   }
   for (const chaveTxt of outros.slice(0, 50)) {
     const ehEmail = chaveTxt.includes("@");
     const item = await consultarChave(
       ehEmail
-        ? { email: chaveTxt, listId: input.listId ?? null }
-        : { site: chaveTxt.replace(/^https?:\/\//i, "").replace(/\/.*$/, ""), listId: input.listId ?? null },
+        ? { escopo: input.escopo, unitId: input.unitId, email: chaveTxt, listId: input.listId ?? null }
+        : {
+            escopo: input.escopo,
+            unitId: input.unitId,
+            site: chaveTxt.replace(/^https?:\/\//i, "").replace(/\/.*$/, ""),
+            listId: input.listId ?? null,
+          },
     );
     itens.push({ ...item, cnpj: item.encontrada ? item.cnpj : chaveTxt });
   }
@@ -442,11 +484,11 @@ export async function consultarChaves(input: {
 }
 
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
-export async function opcoesFiltro() {
-  const { data } = await supabaseAdmin
-    .from("companies")
-    .select("uf, cidade, porte_estimado, situacao, setores")
-    .limit(5000);
+export async function opcoesFiltro(escopo: Escopo) {
+  let q = supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores");
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { data } = await q.limit(5000);
   const ufs = new Set<string>();
   const cidades = new Set<string>();
   const portes = new Set<string>();
@@ -543,6 +585,7 @@ function asActivity(row: Row): ProspectionActivity {
 }
 
 export async function listarAtividades(input: {
+  escopo: Escopo;
   cnpj?: string | undefined;
   tipo?: string | undefined;
   de?: string | undefined;
@@ -552,6 +595,8 @@ export async function listarAtividades(input: {
   limit?: number | undefined;
 }) {
   let q = supabaseAdmin.from("prospection_activities").select("*").order("created_at", { ascending: false });
+  const unidades = unidadesFiltro(input.escopo);
+  if (unidades) q = q.in("unit_id", unidades);
   if (input.cnpj) q = q.eq("company_cnpj", chave(input.cnpj));
   if (input.tipo && input.tipo !== "todos") q = q.eq("tipo", input.tipo);
   if (input.de) q = q.gte("created_at", input.de);
@@ -564,8 +609,11 @@ export async function listarAtividades(input: {
   return (data ?? []).map((r) => asActivity(r as Row));
 }
 
-export async function criarAtividade(input: ActivityInput) {
+export async function criarAtividade(input: ActivityInput, escopo: Escopo) {
+  const empresa = await obterEmpresa(input.company_cnpj, escopo);
+  if (!empresa) throw new Error("Empresa não encontrada nas suas unidades.");
   const payload: Row = {
+    unit_id: (empresa as unknown as { unit_id: string | null }).unit_id ?? escopo.unidadeAtiva,
     company_cnpj: chave(input.company_cnpj),
     tipo: input.tipo,
     observacao: input.observacao ?? "",
@@ -578,30 +626,42 @@ export async function criarAtividade(input: ActivityInput) {
   return asActivity(data as Row);
 }
 
-export async function atualizarAtividade(id: string, patch: Partial<Omit<ActivityInput, "company_cnpj" | "tipo">>) {
+export async function atualizarAtividade(
+  id: string,
+  patch: Partial<Omit<ActivityInput, "company_cnpj" | "tipo">>,
+  escopo: Escopo,
+) {
   const payload: Row = {};
   if (patch.observacao !== undefined) payload["observacao"] = patch.observacao;
   if (patch.responsavel !== undefined) payload["responsavel"] = patch.responsavel;
   if (patch.scheduled_at !== undefined) payload["scheduled_at"] = patch.scheduled_at ?? null;
   if (patch.completed_at !== undefined) payload["completed_at"] = patch.completed_at ?? null;
   if (Object.keys(payload).length === 0) return null;
-  const { data, error } = await supabaseAdmin.from("prospection_activities").update(payload as never).eq("id", id).select("*").single();
+  let uq = supabaseAdmin.from("prospection_activities").update(payload as never).eq("id", id);
+  const unidadesUp = unidadesFiltro(escopo);
+  if (unidadesUp) uq = uq.in("unit_id", unidadesUp);
+  const { data, error } = await uq.select("*").single();
   if (error) throw new Error(error.message);
   return data ? asActivity(data as Row) : null;
 }
 
 
-export async function excluirAtividade(id: string) {
-  const { error } = await supabaseAdmin.from("prospection_activities").delete().eq("id", id);
+export async function excluirAtividade(id: string, escopo: Escopo) {
+  let q = supabaseAdmin.from("prospection_activities").delete().eq("id", id);
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true };
 }
 
-export async function obterUltimasAtividadesPorEmpresa() {
-  const { data, error } = await supabaseAdmin
+export async function obterUltimasAtividadesPorEmpresa(escopo: Escopo) {
+  let q = supabaseAdmin
     .from("prospection_activities")
-    .select("company_cnpj, tipo, created_at, completed_at")
-    .order("created_at", { ascending: false });
+    .select("company_cnpj, tipo, created_at, completed_at");
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   const map = new Map<string, { tipo: ActivityType; created_at: string }>();
   for (const r of (data ?? []) as Array<{ company_cnpj: string; tipo: ActivityType; created_at: string }>) {
@@ -610,15 +670,14 @@ export async function obterUltimasAtividadesPorEmpresa() {
   return map;
 }
 
-export async function funilDados() {
-  const { data, error } = await supabaseAdmin
-    .from("companies")
-    .select("*")
-    .order("updated_at", { ascending: false })
-    .limit(2000);
+export async function funilDados(escopo: Escopo) {
+  let q = supabaseAdmin.from("companies").select("*");
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+  const { data, error } = await q.order("updated_at", { ascending: false }).limit(2000);
   if (error) throw new Error(error.message);
   const empresas = (data ?? []).map((r) => asCompany(r as Row));
-  const ultimas = await obterUltimasAtividadesPorEmpresa();
+  const ultimas = await obterUltimasAtividadesPorEmpresa(escopo);
   return {
     empresas,
     ultimas: Object.fromEntries(
@@ -627,8 +686,8 @@ export async function funilDados() {
   };
 }
 
-export async function relatorioAtividades(input: { de?: string | undefined; ate?: string | undefined }) {
-  const atividades = await listarAtividades({ de: input.de, ate: input.ate, limit: 10000 });
+export async function relatorioAtividades(input: { escopo: Escopo; de?: string | undefined; ate?: string | undefined }) {
+  const atividades = await listarAtividades({ escopo: input.escopo, de: input.de, ate: input.ate, limit: 10000 });
   const porTipo: Record<string, number> = {};
   const porDia: Record<string, number> = {};
   let pendentes = 0;

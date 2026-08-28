@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 
 
-export const Route = createFileRoute("/empresas/$cnpj")({
+export const Route = createFileRoute("/_authenticated/empresas/$cnpj")({
   head: () => ({
     meta: [
       { title: "Ficha da empresa | Prospectar360" },
