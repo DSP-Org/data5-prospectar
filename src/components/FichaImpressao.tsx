@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Target } from "lucide-react";
 
 import { formatCnpj, type Contato } from "@/lib/types";
@@ -67,8 +69,12 @@ export function FichaImpressao({
   fontes = [],
 }: FichaImpressaoProps) {
   const emitido = new Date().toLocaleString("pt-BR");
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
 
-  return (
+  if (!montado) return null;
+
+  return createPortal(
     <div className="ficha-print" aria-hidden="true">
       <header className="ficha-cabecalho">
         <div className="ficha-marca">
@@ -219,6 +225,7 @@ export function FichaImpressao({
         Prospectar360 · documento gerado automaticamente a partir da base multi-fonte ·{" "}
         {formatCnpj(e.cnpj)}
       </footer>
-    </div>
+    </div>,
+    document.body,
   );
 }
