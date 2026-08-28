@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Download,
+  Loader2,
+  Minus,
+  Pause,
+  Play,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -173,7 +183,9 @@ function Pagina() {
                     {feitos} de {j.total} processados · {j.concluidos} importada(s) ·{" "}
                     {j.nao_encontrados} sem retorno · {j.erros} com erro
                   </p>
+                  <Etapas job={j} rodando={rodando === j.id} />
                   <div className="flex flex-wrap gap-2">
+
                     {rodando === j.id ? (
                       <Button size="sm" variant="secondary" onClick={pausar}>
                         <Pause className="h-4 w-4" />
@@ -269,5 +281,80 @@ function Pagina() {
         </div>
       </div>
     </>
+  );
+}
+
+type EtapaEstado = "ok" | "andamento" | "atencao" | "pendente";
+
+const ICONE: Record<EtapaEstado, ReactNode> = {
+  ok: <Check className="h-4 w-4 text-emerald-600" />,
+  andamento: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
+  atencao: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+  pendente: <Minus className="h-4 w-4 text-muted-foreground" />,
+};
+
+/** Mostra por quais etapas a importação já passou. */
+function Etapas({ job, rodando }: { job: Job; rodando: boolean }) {
+  const feitos = job.concluidos + job.nao_encontrados + job.erros;
+  const pendentes = Math.max(job.total - feitos, 0);
+  const problemas = job.nao_encontrados + job.erros;
+
+  const linhas: Array<{ nome: string; detalhe: string; estado: EtapaEstado }> = [
+    {
+      nome: "1. Arquivo recebido",
+      detalhe: `${job.total} CNPJ(s) válidos na fila`,
+      estado: job.total > 0 ? "ok" : "pendente",
+    },
+    {
+      nome: "2. CNPJs validados",
+      detalhe: "Formato conferido e duplicados removidos",
+      estado: job.total > 0 ? "ok" : "pendente",
+    },
+    {
+      nome: "3. Enriquecimento nas fontes",
+      detalhe:
+        pendentes === 0
+          ? "Todos os blocos processados"
+          : rodando
+            ? `Processando… faltam ${pendentes}`
+            : `${pendentes} aguardando processamento`,
+      estado: pendentes === 0 ? "ok" : rodando ? "andamento" : "pendente",
+    },
+    {
+      nome: "4. Empresas salvas na base",
+      detalhe: `${job.concluidos} empresa(s) disponíveis`,
+      estado: job.concluidos > 0 ? "ok" : pendentes > 0 ? "pendente" : "atencao",
+    },
+    {
+      nome: "5. Revisão de falhas",
+      detalhe:
+        problemas === 0
+          ? "Nenhuma falha registrada"
+          : `${job.nao_encontrados} sem retorno · ${job.erros} com erro`,
+      estado: pendentes > 0 ? "pendente" : problemas === 0 ? "ok" : "atencao",
+    },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-xs text-muted-foreground">
+          <tr>
+            <th className="w-10 p-2" />
+            <th className="p-2 text-left font-medium">Etapa</th>
+            <th className="p-2 text-left font-medium">Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((l) => (
+            <tr key={l.nome} className="border-t">
+              <td className="p-2 align-middle">{ICONE[l.estado]}</td>
+              <td className="p-2 align-middle">{l.nome}</td>
+              <td className="p-2 align-middle text-muted-foreground">{l.detalhe}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
