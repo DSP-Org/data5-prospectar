@@ -892,6 +892,37 @@ function BuscaAvancadaCnpja({
         plano. Estados, municípios e atividades econômicas vêm das listas oficiais do IBGE.
       </p>
 
+      <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Assistente de IA — descreva o que procura
+        </div>
+        <Textarea
+          value={pedidoIa}
+          onChange={(e) => setPedidoIa(e.target.value)}
+          rows={2}
+          placeholder="Ex.: transportadoras ativas em Salvador e Feira de Santana, capital acima de 100 mil, abertas depois de 2018, só matriz"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => ia.mutate(pedidoIa.trim())}
+            disabled={ia.isPending || pedidoIa.trim().length < 3}
+          >
+            {ia.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Preencher filtros com IA
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            A IA só preenche os campos abaixo — nada é consultado até você clicar em buscar.
+          </span>
+        </div>
+      </div>
+
       <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
           <Label>Nome / razão social contém</Label>
