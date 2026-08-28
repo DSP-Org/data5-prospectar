@@ -32,6 +32,8 @@ export function FontesDados() {
   const testarFonte = useServerFn(testarFonteFn);
   const salvarPrioridade = useServerFn(salvarPrioridadeFn);
   const salvarEconomia = useServerFn(salvarEconomiaFn);
+  const salvarModulosCnpja = useServerFn(salvarModulosCnpjaFn);
+
   const [chaves, setChaves] = useState<Record<string, string>>({});
   const [ttl, setTtl] = useState<number | null>(null);
 
