@@ -8,10 +8,17 @@ import {
   listarFontesFn,
   salvarEconomiaFn,
   salvarFonteFn,
+  salvarModulosCnpjaFn,
   salvarPrioridadeFn,
   testarFonteFn,
 } from "@/lib/sources.functions";
-import type { ModoConsulta, SourceId } from "@/lib/sources/catalog";
+import {
+  MODULOS_CNPJA_META,
+  type ModoConsulta,
+  type ModulosCnpja,
+  type SourceId,
+} from "@/lib/sources/catalog";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +32,8 @@ export function FontesDados() {
   const testarFonte = useServerFn(testarFonteFn);
   const salvarPrioridade = useServerFn(salvarPrioridadeFn);
   const salvarEconomia = useServerFn(salvarEconomiaFn);
+  const salvarModulosCnpja = useServerFn(salvarModulosCnpjaFn);
+
   const [chaves, setChaves] = useState<Record<string, string>>({});
   const [ttl, setTtl] = useState<number | null>(null);
 
@@ -65,8 +74,19 @@ export function FontesDados() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mutModulos = useMutation({
+    mutationFn: (v: Partial<ModulosCnpja>) => salvarModulosCnpja({ data: v }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Módulos da CNPJá atualizados.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const economia = fontes.data?.economia;
+  const modulos = fontes.data?.modulosCnpja;
   const lista = fontes.data?.fontes ?? [];
+
 
   const mover = (idx: number, delta: number) => {
     const ordem = lista.map((f) => f.id as SourceId);
@@ -143,6 +163,33 @@ export function FontesDados() {
             </div>
           </div>
         )}
+
+        {modulos && (
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium">Módulos adicionais da CNPJá</p>
+            <p className="text-xs text-muted-foreground">
+              Cada módulo ligado traz mais dados na consulta, porém consome créditos extras do plano
+              da CNPJá. Deixe desligado o que não for usar.
+            </p>
+            <div className="mt-3 space-y-3">
+              {MODULOS_CNPJA_META.map((m) => (
+                <div key={m.id} className="flex items-start justify-between gap-4">
+                  <div className="max-w-md">
+                    <p className="text-sm">{m.label}</p>
+                    <p className="text-xs text-muted-foreground">{m.descricao}</p>
+                  </div>
+                  <Switch
+                    checked={modulos[m.id]}
+                    aria-label={`Ativar módulo ${m.label}`}
+                    onCheckedChange={(v) => mutModulos.mutate({ [m.id]: v })}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+
 
         {lista.map((f, idx) => (
           <div key={f.id} className="rounded-lg border border-border p-4">

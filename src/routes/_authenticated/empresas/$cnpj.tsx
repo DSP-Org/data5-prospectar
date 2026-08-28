@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Plus, RefreshCw, Save, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -157,9 +157,10 @@ function Detalhe() {
 
 
   const mutSync = useMutation({
-    mutationFn: () => reconsultar({ data: { cnpjs: [cnpj], forcar: true } }),
+    mutationFn: (completo: boolean) =>
+      reconsultar({ data: { cnpjs: [cnpj], forcar: true, completo } }),
     onSuccess: () => {
-      toast.success("Dados atualizados na Econodata.");
+      toast.success("Dados atualizados nas fontes ativas.");
       void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -202,6 +203,45 @@ function Detalhe() {
 
   const pessoas = [...(e.contatos ?? []), ...(e.decisores ?? [])];
 
+  const raw = ((e as unknown as { raw?: Record<string, unknown> }).raw ?? {}) as Record<string, unknown>;
+  const ex = ((raw["cnpja"] as Record<string, unknown> | undefined)?.["extras"] ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const trib = ex["tributario"] as
+    | {
+        simples_optante?: boolean | null;
+        simples_desde?: string | null;
+        mei_optante?: boolean | null;
+        mei_desde?: string | null;
+      }
+    | undefined;
+  const inscricoes = (ex["inscricoes_estaduais"] ?? []) as Array<{
+    uf?: string | null;
+    numero?: string | null;
+    situacao?: string | null;
+    tipo?: string | null;
+  }>;
+  const suframa = (ex["suframa"] ?? []) as Array<{
+    numero?: string | null;
+    situacao?: string | null;
+    aprovado?: boolean | null;
+  }>;
+  const secundarias = (ex["atividades_secundarias"] ?? []) as Array<{
+    codigo?: string | null;
+    descricao?: string | null;
+  }>;
+  const geo = ex["geo"] as { lat?: number; lng?: number } | undefined;
+  const comprovantes = (ex["comprovantes"] ?? []) as Array<{ tipo?: string | null; url?: string | null }>;
+  const temExtras =
+    Boolean(trib) ||
+    inscricoes.length > 0 ||
+    suframa.length > 0 ||
+    secundarias.length > 0 ||
+    Boolean(geo) ||
+    comprovantes.length > 0 ||
+    Boolean(ex["situacao_motivo"] ?? ex["situacao_data"]);
+
   return (
     <div className="space-y-6">
       <Link
@@ -232,13 +272,24 @@ function Detalhe() {
 
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => mutSync.mutate()} disabled={mutSync.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => mutSync.mutate(false)}
+            disabled={mutSync.isPending}
+          >
             {mutSync.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
             Reconsultar
+          </Button>
+          <Button
+            onClick={() => mutSync.mutate(true)}
+            disabled={mutSync.isPending}
+            title="Consulta todas as fontes em tempo real com os módulos extras (consome mais créditos)"
+          >
+            <Sparkles className="h-4 w-4" /> Buscar tudo
           </Button>
           {e.link_detalhe && (
             <Button variant="outline" asChild>
@@ -370,6 +421,121 @@ function Detalhe() {
         </div>
 
         <div className="space-y-6">
+          {temExtras && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados complementares</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                {Boolean(ex["situacao_data"] ?? ex["situacao_motivo"]) && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Situação cadastral
+                    </p>
+                    <p>
+                      {String(ex["situacao"] ?? e.situacao ?? "—")}
+                      {ex["situacao_data"] ? ` desde ${String(ex["situacao_data"]).slice(0, 10)}` : ""}
+                    </p>
+                    {ex["situacao_motivo"] ? (
+                      <p className="text-xs text-muted-foreground">{String(ex["situacao_motivo"])}</p>
+                    ) : null}
+                  </div>
+                )}
+
+                {trib && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Regime tributário
+                    </p>
+                    <p>
+                      Simples Nacional: {trib.simples_optante ? "optante" : "não optante"}
+                      {trib.simples_desde ? ` (desde ${String(trib.simples_desde).slice(0, 10)})` : ""}
+                    </p>
+                    <p>
+                      MEI: {trib.mei_optante ? "optante" : "não optante"}
+                      {trib.mei_desde ? ` (desde ${String(trib.mei_desde).slice(0, 10)})` : ""}
+                    </p>
+                  </div>
+                )}
+
+                {inscricoes.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Inscrições estaduais
+                    </p>
+                    {inscricoes.map((i, idx) => (
+                      <p key={`${i.uf ?? "uf"}-${idx}`} className="text-sm">
+                        {i.uf} · {i.numero} · {i.situacao ?? "—"}
+                        {i.tipo ? ` · ${i.tipo}` : ""}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {suframa.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">SUFRAMA</p>
+                    {suframa.map((s2, idx) => (
+                      <p key={`${s2.numero ?? "s"}-${idx}`} className="text-sm">
+                        {s2.numero} · {s2.situacao ?? "—"} · {s2.aprovado ? "aprovada" : "não aprovada"}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {secundarias.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Atividades secundárias
+                    </p>
+                    {secundarias.slice(0, 15).map((a, idx) => (
+                      <p key={`${a.codigo ?? "c"}-${idx}`} className="text-xs text-muted-foreground">
+                        {a.codigo} · {a.descricao}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {geo?.lat != null && geo?.lng != null && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Geolocalização
+                    </p>
+                    <a
+                      className="text-sm text-accent"
+                      href={`https://www.google.com/maps?q=${geo.lat},${geo.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {geo.lat}, {geo.lng}
+                    </a>
+                  </div>
+                )}
+
+                {comprovantes.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Comprovantes
+                    </p>
+                    {comprovantes.map((c, idx) =>
+                      c.url ? (
+                        <a
+                          key={`${c.tipo ?? "l"}-${idx}`}
+                          href={c.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-sm text-accent"
+                        >
+                          {c.tipo ?? "Comprovante"}
+                        </a>
+                      ) : null,
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Gestão comercial</CardTitle>

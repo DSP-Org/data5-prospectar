@@ -57,6 +57,7 @@ function Consulta() {
   const [chaves, setChaves] = useState("");
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
+  const [buscaTotal, setBuscaTotal] = useState(false);
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
   const [filtrosAtivos, setFiltrosAtivos] = useState<Filtros | null>(null);
 
@@ -75,7 +76,8 @@ function Consulta() {
   const alvoLista = listId === "nenhuma" ? null : listId;
 
   const mutCnpjs = useMutation({
-    mutationFn: (cnpjs: string[]) => consultarCnpjs({ data: { cnpjs, listId: alvoLista } }),
+    mutationFn: (cnpjs: string[]) =>
+      consultarCnpjs({ data: { cnpjs, listId: alvoLista, completo: buscaTotal } }),
     onSuccess: (res) => {
       setItens(res.itens);
       const ok = res.itens.filter((i) => i.encontrada).length;
@@ -116,8 +118,8 @@ function Consulta() {
       <header>
         <h1 className="text-3xl font-semibold">Consulta</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Busque empresas na Econodata por CNPJ (até 100 por vez), site ou e-mail. Todo resultado é
-          salvo automaticamente na sua base.
+          Busque empresas por CNPJ (até 300 por vez), site ou e-mail nas fontes ativas. Todo
+          resultado é salvo automaticamente na sua base.
         </p>
       </header>
 
@@ -145,6 +147,21 @@ function Consulta() {
                     Separe por linha, vírgula ou espaço. {cnpjs.length} identificado(s).
                   </p>
                 </div>
+                <label className="flex items-start gap-3 rounded-md border border-dashed border-border p-3">
+                  <Checkbox
+                    checked={buscaTotal}
+                    onCheckedChange={(v) => setBuscaTotal(v === true)}
+                    aria-label="Buscar tudo"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Buscar tudo</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Ignora o cache, consulta todas as fontes ativas em tempo real e pede os
+                      módulos extras da CNPJá (Simples/MEI, inscrições estaduais, SUFRAMA,
+                      geolocalização e comprovantes). Consome mais créditos.
+                    </span>
+                  </span>
+                </label>
                 <Button
                   disabled={cnpjs.length === 0 || carregando}
                   onClick={() => mutCnpjs.mutate(cnpjs)}

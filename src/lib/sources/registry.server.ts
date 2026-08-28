@@ -4,9 +4,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ADAPTERS, type FetchOpts, type LoteResultado } from "./adapters.server";
 import {
   DEFAULT_PRIORITY,
+  MODULOS_CNPJA_PADRAO,
   SOURCES,
   type EconomiaConfig,
   type ModoConsulta,
+  type ModulosCnpja,
   type SourceConfig,
   type SourceId,
 } from "./catalog";
@@ -19,6 +21,8 @@ const enabledKey = (id: SourceId) => `source_${id}_enabled`;
 const PRIORITY_KEY = "sources_priority";
 const MODE_KEY = "sources_modo";
 const TTL_KEY = "sources_cache_ttl_dias";
+const moduloKey = (id: keyof ModulosCnpja) => `cnpja_modulo_${id}`;
+
 
 
 type Settings = Record<string, string>;
@@ -74,11 +78,21 @@ export function economiaDe(s: Settings): EconomiaConfig {
   return { modo, ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30 };
 }
 
+/** Módulos adicionais da CNPJá configurados pelo master. */
+export function modulosCnpjaDe(s: Settings): ModulosCnpja {
+  const out = { ...MODULOS_CNPJA_PADRAO };
+  for (const id of Object.keys(MODULOS_CNPJA_PADRAO) as Array<keyof ModulosCnpja>) {
+    out[id] = s[moduloKey(id)] === "true";
+  }
+  return out;
+}
+
 /** Configuração das fontes para a tela de Configurações. */
 export async function listarFontes(): Promise<{
   fontes: SourceConfig[];
   prioridade: SourceId[];
   economia: EconomiaConfig;
+  modulosCnpja: ModulosCnpja;
 }> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
@@ -97,7 +111,7 @@ export async function listarFontes(): Promise<{
       maskedKey: mascarar(chave),
     } satisfies SourceConfig;
   });
-  return { fontes, prioridade, economia: economiaDe(s) };
+  return { fontes, prioridade, economia: economiaDe(s), modulosCnpja: modulosCnpjaDe(s) };
 }
 
 export async function salvarFonte(input: {
@@ -113,11 +127,20 @@ export async function salvarFonte(input: {
   return { ok: true };
 }
 
+export async function salvarModulosCnpja(input: { [K in keyof ModulosCnpja]?: boolean | undefined }) {
+  for (const [id, valor] of Object.entries(input)) {
+    if (valor === undefined) continue;
+    await gravar(moduloKey(id as keyof ModulosCnpja), valor ? "true" : "false");
+  }
+  return { ok: true };
+}
+
 export async function salvarEconomia(input: { modo?: ModoConsulta | undefined; ttlDias?: number | undefined }) {
   if (input.modo) await gravar(MODE_KEY, input.modo);
   if (input.ttlDias !== undefined) await gravar(TTL_KEY, String(Math.max(0, Math.min(365, Math.round(input.ttlDias)))));
   return { ok: true };
 }
+
 
 export async function salvarPrioridade(ordem: SourceId[]) {
   const limpa = ordem.filter((id) => DEFAULT_PRIORITY.includes(id));
@@ -212,17 +235,24 @@ function mesclarTodos(
  */
 export async function buscarMultiFonte(
   cnpjs: string[],
-  opts?: { forcar?: boolean | undefined; modo?: ModoConsulta | undefined },
+  opts?: {
+    forcar?: boolean | undefined;
+    modo?: ModoConsulta | undefined;
+    /** Busca máxima: ignora cache, consulta online e liga todos os módulos da CNPJá. */
+    completo?: boolean | undefined;
+  },
 ): Promise<ResultadoMultiFonte> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
   const ativas = prioridade.filter((id) => ativa(id, s, Boolean(chaveDaFonte(id, s))));
   const { modo: modoSalvo, ttlDias } = economiaDe(s);
-  const modo = opts?.modo ?? modoSalvo;
+  const buscaTotal = opts?.completo === true;
+  const modo = buscaTotal ? "completo" : (opts?.modo ?? modoSalvo);
+  const forcar = opts?.forcar === true || buscaTotal;
 
   const empresas = new Map<string, EmpresaMesclada>();
   const doCache: string[] = [];
-  if (!opts?.forcar) {
+  if (!forcar) {
     const cache = await lerCache(cnpjs, ttlDias);
     for (const [cnpj, empresa] of cache) {
       empresas.set(cnpj, empresa);
@@ -239,8 +269,13 @@ export async function buscarMultiFonte(
 
   const fetchOpts: FetchOpts = {
     maxAgeDias: ttlDias > 0 ? ttlDias : 45,
-    economico: modo === "economico" && !opts?.forcar,
+    economico: modo === "economico" && !forcar,
+    online: buscaTotal,
+    modulos: buscaTotal
+      ? { simples: true, registrations: true, suframa: true, geocoding: true, links: true }
+      : modulosCnpjaDe(s),
   };
+
 
   if (modo === "completo") {
     await rodarFontes(ativas, pendentes, s, resultados, falhas, fetchOpts);

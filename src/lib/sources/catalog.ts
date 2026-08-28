@@ -74,8 +74,58 @@ export type SourceConfig = {
 
 export type ModoConsulta = "economico" | "completo";
 
+/** Módulos adicionais da CNPJá (cada um consome crédito extra). */
+export type ModulosCnpja = {
+  simples: boolean;
+  registrations: boolean;
+  suframa: boolean;
+  geocoding: boolean;
+  links: boolean;
+};
+
+export const MODULOS_CNPJA_PADRAO: ModulosCnpja = {
+  simples: false,
+  registrations: false,
+  suframa: false,
+  geocoding: false,
+  links: false,
+};
+
+export const MODULOS_CNPJA_META: Array<{
+  id: keyof ModulosCnpja;
+  label: string;
+  descricao: string;
+}> = [
+  {
+    id: "simples",
+    label: "Simples Nacional / MEI",
+    descricao: "Enquadramento tributário atual e histórico de opções.",
+  },
+  {
+    id: "registrations",
+    label: "Inscrições Estaduais (CCC/SINTEGRA)",
+    descricao: "Inscrições estaduais de todo o país, com situação e tipo.",
+  },
+  {
+    id: "suframa",
+    label: "SUFRAMA",
+    descricao: "Inscrição, situação e incentivos da Zona Franca de Manaus.",
+  },
+  {
+    id: "geocoding",
+    label: "Geolocalização",
+    descricao: "Latitude e longitude exatas do endereço.",
+  },
+  {
+    id: "links",
+    label: "Comprovantes (links)",
+    descricao: "Link do comprovante de inscrição da Receita Federal.",
+  },
+];
+
 export type EconomiaConfig = {
   modo: ModoConsulta;
   /** Dias de validade do cache local; 0 desliga o cache. */
   ttlDias: number;
 };
+

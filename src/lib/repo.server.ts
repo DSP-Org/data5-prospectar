@@ -78,6 +78,9 @@ export async function consultarCnpjs(input: {
   salvar?: boolean | undefined;
   /** Ignora o cache local e reconsulta as fontes. */
   forcar?: boolean | undefined;
+  /** Busca máxima: todas as fontes, dados em tempo real e módulos extras. */
+  completo?: boolean | undefined;
+
 }): Promise<{ itens: LookupItem[] }> {
   const invalidos: string[] = [];
   const validos: string[] = [];
@@ -103,7 +106,11 @@ export async function consultarCnpjs(input: {
 
   const encontradas: Record<string, unknown>[] = [];
   try {
-    const { empresas, falhas } = await buscarMultiFonte(validos, { forcar: input.forcar });
+    const { empresas, falhas } = await buscarMultiFonte(validos, {
+      forcar: input.forcar,
+      completo: input.completo,
+    });
+
     for (const c of validos) {
       const m = empresas.get(c);
       if (m) encontradas.push(m as unknown as Record<string, unknown>);

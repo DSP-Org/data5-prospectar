@@ -3,9 +3,9 @@
 
 import { mapCompany, type MappedCompany } from "../company-mapper.server";
 import { buscarPorCnpjs, formatCnpjApi, validarToken, EconodataError } from "../econodata.server";
-import type { SourceId } from "./catalog";
+import type { ModulosCnpja, SourceId } from "./catalog";
 
-export type Partial2 = Partial<MappedCompany>;
+export type Partial2 = Partial<MappedCompany> & { extras?: Record<string, unknown> };
 export type LoteResultado = Map<string, Partial2>;
 
 export type TesteResultado = { ok: boolean; mensagem: string };
@@ -16,6 +16,10 @@ export type FetchOpts = {
   maxAgeDias?: number | undefined;
   /** Modo econômico evita consultas online que debitam crédito. */
   economico?: boolean | undefined;
+  /** Força consulta em tempo real nos órgãos públicos (consome crédito). */
+  online?: boolean | undefined;
+  /** Módulos adicionais pedidos à CNPJá. */
+  modulos?: ModulosCnpja | undefined;
 };
 
 export type DataSource = {
@@ -23,6 +27,7 @@ export type DataSource = {
   fetchLote(cnpjs: string[], key?: string | null, opts?: FetchOpts): Promise<LoteResultado>;
   testar(key?: string | null): Promise<TesteResultado>;
 };
+
 
 const digitos = (v: string) => v.replace(/\D/g, "");
 
@@ -286,11 +291,25 @@ const brasilapi: DataSource = {
 
 type CnpjaResp = {
   taxId?: string;
-  company?: { name?: string; equity?: number; nature?: { text?: string }; size?: { text?: string }; members?: Array<Record<string, unknown>> };
+  updated?: string;
+  company?: {
+    id?: number;
+    name?: string;
+    equity?: number;
+    nature?: { id?: number; text?: string };
+    size?: { id?: number; acronym?: string; text?: string };
+    simples?: { optant?: boolean; since?: string | null; history?: Array<Record<string, unknown>> };
+    simei?: { optant?: boolean; since?: string | null; history?: Array<Record<string, unknown>> };
+    members?: Array<Record<string, unknown>>;
+  };
   alias?: string;
   founded?: string;
   head?: boolean;
-  status?: { text?: string };
+  statusDate?: string;
+  status?: { id?: number; text?: string };
+  reason?: { id?: number; text?: string };
+  specialDate?: string;
+  special?: { id?: number; text?: string };
   address?: {
     street?: string;
     number?: string;
@@ -299,12 +318,107 @@ type CnpjaResp = {
     city?: string;
     state?: string;
     zip?: string;
+    country?: { id?: number; name?: string };
+    latitude?: number;
+    longitude?: number;
   };
   mainActivity?: { id?: number; text?: string };
   sideActivities?: Array<{ id?: number; text?: string }>;
-  phones?: Array<{ area?: string; number?: string }>;
-  emails?: Array<{ address?: string }>;
+  phones?: Array<{ type?: string; area?: string; number?: string }>;
+  emails?: Array<{ ownership?: string; address?: string; domain?: string }>;
+  registrations?: Array<{
+    state?: string;
+    number?: string;
+    enabled?: boolean;
+    statusDate?: string;
+    status?: { id?: number; text?: string };
+    type?: { id?: number; text?: string };
+  }>;
+  suframa?: Array<{
+    number?: string;
+    since?: string;
+    approved?: boolean;
+    approvalDate?: string;
+    status?: { id?: number; text?: string };
+    incentives?: Array<{ tribute?: string; benefit?: string; purpose?: string; basis?: string }>;
+  }>;
+  links?: Array<{ type?: string; url?: string }>;
 };
+
+/** Dados da CNPJá que não têm coluna própria e ficam guardados em raw. */
+function extrasCnpja(r: CnpjaResp): Record<string, unknown> {
+  const extras: Record<string, unknown> = {};
+  if (r.status?.text) extras["situacao"] = r.status.text;
+  if (r.statusDate) extras["situacao_data"] = r.statusDate;
+  if (r.reason?.text) extras["situacao_motivo"] = r.reason.text;
+  if (r.special?.text) extras["situacao_especial"] = r.special.text;
+  if (r.specialDate) extras["situacao_especial_data"] = r.specialDate;
+  if (r.updated) extras["atualizado_em"] = r.updated;
+
+  const simples = r.company?.simples;
+  const simei = r.company?.simei;
+  if (simples || simei) {
+    extras["tributario"] = {
+      simples_optante: simples?.optant ?? null,
+      simples_desde: simples?.since ?? null,
+      simples_historico: simples?.history ?? [],
+      mei_optante: simei?.optant ?? null,
+      mei_desde: simei?.since ?? null,
+      mei_historico: simei?.history ?? [],
+    };
+  }
+
+  if (r.registrations?.length)
+    extras["inscricoes_estaduais"] = r.registrations.map((i) => ({
+      uf: i.state ?? null,
+      numero: i.number ?? null,
+      habilitada: i.enabled ?? null,
+      situacao: i.status?.text ?? null,
+      tipo: i.type?.text ?? null,
+      data: i.statusDate ?? null,
+    }));
+
+  if (r.suframa?.length)
+    extras["suframa"] = r.suframa.map((s) => ({
+      numero: s.number ?? null,
+      desde: s.since ?? null,
+      aprovado: s.approved ?? null,
+      situacao: s.status?.text ?? null,
+      incentivos: (s.incentives ?? []).map((i) => ({
+        tributo: i.tribute ?? null,
+        beneficio: i.benefit ?? null,
+        finalidade: i.purpose ?? null,
+      })),
+    }));
+
+  if (r.address?.latitude != null && r.address?.longitude != null)
+    extras["geo"] = { lat: r.address.latitude, lng: r.address.longitude };
+
+  if (r.sideActivities?.length)
+    extras["atividades_secundarias"] = r.sideActivities.map((a) => ({
+      codigo: a.id != null ? String(a.id) : null,
+      descricao: a.text ?? null,
+    }));
+
+  if (r.phones?.length)
+    extras["telefones_detalhe"] = r.phones.map((p) => ({
+      tipo: p.type ?? null,
+      numero: `${p.area ?? ""}${p.number ?? ""}`.trim(),
+    }));
+
+  if (r.emails?.length)
+    extras["emails_detalhe"] = r.emails.map((m) => ({
+      tipo: m.ownership ?? null,
+      endereco: m.address ?? null,
+      dominio: m.domain ?? null,
+    }));
+
+  if (r.company?.members?.length) extras["socios"] = r.company.members;
+  if (r.links?.length)
+    extras["comprovantes"] = r.links.map((l) => ({ tipo: l.type ?? null, url: l.url ?? null }));
+
+  return extras;
+}
 
 function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
   const telefones = (r.phones ?? [])
@@ -313,6 +427,10 @@ function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
   const emails = (r.emails ?? [])
     .map((e) => e.address?.trim() ?? "")
     .filter((e) => e !== "");
+  const sites = (r.emails ?? [])
+    .map((e) => e.domain?.trim() ?? "")
+    .filter((d) => d !== "" && !/^(gmail|hotmail|outlook|yahoo|uol|bol|terra|live|icloud)\./i.test(d));
+  const sitesUnicos = [...new Set(sites)];
   return {
     cnpj: cnpjFormatado,
     razao_social: r.company?.name ?? "",
@@ -332,7 +450,7 @@ function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
     setores: (r.sideActivities ?? [])
       .map((a) => a?.text)
       .filter((t): t is string => typeof t === "string" && t.trim() !== "")
-      .slice(0, 10),
+      .slice(0, 20),
     porte_estimado: r.company?.size?.text ?? null,
     capital_social: num(r.company?.equity),
     data_abertura: r.founded ? r.founded.slice(0, 10) : null,
@@ -340,7 +458,10 @@ function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
     telefones,
     email_receita: emails[0] ?? null,
     emails,
+    melhor_site: sitesUnicos[0] ?? null,
+    sites: sitesUnicos,
     contatos: (r.company?.members ?? []) as unknown as Record<string, unknown>[],
+    extras: extrasCnpja(r),
   };
 }
 
@@ -349,15 +470,29 @@ function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
  * - CACHE: só base local da CNPJá, nunca debita crédito (404 quando não há dado).
  * - CACHE_IF_FRESH: usa cache dentro de maxAge; fora dele consulta online (debita).
  * - CACHE_IF_ERROR: tenta online e cai no cache se o órgão público estiver fora.
+ * - ONLINE: sempre em tempo real nos órgãos públicos (maior consumo).
  */
 type CnpjaStrategy = "CACHE" | "CACHE_IF_FRESH" | "CACHE_IF_ERROR" | "ONLINE";
 
-function cnpjaUrl(cnpj: string, strategy: CnpjaStrategy, maxAgeDias: number) {
+function cnpjaUrl(
+  cnpj: string,
+  strategy: CnpjaStrategy,
+  maxAgeDias: number,
+  modulos?: ModulosCnpja,
+) {
   const p = new URLSearchParams({ strategy });
   if (strategy === "CACHE_IF_FRESH" || strategy === "CACHE_IF_ERROR") {
     p.set("maxAge", String(Math.max(1, Math.min(365, Math.round(maxAgeDias)))));
     p.set("maxStale", "365");
   }
+  if (modulos?.simples) {
+    p.set("simples", "true");
+    p.set("simplesHistory", "true");
+  }
+  if (modulos?.registrations) p.set("registrations", "BR");
+  if (modulos?.suframa) p.set("suframa", "true");
+  if (modulos?.geocoding) p.set("geocoding", "true");
+  if (modulos?.links) p.set("links", "RFB_CERTIFICATE");
   return `https://api.cnpja.com/office/${digitos(cnpj)}?${p.toString()}`;
 }
 
@@ -367,12 +502,18 @@ const cnpja: DataSource = {
     const out: LoteResultado = new Map();
     if (!key) return out;
     // Modo econômico: prioriza a base em cache da CNPJá (sem consumo de crédito).
-    const strategy: CnpjaStrategy = opts?.economico ? "CACHE_IF_FRESH" : "CACHE_IF_ERROR";
+    const strategy: CnpjaStrategy = opts?.online
+      ? "ONLINE"
+      : opts?.economico
+        ? "CACHE_IF_FRESH"
+        : "CACHE_IF_ERROR";
     const maxAge = opts?.maxAgeDias && opts.maxAgeDias > 0 ? opts.maxAgeDias : 45;
     let limite: string | null = null;
     await comLimite(cnpjs, 3, async (cnpj) => {
       if (limite) return;
-      const res = await getJsonStatus(cnpjaUrl(cnpj, strategy, maxAge), { Authorization: key });
+      const res = await getJsonStatus(cnpjaUrl(cnpj, strategy, maxAge, opts?.modulos), {
+        Authorization: key,
+      });
       if (res.status === 429) {
         const msg = String((res.json as { message?: string } | null)?.message ?? "");
         limite = msg.includes("rate limit")
@@ -391,6 +532,7 @@ const cnpja: DataSource = {
     // Teste com strategy=CACHE: valida a chave sem debitar crédito.
     const res = await getJsonStatus(cnpjaUrl("00000000000191", "CACHE", 45), { Authorization: key });
     if (res.status === 401 || res.status === 403) return { ok: false, mensagem: "Chave CNPJá inválida." };
+
     if (res.status === 429) {
       const msg = String((res.json as { message?: string } | null)?.message ?? "");
       return {
