@@ -110,7 +110,9 @@ function Funil() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Funil de prospecção</h1>
-        <p className="text-sm text-muted-foreground">Mova empresas entre os estágios do funil comercial.</p>
+        <p className="text-sm text-muted-foreground">
+          Apenas empresas marcadas como clientes potenciais (prospectar) aparecem aqui.
+        </p>
       </div>
 
       <Card>
