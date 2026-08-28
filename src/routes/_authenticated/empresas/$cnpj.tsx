@@ -12,6 +12,7 @@ import {
   Loader2,
   Phone,
   Plus,
+  Printer,
   RefreshCw,
   Save,
   Smartphone,
@@ -46,6 +47,7 @@ import {
   type Status,
 } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FichaImpressao } from "@/components/FichaImpressao";
 import { Badge } from "@/components/ui/badge";
 import { SOURCE_LABEL } from "@/lib/sources/catalog";
 
@@ -325,6 +327,9 @@ function Detalhe() {
               </a>
             </Button>
           )}
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Imprimir ficha
+          </Button>
           <Button
             variant="outline"
             className="text-destructive"
@@ -335,6 +340,19 @@ function Detalhe() {
           </Button>
         </div>
       </header>
+
+      <FichaImpressao
+        empresa={e}
+        endereco={endereco}
+        pessoas={pessoas}
+        statusLabel={STATUS_LABEL[e.status as Status] ?? String(e.status ?? "")}
+        secundarias={secundarias}
+        regime={[
+          trib?.simples_optante ? "Simples Nacional" : null,
+          trib?.mei_optante ? "MEI" : null,
+        ].filter(Boolean) as string[]}
+        fontes={(e.fontes ?? []).map((f) => SOURCE_LABEL[f] ?? f)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
