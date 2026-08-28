@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
-import { AlertCircle, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, ExternalLink, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -596,5 +596,70 @@ function Combo({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+function JanelaCnpja() {
+  const [carregou, setCarregou] = useState(false);
+  const [bloqueado, setBloqueado] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setCarregou((ok) => {
+        if (!ok) setBloqueado(true);
+        return ok;
+      });
+    }, 6000);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Consulta pública do CNPJá aberta dentro do Prospectar360. Os resultados aqui não são
+          salvos na base — use a aba “Por CNPJ” para gravar.
+        </p>
+        <a
+          href="https://cnpja.com/office"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="inline-flex items-center gap-1 text-xs text-accent underline underline-offset-4"
+        >
+          Abrir em nova aba <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+
+      <div className="relative overflow-hidden rounded-md border bg-background">
+        {!carregou && !bloqueado && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {bloqueado ? (
+          <div className="flex h-[70vh] flex-col items-center justify-center gap-3 p-6 text-center">
+            <AlertCircle className="h-6 w-6 text-destructive" />
+            <p className="max-w-md text-sm text-muted-foreground">
+              O CNPJá não permitiu a exibição dentro do aplicativo. Abra a consulta em uma nova
+              aba.
+            </p>
+            <Button asChild variant="outline">
+              <a href="https://cnpja.com/office" target="_blank" rel="noreferrer noopener">
+                <ExternalLink className="h-4 w-4" /> Abrir consulta CNPJá
+              </a>
+            </Button>
+          </div>
+        ) : (
+          <iframe
+            src="https://cnpja.com/office"
+            title="Consulta CNPJá"
+            onLoad={() => setCarregou(true)}
+            className="h-[70vh] w-full"
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
+          />
+        )}
+      </div>
+    </div>
   );
 }
