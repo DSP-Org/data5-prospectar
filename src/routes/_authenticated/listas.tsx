@@ -4,12 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import {
   contarSemListaFn,
   criarListaFn,
   excluirListaFn,
-  listarListasFn,
 } from "@/lib/econodata.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,13 +41,14 @@ export const Route = createFileRoute("/_authenticated/listas")({
 function Listas() {
   const qc = useQueryClient();
   const [nome, setNome] = useState("");
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const { unidade } = useUnidadeAtiva();
+  const listas = useListas();
   const semLista = useQuery({ queryKey: ["sem-lista"], queryFn: () => contarSemListaFn() });
   const criar = useServerFn(criarListaFn);
   const excluir = useServerFn(excluirListaFn);
 
   const mutCriar = useMutation({
-    mutationFn: () => criar({ data: { name: nome.trim() } }),
+    mutationFn: () => criar({ data: { name: nome.trim(), unitId: unidade } }),
     onSuccess: () => {
       setNome("");
       toast.success("Lista criada.");

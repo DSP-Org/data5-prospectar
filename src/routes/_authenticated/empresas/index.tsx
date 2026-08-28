@@ -4,11 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { AlertTriangle, Columns3, Download, Loader2, Smartphone, Star } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
 
 import {
   exportarEmpresasFn,
   listarEmpresasFn,
-  listarListasFn,
   marcarProspectarFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
@@ -249,7 +249,7 @@ function Empresas() {
     grupoNatureza: grupo,
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
   };
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
     queryFn: () => listarEmpresasFn({ data: { ...filtros, page, perPage: 25 } }),

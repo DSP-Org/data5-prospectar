@@ -1,3 +1,4 @@
+import { useListas } from "@/lib/use-listas";
 import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { useMemo, useState } from "react";
 import { formatCnpj, ACTIVITY_LABEL, STATUS_LABEL, STATUSES, type Status } from "@/lib/types";
 import { funilDadosFn } from "@/lib/prospection.functions";
 import { GRUPOS_NATUREZA, grupoDaNatureza } from "@/lib/natureza-juridica";
-import { atualizarEmpresaFn, listarListasFn } from "@/lib/econodata.functions";
+import { atualizarEmpresaFn } from "@/lib/econodata.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,7 +49,7 @@ function Funil() {
     queryKey: ["funil", unidade],
     queryFn: () => funilDadosFn({ data: unidade ? { unidade } : {} }),
   });
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const atualizar = useServerFn(atualizarEmpresaFn);
 
   const [listaId, setListaId] = useState<string>("todas");

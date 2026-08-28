@@ -1,3 +1,4 @@
+import { useListas } from "@/lib/use-listas";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -23,7 +24,6 @@ import {
   atualizarEmpresaFn,
   consultarCnpjsFn,
   excluirEmpresaFn,
-  listarListasFn,
   obterEmpresaFn,
 } from "@/lib/econodata.functions";
 import {
@@ -111,7 +111,7 @@ function Detalhe() {
     queryKey: ["empresa", cnpj],
     queryFn: () => obterEmpresaFn({ data: { cnpj } }),
   });
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
 
   const atualizar = useServerFn(atualizarEmpresaFn);
   const excluir = useServerFn(excluirEmpresaFn);

@@ -4,10 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Loader2, Star, StarOff } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
 
 import {
   listarEmpresasFn,
-  listarListasFn,
   marcarProspectarFn,
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Status } from "@/lib/types";
@@ -64,7 +64,7 @@ function ClientesPotenciais() {
   const [page, setPage] = useState(1);
 
   const filtros = { busca, status, listId: lista, prospectar: true };
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const empresas = useQuery({
     queryKey: ["clientes-potenciais", filtros, page],
     queryFn: () => listarEmpresasFn({ data: { ...filtros, page, perPage: 25 } }),

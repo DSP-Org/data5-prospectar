@@ -4,8 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Download, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
 
-import { listarListasFn } from "@/lib/econodata.functions";
 import { criarImportacaoFn } from "@/lib/importacoes.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -42,7 +42,7 @@ export function ImportarEmpresas() {
   const [enviando, setEnviando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const criarImportacao = useServerFn(criarImportacaoFn);
   const navigate = useNavigate();
   const qc = useQueryClient();
