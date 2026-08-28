@@ -63,6 +63,7 @@ export type Database = {
           numero: string | null
           porte_estimado: string | null
           product_id: string | null
+          prospectar: boolean
           qtd_funcionarios_estimada: string | null
           raw: Json
           razao_social: string
@@ -108,6 +109,7 @@ export type Database = {
           numero?: string | null
           porte_estimado?: string | null
           product_id?: string | null
+          prospectar?: boolean
           qtd_funcionarios_estimada?: string | null
           raw?: Json
           razao_social?: string
@@ -153,6 +155,7 @@ export type Database = {
           numero?: string | null
           porte_estimado?: string | null
           product_id?: string | null
+          prospectar?: boolean
           qtd_funcionarios_estimada?: string | null
           raw?: Json
           razao_social?: string

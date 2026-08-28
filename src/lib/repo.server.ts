@@ -235,6 +235,7 @@ export async function listarEmpresas(input: {
   capitalMax?: number | undefined;
   aberturaDe?: string | undefined;
   aberturaAte?: string | undefined;
+  prospectar?: boolean | undefined;
   page?: number | undefined;
   perPage?: number | undefined;
 }) {
@@ -279,6 +280,7 @@ export async function listarEmpresas(input: {
   if (typeof input.capitalMax === "number") q = q.lte("capital_social", input.capitalMax);
   if (input.aberturaDe) q = q.gte("data_abertura", input.aberturaDe);
   if (input.aberturaAte) q = q.lte("data_abertura", input.aberturaAte);
+  if (typeof input.prospectar === "boolean") q = q.eq("prospectar", input.prospectar);
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
@@ -313,6 +315,7 @@ export async function atualizarEmpresa(input: {
   listId?: string | null | undefined;
   productId?: string | null | undefined;
   tags?: string[] | undefined;
+  prospectar?: boolean | undefined;
 }) {
   const patch: Row = {};
   if (input.status) patch["status"] = input.status;
@@ -320,10 +323,23 @@ export async function atualizarEmpresa(input: {
   if (input.listId !== undefined) patch["list_id"] = input.listId;
   if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
+  if (input.prospectar !== undefined) patch["prospectar"] = input.prospectar;
   const uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
   const { data, error } = await uq.select("*").maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
+}
+
+/** Marca/desmarca empresas como "prospectar" (clientes potenciais). */
+export async function marcarProspectar(cnpjs: string[], valor: boolean, _escopo: Escopo) {
+  const chaves = cnpjs.map((c) => chave(c));
+  if (chaves.length === 0) return { ok: true, total: 0 };
+  const { error } = await supabaseAdmin
+    .from("companies")
+    .update({ prospectar: valor } as never)
+    .in("cnpj", chaves);
+  if (error) throw new Error(error.message);
+  return { ok: true, total: chaves.length };
 }
 
 export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, _escopo: Escopo) {

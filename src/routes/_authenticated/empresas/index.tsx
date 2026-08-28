@@ -2,15 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Columns3, Download, Loader2 } from "lucide-react";
+import { Columns3, Download, Loader2, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   exportarEmpresasFn,
   listarEmpresasFn,
   listarListasFn,
+  marcarProspectarFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
+import { cn } from "@/lib/utils";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -175,6 +177,7 @@ function csv(rows: Company[], visiveis: string[]) {
   const cols: Array<[string, (c: Company) => string]> = [
     ["CNPJ", (c) => c.cnpj],
     ["Razão social", (c) => c.razao_social],
+    ["Cliente potencial", (c) => (c.prospectar ? "Sim" : "Não")],
     ...COLUNAS.filter((c) => visiveis.includes(c.key)).flatMap((c) => c.csv),
   ];
   const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
@@ -191,6 +194,7 @@ function Empresas() {
   const { lista: listaInicial } = Route.useSearch();
   const [lista, setLista] = useState(listaInicial ?? "todas");
   const [grupo, setGrupo] = useState("todas");
+  const [potencial, setPotencial] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
   const [colunas, setColunas] = useState<string[]>(
@@ -198,7 +202,14 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const filtros = { busca, status, uf, listId: lista, grupoNatureza: grupo };
+  const filtros = {
+    busca,
+    status,
+    uf,
+    listId: lista,
+    grupoNatureza: grupo,
+    ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
+  };
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
@@ -207,6 +218,7 @@ function Empresas() {
   });
   const exportar = useServerFn(exportarEmpresasFn);
   const vincular = useServerFn(vincularEmpresasListaFn);
+  const marcar = useServerFn(marcarProspectarFn);
   const qc = useQueryClient();
   const [selecionados, setSelecionados] = useState<string[]>([]);
 
@@ -221,6 +233,21 @@ function Empresas() {
       qc.invalidateQueries({ queryKey: ["empresas"] });
       qc.invalidateQueries({ queryKey: ["listas"] });
       qc.invalidateQueries({ queryKey: ["sem-lista"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const mutProspectar = useMutation({
+    mutationFn: ({ cnpjs, valor }: { cnpjs: string[]; valor: boolean }) =>
+      marcar({ data: { cnpjs, valor } }),
+    onSuccess: (r, v) => {
+      toast.success(
+        v.valor
+          ? `${r.total} empresa(s) marcada(s) como cliente potencial.`
+          : `${r.total} empresa(s) removida(s) dos clientes potenciais.`,
+      );
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+      void qc.invalidateQueries({ queryKey: ["clientes-potenciais"] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -380,8 +407,25 @@ function Empresas() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={potencial}
+            onValueChange={(v) => {
+              setPotencial(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Clientes potenciais" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as empresas</SelectItem>
+              <SelectItem value="sim">Somente clientes potenciais</SelectItem>
+              <SelectItem value="nao">Sem marcação de prospectar</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
+
 
       {selecionados.length > 0 && (
         <Card>
@@ -405,6 +449,21 @@ function Empresas() {
               </SelectContent>
             </Select>
             {mutVincular.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button
+              size="sm"
+              disabled={mutProspectar.isPending}
+              onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: true })}
+            >
+              <Star className="h-4 w-4" /> Marcar como prospectar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={mutProspectar.isPending}
+              onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: false })}
+            >
+              Desmarcar
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelecionados([])}>
               Limpar seleção
             </Button>
@@ -475,6 +534,21 @@ function Empresas() {
                       {e.razao_social}
                     </Link>
                     <p className="font-mono text-xs text-muted-foreground">{formatCnpj(e.cnpj)}</p>
+                    <button
+                      type="button"
+                      onClick={() => mutProspectar.mutate({ cnpjs: [e.cnpj], valor: !e.prospectar })}
+                      disabled={mutProspectar.isPending}
+                      aria-label={
+                        e.prospectar ? "Remover dos clientes potenciais" : "Marcar como cliente potencial"
+                      }
+                      className={cn(
+                        "mt-1 inline-flex items-center gap-1 text-xs font-medium",
+                        e.prospectar ? "text-chart-3" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Star className={cn("h-3.5 w-3.5", e.prospectar && "fill-current")} />
+                      {e.prospectar ? "Cliente potencial" : "Prospectar"}
+                    </button>
                   </TableCell>
                   {visiveis.map((col) => (
                     <TableCell key={col.key} className={col.className ?? ""}>

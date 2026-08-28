@@ -13,6 +13,7 @@ import {
   Package,
   Search,
   Settings2,
+  Star,
   Tags,
   Target,
   Users,
@@ -59,6 +60,7 @@ const grupos = [
     id: "prospectar",
     label: "Prospectar",
     items: [
+      { to: "/clientes-potenciais", label: "Clientes potenciais", icon: Star },
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/atividades", label: "Atividades", icon: ListTodo },
       { to: "/produtos", label: "Produtos e serviços", icon: Package },
