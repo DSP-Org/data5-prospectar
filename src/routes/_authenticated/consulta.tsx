@@ -6,7 +6,6 @@ import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  consultarChavesFn,
   consultarCnpjsFn,
   listarListasFn,
 } from "@/lib/econodata.functions";
@@ -58,7 +57,6 @@ export const Route = createFileRoute("/_authenticated/consulta")({
 function Consulta() {
   const qc = useQueryClient();
   const [texto, setTexto] = useState("");
-  const [chaves, setChaves] = useState("");
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
@@ -68,7 +66,6 @@ function Consulta() {
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
-  const consultarChaves = useServerFn(consultarChavesFn);
 
 
   const alvoLista = listId === "nenhuma" ? null : listId;
@@ -86,30 +83,12 @@ function Consulta() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const mutChaves = useMutation({
-    mutationFn: (lista: string[]) => consultarChaves({ data: { chaves: lista, listId: alvoLista } }),
-    onSuccess: (res) => {
-      setItens(res.itens);
-      const ok = res.itens.filter((i) => i.encontrada).length;
-      if (ok) toast.success(`${ok} empresa(s) encontrada(s) e salva(s).`);
-      else toast.error("Nenhuma empresa encontrada.");
-      void qc.invalidateQueries({ queryKey: ["painel"] });
-      void qc.invalidateQueries({ queryKey: ["empresas"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const cnpjs = texto
     .split(/[\s,;]+/)
     .map((v) => v.trim())
     .filter(Boolean);
 
-  const listaChaves = chaves
-    .split(/[\s,;]+/)
-    .map((v) => v.trim())
-    .filter(Boolean);
-
-  const carregando = mutCnpjs.isPending || mutChaves.isPending;
+  const carregando = mutCnpjs.isPending;
 
   return (
     <div className="space-y-8">
