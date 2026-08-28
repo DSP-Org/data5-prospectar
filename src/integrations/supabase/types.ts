@@ -227,6 +227,107 @@ export type Database = {
           },
         ]
       }
+      import_items: {
+        Row: {
+          cnpj: string
+          created_at: string
+          erro: string | null
+          id: string
+          job_id: string
+          status: string
+          tentativas: number
+          updated_at: string
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string
+          erro?: string | null
+          id?: string
+          job_id: string
+          status?: string
+          tentativas?: number
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          erro?: string | null
+          id?: string
+          job_id?: string
+          status?: string
+          tentativas?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_jobs: {
+        Row: {
+          arquivo: string
+          concluidos: number
+          created_at: string
+          criado_por: string | null
+          erros: number
+          id: string
+          list_id: string | null
+          nao_encontrados: number
+          status: string
+          total: number
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          arquivo?: string
+          concluidos?: number
+          created_at?: string
+          criado_por?: string | null
+          erros?: number
+          id?: string
+          list_id?: string | null
+          nao_encontrados?: number
+          status?: string
+          total?: number
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arquivo?: string
+          concluidos?: number
+          created_at?: string
+          criado_por?: string | null
+          erros?: number
+          id?: string
+          list_id?: string | null
+          nao_encontrados?: number
+          status?: string
+          total?: number
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_jobs_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "company_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_jobs_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           ativo: boolean
