@@ -75,6 +75,21 @@ function AuthPage() {
     void navigate({ to: "/" });
   }
 
+  async function entrarComGoogle() {
+    setCarregando(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result?.error) {
+      setCarregando(false);
+      toast.error(result.error.message ?? "Não foi possível entrar com o Google.");
+      return;
+    }
+    setCarregando(false);
+    const { data } = await supabase.auth.getSession();
+    if (data.session) void navigate({ to: "/" });
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm">
