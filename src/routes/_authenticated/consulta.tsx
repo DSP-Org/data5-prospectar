@@ -147,10 +147,20 @@ function Consulta() {
                     Separe por linha, vírgula ou espaço. {cnpjs.length} identificado(s).
                   </p>
                 </div>
-                <label className="flex items-start gap-3 rounded-md border border-dashed border-border p-3">
+                <label
+                  className={`flex items-start gap-3 rounded-md border border-dashed p-3 ${
+                    cnpjs.length > 1
+                      ? "border-border/60 bg-muted/30"
+                      : "border-border"
+                  }`}
+                >
                   <Checkbox
-                    checked={buscaTotal}
-                    onCheckedChange={(v) => setBuscaTotal(v === true)}
+                    checked={buscaTotal && cnpjs.length <= 1}
+                    onCheckedChange={(v) => {
+                      if (cnpjs.length > 1) return;
+                      setBuscaTotal(v === true);
+                    }}
+                    disabled={cnpjs.length > 1}
                     aria-label="Buscar tudo"
                   />
                   <span>
@@ -159,6 +169,14 @@ function Consulta() {
                       Ignora o cache, consulta todas as fontes ativas em tempo real e pede os
                       módulos extras da CNPJá (Simples/MEI, inscrições estaduais, SUFRAMA,
                       geolocalização e comprovantes). Consome mais créditos.
+                      {cnpjs.length > 1 && (
+                        <>
+                          {" "}
+                          <span className="text-amber-600 dark:text-amber-400">
+                            Disponível apenas para 1 CNPJ por vez para evitar consumo em massa.
+                          </span>
+                        </>
+                      )}
                     </span>
                   </span>
                 </label>
