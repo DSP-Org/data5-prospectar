@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Download, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-import { consultarCnpjsFn, listarListasFn } from "@/lib/econodata.functions";
+import { listarListasFn } from "@/lib/econodata.functions";
+import { criarImportacaoFn } from "@/lib/importacoes.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,17 +39,17 @@ export function ImportarEmpresas() {
   const [cnpjs, setCnpjs] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState("");
   const [lista, setLista] = useState("nenhuma");
-  const [progresso, setProgresso] = useState<{ feito: number; total: number } | null>(null);
+  const [enviando, setEnviando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
-  const consultar = useServerFn(consultarCnpjsFn);
+  const criarImportacao = useServerFn(criarImportacaoFn);
+  const navigate = useNavigate();
   const qc = useQueryClient();
 
   function limpar() {
     setCnpjs([]);
     setArquivo("");
-    setProgresso(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -61,58 +63,31 @@ export function ImportarEmpresas() {
       toast.error("Nenhum CNPJ válido encontrado no arquivo.");
   }
 
+  // Etapa 1: o sistema só recebe os CNPJs (rápido). O enriquecimento roda
+  // depois, em blocos, na tela de Importações — com retomada e reprocessamento.
   async function importar() {
     if (cnpjs.length === 0) return;
-    // Lotes pequenos: cada CNPJ consulta várias fontes, então lotes grandes
-    // estouram o tempo limite da requisição em importações de milhares.
-    const TAM_LOTE = 20;
-    const lotes: string[][] = [];
-    for (let i = 0; i < cnpjs.length; i += TAM_LOTE) lotes.push(cnpjs.slice(i, i + TAM_LOTE));
-    setProgresso({ feito: 0, total: cnpjs.length });
-    let encontradas = 0;
-    let falhas = 0;
-    let lotesComErro = 0;
-    let ultimoErro = "";
-
-    for (const lote of lotes) {
-      // Um lote que falhar não pode abortar a importação inteira.
-      try {
-        const r = await consultar({
-          data: {
-            cnpjs: lote,
-            listId: lista === "nenhuma" ? null : lista,
-            salvar: true,
-          },
-        });
-        for (const item of r.itens) {
-          if (item.encontrada) encontradas += 1;
-          else falhas += 1;
-        }
-      } catch (e) {
-        lotesComErro += 1;
-        falhas += lote.length;
-        ultimoErro = (e as Error).message;
-      }
-      setProgresso((p) => (p ? { ...p, feito: p.feito + lote.length } : p));
+    setEnviando(true);
+    try {
+      const r = await criarImportacao({
+        data: {
+          arquivo,
+          cnpjs,
+          listId: lista === "nenhuma" ? null : lista,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["importacoes"] });
+      toast.success(`${r.total} CNPJ(s) na fila. Iniciando o processamento…`);
+      setAberto(false);
+      limpar();
+      navigate({ to: "/importacoes" });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setEnviando(false);
     }
-
-    qc.invalidateQueries({ queryKey: ["empresas"] });
-    qc.invalidateQueries({ queryKey: ["listas"] });
-    qc.invalidateQueries({ queryKey: ["sem-lista"] });
-    qc.invalidateQueries({ queryKey: ["painel"] });
-    setProgresso(null);
-
-    if (encontradas === 0 && lotesComErro > 0) {
-      toast.error(`Falha na importação: ${ultimoErro || "erro ao consultar as fontes."}`);
-      return;
-    }
-    toast.success(
-      `${encontradas} empresa(s) importada(s). ${falhas} sem retorno.` +
-        (lotesComErro ? ` ${lotesComErro} lote(s) com erro.` : ""),
-    );
-    setAberto(false);
-    limpar();
   }
+
 
 
   function baixarModelo() {
