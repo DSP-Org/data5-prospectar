@@ -130,7 +130,9 @@ function Consulta() {
               <TabsList>
                 <TabsTrigger value="cnpj">Por CNPJ</TabsTrigger>
                 <TabsTrigger value="chave">Site / e-mail</TabsTrigger>
+                <TabsTrigger value="cnpja">Janela CNPJá</TabsTrigger>
               </TabsList>
+
 
               <TabsContent value="cnpj" className="space-y-4 pt-4">
                 <div className="space-y-2">
