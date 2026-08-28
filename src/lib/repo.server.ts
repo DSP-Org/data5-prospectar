@@ -319,33 +319,28 @@ export async function atualizarEmpresa(input: {
   if (input.listId !== undefined) patch["list_id"] = input.listId;
   if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
-  let uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
-  const unidadesUp = unidadesFiltro(input.escopo);
-  if (unidadesUp) uq = uq.in("unit_id", unidadesUp);
+  const uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
   const { data, error } = await uq.select("*").maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
 
-export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, escopo: Escopo) {
+export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, _escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0 };
-  let q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+  const q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
   const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true, total: chaves.length };
 }
 
-export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function excluirEmpresa(cnpj: string, _escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
   const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true };
 }
+
 
 export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   const unidades = unidadesFiltro(escopo);
