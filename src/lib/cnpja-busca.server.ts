@@ -3,24 +3,24 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type FiltroCnpjaBusca = {
-  nome?: string | null;
-  razaoSocial?: string | null;
-  uf?: string | null;
-  municipioIbge?: string | null;
-  bairro?: string | null;
-  cep?: string | null;
-  cnaePrincipal?: string | null;
-  cnaeQualquer?: string | null;
-  porteIds?: string | null;
-  situacaoIds?: string | null;
-  naturezaIds?: string | null;
-  capitalMin?: number | null;
-  capitalMax?: number | null;
-  aberturaDe?: string | null;
-  aberturaAte?: string | null;
-  somenteMatriz?: boolean | null;
-  limite?: number | null;
-  cursor?: string | null;
+  nome?: string | null | undefined;
+  razaoSocial?: string | null | undefined;
+  uf?: string | null | undefined;
+  municipioIbge?: string | null | undefined;
+  bairro?: string | null | undefined;
+  cep?: string | null | undefined;
+  cnaePrincipal?: string | null | undefined;
+  cnaeQualquer?: string | null | undefined;
+  porteIds?: string | null | undefined;
+  situacaoIds?: string | null | undefined;
+  naturezaIds?: string | null | undefined;
+  capitalMin?: number | null | undefined;
+  capitalMax?: number | null | undefined;
+  aberturaDe?: string | null | undefined;
+  aberturaAte?: string | null | undefined;
+  somenteMatriz?: boolean | null | undefined;
+  limite?: number | null | undefined;
+  cursor?: string | null | undefined;
 };
 
 export type ItemBuscaCnpja = {
@@ -47,12 +47,12 @@ export type ResultadoBuscaCnpja = {
 
 type Registro = {
   taxId?: string;
-  alias?: string | null;
-  founded?: string | null;
+  alias?: string | null | undefined;
+  founded?: string | null | undefined;
   head?: boolean;
   company?: {
     name?: string;
-    equity?: number | null;
+    equity?: number | null | undefined;
     size?: { text?: string } | null;
     nature?: { text?: string } | null;
   } | null;
@@ -122,7 +122,7 @@ export async function buscarEmpresasCnpja(f: FiltroCnpjaBusca): Promise<Resultad
 
   const json = (await resp.json()) as {
     count?: number;
-    next?: string | null;
+    next?: string | null | undefined;
     records?: Registro[];
   };
 
