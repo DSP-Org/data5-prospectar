@@ -183,7 +183,9 @@ function Pagina() {
                     {feitos} de {j.total} processados · {j.concluidos} importada(s) ·{" "}
                     {j.nao_encontrados} sem retorno · {j.erros} com erro
                   </p>
+                  <Etapas job={j} rodando={rodando === j.id} />
                   <div className="flex flex-wrap gap-2">
+
                     {rodando === j.id ? (
                       <Button size="sm" variant="secondary" onClick={pausar}>
                         <Pause className="h-4 w-4" />
