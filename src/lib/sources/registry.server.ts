@@ -237,15 +237,20 @@ export async function buscarMultiFonte(
   const pagas = ativas.filter((id) => SOURCES.find((m) => m.id === id)!.custo === "pago");
   const pagasUsadas: string[] = [];
 
+  const fetchOpts: FetchOpts = {
+    maxAgeDias: ttlDias > 0 ? ttlDias : 45,
+    economico: modo === "economico" && !opts?.forcar,
+  };
+
   if (modo === "completo") {
-    await rodarFontes(ativas, pendentes, s, resultados, falhas);
+    await rodarFontes(ativas, pendentes, s, resultados, falhas, fetchOpts);
     if (pagas.length) pagasUsadas.push(...pendentes);
   } else {
-    await rodarFontes(gratis, pendentes, s, resultados, falhas);
+    await rodarFontes(gratis, pendentes, s, resultados, falhas, fetchOpts);
     const parciais = mesclarTodos(pendentes, prioridade, resultados);
     const semContato = pendentes.filter((c) => !temContato(parciais.get(c)));
     if (pagas.length && semContato.length) {
-      await rodarFontes(pagas, semContato, s, resultados, falhas);
+      await rodarFontes(pagas, semContato, s, resultados, falhas, fetchOpts);
       pagasUsadas.push(...semContato);
     }
   }
