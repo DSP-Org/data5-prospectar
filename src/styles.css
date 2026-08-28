@@ -168,3 +168,235 @@
     background-size: 28px 28px;
   }
 }
+
+/* ---------- Ficha da empresa: layout de impressão ---------- */
+.ficha-print {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .ficha-print,
+  .ficha-print * {
+    visibility: visible !important;
+  }
+
+  .ficha-print {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: #111;
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+
+  .ficha-cabecalho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: 2px solid #111;
+    padding-bottom: 8px;
+  }
+
+  .ficha-marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ficha-logo {
+    width: 26px;
+    height: 26px;
+  }
+
+  .ficha-marca-nome {
+    font-size: 14pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .ficha-marca-sub,
+  .ficha-emissao {
+    font-size: 8pt;
+    color: #555;
+    text-align: right;
+  }
+
+  .ficha-marca-sub {
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .ficha-identificacao {
+    margin-top: 14px;
+  }
+
+  .ficha-razao {
+    font-size: 16pt;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .ficha-fantasia {
+    font-size: 10pt;
+    color: #444;
+  }
+
+  .ficha-chips {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ficha-chip {
+    border: 1px solid #999;
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 8.5pt;
+  }
+
+  .ficha-chip-forte {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+    font-family: ui-monospace, monospace;
+  }
+
+  .ficha-secao {
+    margin-top: 14px;
+    break-inside: avoid;
+  }
+
+  .ficha-secao-titulo {
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #111;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 3px;
+    margin: 0 0 8px;
+  }
+
+  .ficha-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+  }
+
+  .ficha-col-2 {
+    grid-column: span 2;
+  }
+
+  .ficha-linha,
+  .ficha-endereco {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ficha-endereco {
+    margin-top: 8px;
+  }
+
+  .ficha-label {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #777;
+  }
+
+  .ficha-valor {
+    font-size: 10pt;
+  }
+
+  .ficha-tabela {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .ficha-tabela th {
+    text-align: left;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #777;
+    border-bottom: 1px solid #ccc;
+    padding: 3px 4px;
+  }
+
+  .ficha-tabela td {
+    font-size: 9.5pt;
+    border-bottom: 1px solid #eee;
+    padding: 4px;
+    vertical-align: top;
+  }
+
+  .ficha-tag {
+    margin-left: 6px;
+    border: 1px solid #111;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 7pt;
+    text-transform: uppercase;
+  }
+
+  .ficha-lista {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 9pt;
+    columns: 2;
+  }
+
+  .ficha-notas {
+    min-height: 46px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 9.5pt;
+    white-space: pre-wrap;
+  }
+
+  .ficha-assinaturas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 34px;
+  }
+
+  .ficha-assinaturas span {
+    display: block;
+    border-top: 1px solid #111;
+  }
+
+  .ficha-assinaturas p {
+    font-size: 8pt;
+    color: #555;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .ficha-rodape {
+    margin-top: 18px;
+    border-top: 1px solid #ccc;
+    padding-top: 6px;
+    font-size: 7.5pt;
+    color: #777;
+    text-align: center;
+  }
+}
