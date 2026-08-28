@@ -776,23 +776,51 @@ function BuscaAvancadaCnpja({
       let cnaesIds: string[] = [];
       if ((s.cnaeTermos?.length ?? 0) > 0) {
         const lista = cnaes.data ?? (await listarCnaes());
+        const PARADAS = new Set([
+          "de", "da", "do", "das", "dos", "e", "em", "para", "por", "com", "a", "o", "as", "os",
+          "no", "na", "nos", "nas", "ou", "um", "uma",
+        ]);
+        const tokens = (t: string) =>
+          normalizar(t)
+            .split(/[^a-z0-9]+/)
+            .filter((w) => w.length >= 3 && !PARADAS.has(w));
+
         for (const termo of s.cnaeTermos ?? []) {
           const codigo = termo.replace(/\D/g, "");
-          if (codigo.length >= 5) {
+          if (codigo.length >= 4) {
             const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 5);
-            cnaesIds.push(...exato.map((c) => c.id));
-            continue;
+            if (exato.length > 0) {
+              cnaesIds.push(...exato.map((c) => c.id));
+              continue;
+            }
           }
-          const alvo = normalizar(termo);
+          const palavras = tokens(termo);
+          if (palavras.length === 0) continue;
+
+          const pontuados = lista
+            .map((c) => {
+              const desc = normalizar(c.descricao);
+              const acertos = palavras.filter((p) => desc.includes(p)).length;
+              return { id: c.id, acertos, tamanho: desc.length };
+            })
+            .filter((x) => x.acertos > 0);
+
+          const melhor = Math.max(...pontuados.map((x) => x.acertos), 0);
+          if (melhor === 0) continue;
+          // exige ao menos metade das palavras do termo (ou o melhor disponível)
+          const minimo = Math.max(1, Math.min(melhor, Math.ceil(palavras.length / 2)));
+
           cnaesIds.push(
-            ...lista
-              .filter((c) => normalizar(c.descricao).includes(alvo))
-              .slice(0, 5)
-              .map((c) => c.id),
+            ...pontuados
+              .filter((x) => x.acertos >= minimo)
+              .sort((a, b) => b.acertos - a.acertos || a.tamanho - b.tamanho)
+              .slice(0, 8)
+              .map((x) => x.id),
           );
         }
-        cnaesIds = [...new Set(cnaesIds)].slice(0, 15);
+        cnaesIds = [...new Set(cnaesIds)].slice(0, 20);
       }
+
 
       return { s, uf, municipiosIds, cnaesIds };
     },
