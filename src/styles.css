@@ -276,7 +276,7 @@
   }
 
   .ficha-secao {
-    margin-top: 14px;
+    margin-top: 10px;
     break-inside: avoid;
   }
 
@@ -372,7 +372,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 40px;
-    margin-top: 34px;
+    margin-top: 24px;
   }
 
   .ficha-assinaturas span {
@@ -388,7 +388,7 @@
   }
 
   .ficha-rodape {
-    margin-top: 18px;
+    margin-top: 12px;
     border-top: 1px solid #ccc;
     padding-top: 6px;
     font-size: 7.5pt;
