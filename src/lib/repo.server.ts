@@ -391,15 +391,16 @@ export async function excluirLista(id: string, escopo: Escopo) {
   return { ok: true };
 }
 
-export async function obterPainel(escopo: Escopo) {
-  const unidades = unidadesFiltro(escopo);
-  const escopar = <T extends { in: (c: string, v: string[]) => T }>(q: T): T => (unidades ? q.in("unit_id", unidades) : q);
+export async function obterPainel(_escopo: Escopo) {
+  // Painel reflete a base de empresas do sistema, sem recorte por unidade.
+  const escopar = <T,>(q: T): T => q;
 
   const { count: total } = await escopar(
     supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }),
   );
 
   const { data: statusRows } = await escopar(supabaseAdmin.from("companies").select("status, uf, created_at"));
+
   const porStatus: Record<string, number> = {};
   const porUf: Record<string, number> = {};
   let ultimos30 = 0;
