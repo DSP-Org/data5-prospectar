@@ -10,7 +10,6 @@ import { atualizarEmpresaFn } from "@/lib/econodata.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-import { useListas } from "@/lib/use-listas";
   Select,
   SelectContent,
   SelectItem,
