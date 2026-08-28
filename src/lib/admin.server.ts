@@ -105,6 +105,51 @@ export async function excluirUnidade(escopo: Escopo, id: string) {
   return { ok: true };
 }
 
+/** Equipe agrupada por unidade. Master vê todas; demais usuários veem só as próprias unidades. */
+export async function listarEquipe(escopo: Escopo) {
+  const [{ data: perfis, error }, { data: roles }, { data: vinculos }, { data: unidades }] = await Promise.all([
+    supabaseAdmin.from("profiles").select("*").order("nome", { ascending: true }),
+    supabaseAdmin.from("user_roles").select("user_id, role"),
+    supabaseAdmin.from("user_units").select("user_id, unit_id"),
+    supabaseAdmin.from("units").select("id, nome, cor, cidade, uf").order("nome", { ascending: true }),
+  ]);
+  if (error) throw new Error(error.message);
+
+  const papelDe: Record<string, Papel> = {};
+  for (const r of (roles ?? []) as Array<{ user_id: string; role: Papel }>) {
+    if (r.role === "master" || !papelDe[r.user_id]) papelDe[r.user_id] = r.role;
+  }
+  const unidadesDe: Record<string, string[]> = {};
+  for (const v of (vinculos ?? []) as Array<{ user_id: string; unit_id: string }>) {
+    (unidadesDe[v.user_id] ??= []).push(v.unit_id);
+  }
+
+  const usuarios = ((perfis ?? []) as Array<{ id: string; email: string; nome: string; ativo: boolean }>)
+    .filter((p) => p.ativo !== false)
+    .map((p) => ({
+      id: p.id,
+      email: p.email,
+      nome: p.nome,
+      papel: papelDe[p.id] ?? ("usuario" as Papel),
+      unidades: unidadesDe[p.id] ?? [],
+    }));
+
+  const visiveis = (unidades ?? []) as Array<{ id: string; nome: string; cor: string; cidade: string | null; uf: string | null }>;
+  const escopoIds = escopo.master ? visiveis.map((u) => u.id) : escopo.unitIds;
+
+  return visiveis
+    .filter((u) => escopoIds.includes(u.id))
+    .map((u) => ({
+      ...u,
+      membros: usuarios.filter((p) => p.unidades.includes(u.id)),
+    }))
+    .concat(
+      escopo.master
+        ? [{ id: "", nome: "Sem unidade", cor: "slate", cidade: null, uf: null, membros: usuarios.filter((p) => p.unidades.length === 0) }]
+        : [],
+    );
+}
+
 export async function listarUsuarios(escopo: Escopo): Promise<UsuarioAdmin[]> {
   exigirMaster(escopo);
   const [{ data: perfis, error }, { data: roles }, { data: vinculos }] = await Promise.all([
