@@ -12,7 +12,7 @@ import {
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
 import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { buscarLocalFn } from "@/lib/busca-local.functions";
-import { sugerirFiltrosFn } from "@/lib/ia-filtros.functions";
+import { conversarFiltrosFn } from "@/lib/ia-filtros.functions";
 
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
@@ -717,6 +717,7 @@ function BuscaAvancadaCnpja({
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [pedidoIa, setPedidoIa] = useState("");
+  const [conversa, setConversa] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
@@ -753,12 +754,18 @@ function BuscaAvancadaCnpja({
     return Number.isFinite(n) && v.trim() !== "" ? n : null;
   };
 
-  const sugerir = useServerFn(sugerirFiltrosFn);
+  const conversar = useServerFn(conversarFiltrosFn);
 
   const ia = useMutation({
     mutationFn: async (pedido: string) => {
-      const s = await sugerir({ data: { pedido } });
+      const historico = [...conversa, { role: "user" as const, content: pedido }];
+      const r = await conversar({ data: { mensagens: historico } });
 
+      if (!r.aplicar || !r.filtros) {
+        return { r, historico, uf: "", municipiosIds: [] as string[], cnaesIds: [] as string[] };
+      }
+
+      const s = r.filtros;
       const uf = (s.uf ?? "").toUpperCase().slice(0, 2);
       let municipiosIds: string[] = [];
       if (uf && (s.municipios?.length ?? 0) > 0) {
@@ -807,7 +814,6 @@ function BuscaAvancadaCnpja({
 
           const melhor = Math.max(...pontuados.map((x) => x.acertos), 0);
           if (melhor === 0) continue;
-          // exige ao menos metade das palavras do termo (ou o melhor disponível)
           const minimo = Math.max(1, Math.min(melhor, Math.ceil(palavras.length / 2)));
 
           cnaesIds.push(
@@ -821,10 +827,16 @@ function BuscaAvancadaCnpja({
         cnaesIds = [...new Set(cnaesIds)].slice(0, 20);
       }
 
-
-      return { s, uf, municipiosIds, cnaesIds };
+      return { r, historico, uf, municipiosIds, cnaesIds };
     },
-    onSuccess: ({ s, uf, municipiosIds, cnaesIds }) => {
+    onSuccess: ({ r, historico, uf, municipiosIds, cnaesIds }) => {
+      const s = r.filtros;
+      const fala = r.mensagem || (r.aplicar ? s?.explicacao ?? "Filtros preenchidos." : "…");
+      setConversa([...historico, { role: "assistant" as const, content: fala }]);
+      setPedidoIa("");
+
+      if (!r.aplicar || !s) return;
+
       setF((atual) => ({
         ...atual,
         nome: s.nome ?? atual.nome,
@@ -849,8 +861,9 @@ function BuscaAvancadaCnpja({
       }));
       toast.success(s.explicacao || "Filtros preenchidos pela IA. Revise antes de buscar.");
     },
-    onError: (e: Error) => toast.error(e.message || "A IA não conseguiu preencher os filtros."),
+    onError: (e: Error) => toast.error(e.message || "A IA não conseguiu responder."),
   });
+
 
   const mut = useMutation({
     mutationFn: (proximo: string | null) =>
@@ -920,36 +933,85 @@ function BuscaAvancadaCnpja({
         plano. Estados, municípios e atividades econômicas vêm das listas oficiais do IBGE.
       </p>
 
-      <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+      <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-primary" />
-          Assistente de IA — descreva o que procura
+          Assistente de IA — converse até mandar aplicar
         </div>
+
+        <div className="max-h-64 space-y-2 overflow-y-auto rounded-md bg-background/60 p-2">
+          {conversa.length === 0 ? (
+            <p className="p-2 text-xs text-muted-foreground">
+              Diga o que procura (ex.: “transportadoras em Salvador”). Eu pergunto os detalhes e só
+              preencho os filtros quando você disser “aplicar”.
+            </p>
+          ) : (
+            conversa.map((m, i) => (
+              <div
+                key={i}
+                className={
+                  m.role === "user"
+                    ? "ml-auto w-fit max-w-[85%] rounded-md bg-primary px-3 py-2 text-xs text-primary-foreground"
+                    : "w-fit max-w-[85%] rounded-md bg-muted px-3 py-2 text-xs whitespace-pre-wrap"
+                }
+              >
+                {m.content}
+              </div>
+            ))
+          )}
+          {ia.isPending ? (
+            <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> pensando…
+            </div>
+          ) : null}
+        </div>
+
         <Textarea
           value={pedidoIa}
           onChange={(e) => setPedidoIa(e.target.value)}
           rows={2}
-          placeholder="Ex.: transportadoras ativas em Salvador e Feira de Santana, capital acima de 100 mil, abertas depois de 2018, só matriz"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!ia.isPending && pedidoIa.trim().length >= 2) ia.mutate(pedidoIa.trim());
+            }
+          }}
+          placeholder="Ex.: transportadoras ativas em Salvador, capital acima de 100 mil… depois escreva “aplicar”"
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             size="sm"
             onClick={() => ia.mutate(pedidoIa.trim())}
-            disabled={ia.isPending || pedidoIa.trim().length < 3}
+            disabled={ia.isPending || pedidoIa.trim().length < 2}
           >
             {ia.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Sparkles className="mr-2 h-4 w-4" />
             )}
-            Preencher filtros com IA
+            Enviar
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => ia.mutate("aplicar")}
+            disabled={ia.isPending || conversa.length === 0}
+          >
+            Aplicar filtros
+          </Button>
+          {conversa.length > 0 ? (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setConversa([])}>
+              Limpar conversa
+            </Button>
+          ) : null}
           <span className="text-xs text-muted-foreground">
-            A IA só preenche os campos abaixo — nada é consultado até você clicar em buscar.
+            Nada é consultado na API até você clicar em buscar.
           </span>
         </div>
       </div>
+
 
       <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
