@@ -235,6 +235,7 @@ export async function listarEmpresas(input: {
   capitalMax?: number | undefined;
   aberturaDe?: string | undefined;
   aberturaAte?: string | undefined;
+  prospectar?: boolean | undefined;
   page?: number | undefined;
   perPage?: number | undefined;
 }) {

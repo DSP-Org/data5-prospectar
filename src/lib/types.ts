@@ -59,6 +59,7 @@ export type Company = {
   fontes: string[];
 
   status: Status;
+  prospectar: boolean;
   notas: string;
   tags: string[];
   list_id: string | null;
