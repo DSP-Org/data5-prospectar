@@ -193,34 +193,8 @@ function Consulta() {
                 </Button>
               </TabsContent>
 
-              <TabsContent value="chave" className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="chaves">Sites, e-mails ou CNPJs</Label>
-                  <Textarea
-                    id="chaves"
-                    rows={6}
-                    className="font-mono text-sm"
-                    placeholder={"empresa.com.br\ncontato@empresa.com.br\n38.024.964/0001-42"}
-                    value={chaves}
-                    onChange={(e) => setChaves(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Pode misturar site, e-mail e CNPJ na mesma lista. {listaChaves.length}{" "}
-                    identificado(s).
-                  </p>
-                </div>
-                <Button
-                  disabled={listaChaves.length === 0 || carregando}
-                  onClick={() => mutChaves.mutate(listaChaves)}
-                >
-                  {mutChaves.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Buscar {listaChaves.length > 1 ? `${listaChaves.length} chaves` : ""}
-                </Button>
-              </TabsContent>
+
+
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
                 <Tabs value={subAba} onValueChange={setSubAba}>
