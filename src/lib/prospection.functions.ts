@@ -1,9 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 const activityTypeSchema = z.enum(["ligacao", "email", "whatsapp", "reuniao", "tarefa", "nota"]);
 
+async function escopoDe(userId: string) {
+  const { obterEscopo } = await import("./escopo.server");
+  return obterEscopo(userId);
+}
+
 export const listarAtividadesFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -17,12 +25,13 @@ export const listarAtividadesFn = createServerFn({ method: "GET" })
       })
       .parse(d ?? {}),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { listarAtividades } = await import("./repo.server");
-    return listarAtividades(data);
+    return listarAtividades({ ...data, escopo: await escopoDe(context.userId) });
   });
 
 export const criarAtividadeFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -35,12 +44,13 @@ export const criarAtividadeFn = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { criarAtividade } = await import("./repo.server");
-    return criarAtividade(data);
+    return criarAtividade(data, await escopoDe(context.userId));
   });
 
 export const atualizarAtividadeFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -52,30 +62,34 @@ export const atualizarAtividadeFn = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { atualizarAtividade } = await import("./repo.server");
-    return atualizarAtividade(data.id, data);
+    return atualizarAtividade(data.id, data, await escopoDe(context.userId));
   });
 
 export const excluirAtividadeFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { excluirAtividade } = await import("./repo.server");
-    return excluirAtividade(data.id);
+    return excluirAtividade(data.id, await escopoDe(context.userId));
   });
 
-export const funilDadosFn = createServerFn({ method: "GET" }).handler(async () => {
-  const { funilDados } = await import("./repo.server");
-  return funilDados();
-});
+export const funilDadosFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { funilDados } = await import("./repo.server");
+    return funilDados(await escopoDe(context.userId));
+  });
 
 export const relatorioAtividadesFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({ de: z.string().max(10).optional(), ate: z.string().max(10).optional() })
       .parse(d ?? {}),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { relatorioAtividades } = await import("./repo.server");
-    return relatorioAtividades(data);
+    return relatorioAtividades({ ...data, escopo: await escopoDe(context.userId) });
   });

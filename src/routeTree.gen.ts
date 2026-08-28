@@ -9,109 +9,147 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AtividadesRouteImport } from './routes/atividades'
-import { Route as CalculadoraRouteImport } from './routes/calculadora'
-import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as ConsultaRouteImport } from './routes/consulta'
-import { Route as FunilRouteImport } from './routes/funil'
-import { Route as ListasRouteImport } from './routes/listas'
-import { Route as RelatoriosRouteImport } from './routes/relatorios'
-import { Route as EmpresasIndexRouteImport } from './routes/empresas/index'
-import { Route as EmpresasCnpjRouteImport } from './routes/empresas/$cnpj'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAtividadesRouteImport } from './routes/_authenticated/atividades'
+import { Route as AuthenticatedCalculadoraRouteImport } from './routes/_authenticated/calculadora'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
+import { Route as AuthenticatedConsultaRouteImport } from './routes/_authenticated/consulta'
+import { Route as AuthenticatedFunilRouteImport } from './routes/_authenticated/funil'
+import { Route as AuthenticatedListasRouteImport } from './routes/_authenticated/listas'
+import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
+import { Route as AuthenticatedUnidadesRouteImport } from './routes/_authenticated/unidades'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
+import { Route as AuthenticatedEmpresasIndexRouteImport } from './routes/_authenticated/empresas/index'
+import { Route as AuthenticatedEmpresasCnpjRouteImport } from './routes/_authenticated/empresas/$cnpj'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AtividadesRoute = AtividadesRouteImport.update({
+const AuthenticatedAtividadesRoute = AuthenticatedAtividadesRouteImport.update({
   id: '/atividades',
   path: '/atividades',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const CalculadoraRoute = CalculadoraRouteImport.update({
-  id: '/calculadora',
-  path: '/calculadora',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConsultaRoute = ConsultaRouteImport.update({
+const AuthenticatedCalculadoraRoute =
+  AuthenticatedCalculadoraRouteImport.update({
+    id: '/calculadora',
+    path: '/calculadora',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedConsultaRoute = AuthenticatedConsultaRouteImport.update({
   id: '/consulta',
   path: '/consulta',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const FunilRoute = FunilRouteImport.update({
+const AuthenticatedFunilRoute = AuthenticatedFunilRouteImport.update({
   id: '/funil',
   path: '/funil',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ListasRoute = ListasRouteImport.update({
+const AuthenticatedListasRoute = AuthenticatedListasRouteImport.update({
   id: '/listas',
   path: '/listas',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const RelatoriosRoute = RelatoriosRouteImport.update({
+const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const EmpresasIndexRoute = EmpresasIndexRouteImport.update({
-  id: '/empresas/',
-  path: '/empresas/',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedUnidadesRoute = AuthenticatedUnidadesRouteImport.update({
+  id: '/unidades',
+  path: '/unidades',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const EmpresasCnpjRoute = EmpresasCnpjRouteImport.update({
-  id: '/empresas/$cnpj',
-  path: '/empresas/$cnpj',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEmpresasIndexRoute =
+  AuthenticatedEmpresasIndexRouteImport.update({
+    id: '/empresas/',
+    path: '/empresas/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedEmpresasCnpjRoute =
+  AuthenticatedEmpresasCnpjRouteImport.update({
+    id: '/empresas/$cnpj',
+    path: '/empresas/$cnpj',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/atividades': typeof AtividadesRoute
-  '/calculadora': typeof CalculadoraRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/consulta': typeof ConsultaRoute
-  '/funil': typeof FunilRoute
-  '/listas': typeof ListasRoute
-  '/relatorios': typeof RelatoriosRoute
-  '/empresas/$cnpj': typeof EmpresasCnpjRoute
-  '/empresas/': typeof EmpresasIndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/atividades': typeof AuthenticatedAtividadesRoute
+  '/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/consulta': typeof AuthenticatedConsultaRoute
+  '/funil': typeof AuthenticatedFunilRoute
+  '/listas': typeof AuthenticatedListasRoute
+  '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/unidades': typeof AuthenticatedUnidadesRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/empresas/$cnpj': typeof AuthenticatedEmpresasCnpjRoute
+  '/empresas/': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/atividades': typeof AtividadesRoute
-  '/calculadora': typeof CalculadoraRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/consulta': typeof ConsultaRoute
-  '/funil': typeof FunilRoute
-  '/listas': typeof ListasRoute
-  '/relatorios': typeof RelatoriosRoute
-  '/empresas/$cnpj': typeof EmpresasCnpjRoute
-  '/empresas': typeof EmpresasIndexRoute
+  '/auth': typeof AuthRoute
+  '/atividades': typeof AuthenticatedAtividadesRoute
+  '/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/consulta': typeof AuthenticatedConsultaRoute
+  '/funil': typeof AuthenticatedFunilRoute
+  '/listas': typeof AuthenticatedListasRoute
+  '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/unidades': typeof AuthenticatedUnidadesRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/empresas/$cnpj': typeof AuthenticatedEmpresasCnpjRoute
+  '/empresas': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/atividades': typeof AtividadesRoute
-  '/calculadora': typeof CalculadoraRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/consulta': typeof ConsultaRoute
-  '/funil': typeof FunilRoute
-  '/listas': typeof ListasRoute
-  '/relatorios': typeof RelatoriosRoute
-  '/empresas/$cnpj': typeof EmpresasCnpjRoute
-  '/empresas/': typeof EmpresasIndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/atividades': typeof AuthenticatedAtividadesRoute
+  '/_authenticated/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/_authenticated/consulta': typeof AuthenticatedConsultaRoute
+  '/_authenticated/funil': typeof AuthenticatedFunilRoute
+  '/_authenticated/listas': typeof AuthenticatedListasRoute
+  '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/_authenticated/unidades': typeof AuthenticatedUnidadesRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/empresas/$cnpj': typeof AuthenticatedEmpresasCnpjRoute
+  '/_authenticated/empresas/': typeof AuthenticatedEmpresasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/atividades'
     | '/calculadora'
     | '/configuracoes'
@@ -119,11 +157,13 @@ export interface FileRouteTypes {
     | '/funil'
     | '/listas'
     | '/relatorios'
+    | '/unidades'
+    | '/usuarios'
     | '/empresas/$cnpj'
     | '/empresas/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/auth'
     | '/atividades'
     | '/calculadora'
     | '/configuracoes'
@@ -131,121 +171,173 @@ export interface FileRouteTypes {
     | '/funil'
     | '/listas'
     | '/relatorios'
+    | '/unidades'
+    | '/usuarios'
+    | '/'
     | '/empresas/$cnpj'
     | '/empresas'
   id:
     | '__root__'
-    | '/'
-    | '/atividades'
-    | '/calculadora'
-    | '/configuracoes'
-    | '/consulta'
-    | '/funil'
-    | '/listas'
-    | '/relatorios'
-    | '/empresas/$cnpj'
-    | '/empresas/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/atividades'
+    | '/_authenticated/calculadora'
+    | '/_authenticated/configuracoes'
+    | '/_authenticated/consulta'
+    | '/_authenticated/funil'
+    | '/_authenticated/listas'
+    | '/_authenticated/relatorios'
+    | '/_authenticated/unidades'
+    | '/_authenticated/usuarios'
+    | '/_authenticated/'
+    | '/_authenticated/empresas/$cnpj'
+    | '/_authenticated/empresas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AtividadesRoute: typeof AtividadesRoute
-  CalculadoraRoute: typeof CalculadoraRoute
-  ConfiguracoesRoute: typeof ConfiguracoesRoute
-  ConsultaRoute: typeof ConsultaRoute
-  FunilRoute: typeof FunilRoute
-  ListasRoute: typeof ListasRoute
-  RelatoriosRoute: typeof RelatoriosRoute
-  EmpresasCnpjRoute: typeof EmpresasCnpjRoute
-  EmpresasIndexRoute: typeof EmpresasIndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/atividades': {
-      id: '/atividades'
+    '/_authenticated/atividades': {
+      id: '/_authenticated/atividades'
       path: '/atividades'
       fullPath: '/atividades'
-      preLoaderRoute: typeof AtividadesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedAtividadesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/calculadora': {
-      id: '/calculadora'
+    '/_authenticated/calculadora': {
+      id: '/_authenticated/calculadora'
       path: '/calculadora'
       fullPath: '/calculadora'
-      preLoaderRoute: typeof CalculadoraRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCalculadoraRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/configuracoes': {
-      id: '/configuracoes'
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
       path: '/configuracoes'
       fullPath: '/configuracoes'
-      preLoaderRoute: typeof ConfiguracoesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/consulta': {
-      id: '/consulta'
+    '/_authenticated/consulta': {
+      id: '/_authenticated/consulta'
       path: '/consulta'
       fullPath: '/consulta'
-      preLoaderRoute: typeof ConsultaRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedConsultaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/funil': {
-      id: '/funil'
+    '/_authenticated/funil': {
+      id: '/_authenticated/funil'
       path: '/funil'
       fullPath: '/funil'
-      preLoaderRoute: typeof FunilRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedFunilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/listas': {
-      id: '/listas'
+    '/_authenticated/listas': {
+      id: '/_authenticated/listas'
       path: '/listas'
       fullPath: '/listas'
-      preLoaderRoute: typeof ListasRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedListasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/relatorios': {
-      id: '/relatorios'
+    '/_authenticated/relatorios': {
+      id: '/_authenticated/relatorios'
       path: '/relatorios'
       fullPath: '/relatorios'
-      preLoaderRoute: typeof RelatoriosRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/empresas/': {
-      id: '/empresas/'
+    '/_authenticated/unidades': {
+      id: '/_authenticated/unidades'
+      path: '/unidades'
+      fullPath: '/unidades'
+      preLoaderRoute: typeof AuthenticatedUnidadesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/empresas/': {
+      id: '/_authenticated/empresas/'
       path: '/empresas'
       fullPath: '/empresas/'
-      preLoaderRoute: typeof EmpresasIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedEmpresasIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/empresas/$cnpj': {
-      id: '/empresas/$cnpj'
+    '/_authenticated/empresas/$cnpj': {
+      id: '/_authenticated/empresas/$cnpj'
       path: '/empresas/$cnpj'
       fullPath: '/empresas/$cnpj'
-      preLoaderRoute: typeof EmpresasCnpjRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedEmpresasCnpjRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAtividadesRoute: typeof AuthenticatedAtividadesRoute
+  AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
+  AuthenticatedConsultaRoute: typeof AuthenticatedConsultaRoute
+  AuthenticatedFunilRoute: typeof AuthenticatedFunilRoute
+  AuthenticatedListasRoute: typeof AuthenticatedListasRoute
+  AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
+  AuthenticatedUnidadesRoute: typeof AuthenticatedUnidadesRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedEmpresasCnpjRoute: typeof AuthenticatedEmpresasCnpjRoute
+  AuthenticatedEmpresasIndexRoute: typeof AuthenticatedEmpresasIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAtividadesRoute: AuthenticatedAtividadesRoute,
+  AuthenticatedCalculadoraRoute: AuthenticatedCalculadoraRoute,
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
+  AuthenticatedConsultaRoute: AuthenticatedConsultaRoute,
+  AuthenticatedFunilRoute: AuthenticatedFunilRoute,
+  AuthenticatedListasRoute: AuthenticatedListasRoute,
+  AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
+  AuthenticatedUnidadesRoute: AuthenticatedUnidadesRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedEmpresasCnpjRoute: AuthenticatedEmpresasCnpjRoute,
+  AuthenticatedEmpresasIndexRoute: AuthenticatedEmpresasIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AtividadesRoute: AtividadesRoute,
-  CalculadoraRoute: CalculadoraRoute,
-  ConfiguracoesRoute: ConfiguracoesRoute,
-  ConsultaRoute: ConsultaRoute,
-  FunilRoute: FunilRoute,
-  ListasRoute: ListasRoute,
-  RelatoriosRoute: RelatoriosRoute,
-  EmpresasCnpjRoute: EmpresasCnpjRoute,
-  EmpresasIndexRoute: EmpresasIndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
