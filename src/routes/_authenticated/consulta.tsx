@@ -2,18 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertCircle, ExternalLink, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   consultarChavesFn,
   consultarCnpjsFn,
-  listarEmpresasFn,
   listarListasFn,
-  opcoesFiltroFn,
 } from "@/lib/econodata.functions";
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
-import { formatCnpj, STATUSES, STATUS_LABEL, type Company, type LookupItem } from "@/lib/types";
+import { formatCnpj, type LookupItem } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,20 +57,11 @@ function Consulta() {
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
-  const [filtrosAtivos, setFiltrosAtivos] = useState<Filtros | null>(null);
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
-  const opcoes = useQuery({ queryKey: ["opcoes-filtro"], queryFn: () => opcoesFiltroFn() });
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
   const consultarChaves = useServerFn(consultarChavesFn);
-  const listarEmpresas = useServerFn(listarEmpresasFn);
 
-  const baseQuery = useQuery({
-    queryKey: ["busca-avancada", filtrosAtivos],
-    enabled: filtrosAtivos !== null,
-    queryFn: () => listarEmpresas({ data: { ...montarFiltros(filtrosAtivos!), perPage: 50 } }),
-  });
 
   const alvoLista = listId === "nenhuma" ? null : listId;
 
@@ -262,194 +251,8 @@ function Consulta() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4" /> Busca avançada na sua base
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Campo label="Nome / CNPJ">
-              <Input
-                value={filtros.busca}
-                onChange={(e) => setFiltros({ ...filtros, busca: e.target.value })}
-                placeholder="razão social, fantasia ou CNPJ"
-              />
-            </Campo>
-            <Campo label="CNAE (código ou descrição)">
-              <Input
-                value={filtros.cnae}
-                onChange={(e) => setFiltros({ ...filtros, cnae: e.target.value })}
-                placeholder="ex.: 6201-5 ou software"
-              />
-            </Campo>
-            <Campo label="Cidade">
-              <Input
-                value={filtros.cidade}
-                onChange={(e) => setFiltros({ ...filtros, cidade: e.target.value })}
-                placeholder="ex.: Curitiba"
-              />
-            </Campo>
-            <Campo label="Bairro">
-              <Input
-                value={filtros.bairro}
-                onChange={(e) => setFiltros({ ...filtros, bairro: e.target.value })}
-              />
-            </Campo>
-            <Campo label="Estado">
-              <Combo
-                value={filtros.uf}
-                onChange={(v) => setFiltros({ ...filtros, uf: v })}
-                todos="Todos os estados"
-                itens={opcoes.data?.ufs ?? []}
-              />
-            </Campo>
-            <Campo label="Porte estimado">
-              <Combo
-                value={filtros.porte}
-                onChange={(v) => setFiltros({ ...filtros, porte: v })}
-                todos="Todos os portes"
-                itens={opcoes.data?.portes ?? []}
-              />
-            </Campo>
-            <Campo label="Situação cadastral">
-              <Combo
-                value={filtros.situacao}
-                onChange={(v) => setFiltros({ ...filtros, situacao: v })}
-                todos="Todas as situações"
-                itens={opcoes.data?.situacoes ?? []}
-              />
-            </Campo>
-            <Campo label="Setor">
-              <Combo
-                value={filtros.setor}
-                onChange={(v) => setFiltros({ ...filtros, setor: v })}
-                todos="Todos os setores"
-                itens={opcoes.data?.setores ?? []}
-              />
-            </Campo>
-            <Campo label="Natureza jurídica">
-              <Input
-                value={filtros.naturezaJuridica}
-                onChange={(e) => setFiltros({ ...filtros, naturezaJuridica: e.target.value })}
-                placeholder="ex.: Limitada"
-              />
-            </Campo>
-            <Campo label="Status comercial">
-              <Combo
-                value={filtros.status}
-                onChange={(v) => setFiltros({ ...filtros, status: v })}
-                todos="Todos os status"
-                itens={STATUSES.map((st) => st)}
-                rotulo={(v) => STATUS_LABEL[v as keyof typeof STATUS_LABEL] ?? v}
-              />
-            </Campo>
-            <Campo label="Lista">
-              <Combo
-                value={filtros.listId}
-                onChange={(v) => setFiltros({ ...filtros, listId: v })}
-                todos="Todas as listas"
-                itens={(listas.data ?? []).map((l) => l.id)}
-                rotulo={(v) => (listas.data ?? []).find((l) => l.id === v)?.name ?? v}
-              />
-            </Campo>
-            <Campo label="Capital social (R$)">
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="mín."
-                  value={filtros.capitalMin}
-                  onChange={(e) => setFiltros({ ...filtros, capitalMin: e.target.value })}
-                />
-                <Input
-                  type="number"
-                  placeholder="máx."
-                  value={filtros.capitalMax}
-                  onChange={(e) => setFiltros({ ...filtros, capitalMax: e.target.value })}
-                />
-              </div>
-            </Campo>
-            <Campo label="Abertura de">
-              <Input
-                type="date"
-                value={filtros.aberturaDe}
-                onChange={(e) => setFiltros({ ...filtros, aberturaDe: e.target.value })}
-              />
-            </Campo>
-            <Campo label="Abertura até">
-              <Input
-                type="date"
-                value={filtros.aberturaAte}
-                onChange={(e) => setFiltros({ ...filtros, aberturaAte: e.target.value })}
-              />
-            </Campo>
-          </div>
 
-          <div className="flex flex-wrap gap-4">
-            {(
-              [
-                ["comTelefone", "Só com telefone"],
-                ["comEmail", "Só com e-mail"],
-                ["comSite", "Só com site"],
-                ["comDecisor", "Só com sócio/decisor"],
-              ] as const
-            ).map(([campo, rotulo]) => (
-              <label key={campo} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={filtros[campo]}
-                  onCheckedChange={(v) => setFiltros({ ...filtros, [campo]: v === true })}
-                />
-                {rotulo}
-              </label>
-            ))}
-          </div>
 
-          <div className="flex gap-2">
-            <Button onClick={() => setFiltrosAtivos({ ...filtros })}>
-              {baseQuery.isFetching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              Filtrar base
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFiltros(FILTROS_VAZIOS);
-                setFiltrosAtivos(null);
-              }}
-            >
-              Limpar
-            </Button>
-          </div>
-
-          {filtrosAtivos && (
-            <div className="space-y-2 border-t pt-4">
-              <p className="text-sm text-muted-foreground">
-                {baseQuery.data?.total ?? 0} empresa(s) na base com esses filtros.
-              </p>
-              <div className="grid gap-2 md:grid-cols-2">
-                {(baseQuery.data?.empresas ?? []).map((c: Company) => (
-                  <Link
-                    key={c.cnpj}
-                    to="/empresas/$cnpj"
-                    params={{ cnpj: c.cnpj.replace(/\D/g, "") }}
-                    className="rounded-md border p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <p className="text-sm font-medium">{c.razao_social}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{formatCnpj(c.cnpj)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {c.cidade ?? "—"}/{c.uf ?? "—"} · {c.cnae_descricao ?? "—"}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {itens.length > 0 && (
         <section className="space-y-3">
@@ -490,113 +293,6 @@ function Consulta() {
         </section>
       )}
     </div>
-  );
-}
-
-type Filtros = {
-  busca: string;
-  cnae: string;
-  cidade: string;
-  bairro: string;
-  uf: string;
-  porte: string;
-  situacao: string;
-  setor: string;
-  naturezaJuridica: string;
-  status: string;
-  listId: string;
-  capitalMin: string;
-  capitalMax: string;
-  aberturaDe: string;
-  aberturaAte: string;
-  comTelefone: boolean;
-  comEmail: boolean;
-  comSite: boolean;
-  comDecisor: boolean;
-};
-
-const FILTROS_VAZIOS: Filtros = {
-  busca: "",
-  cnae: "",
-  cidade: "",
-  bairro: "",
-  uf: "todos",
-  porte: "todos",
-  situacao: "todos",
-  setor: "todos",
-  naturezaJuridica: "",
-  status: "todos",
-  listId: "todos",
-  capitalMin: "",
-  capitalMax: "",
-  aberturaDe: "",
-  aberturaAte: "",
-  comTelefone: false,
-  comEmail: false,
-  comSite: false,
-  comDecisor: false,
-};
-
-function montarFiltros(f: Filtros) {
-  const out: Record<string, unknown> = {};
-  if (f.busca.trim()) out["busca"] = f.busca.trim();
-  if (f.cnae.trim()) out["cnae"] = f.cnae.trim();
-  if (f.cidade.trim()) out["cidade"] = f.cidade.trim();
-  if (f.bairro.trim()) out["bairro"] = f.bairro.trim();
-  if (f.naturezaJuridica.trim()) out["naturezaJuridica"] = f.naturezaJuridica.trim();
-  if (f.uf !== "todos") out["uf"] = f.uf;
-  if (f.porte !== "todos") out["porte"] = f.porte;
-  if (f.situacao !== "todos") out["situacao"] = f.situacao;
-  if (f.setor !== "todos") out["setor"] = f.setor;
-  if (f.status !== "todos") out["status"] = f.status;
-  if (f.listId !== "todos") out["listId"] = f.listId;
-  if (f.capitalMin) out["capitalMin"] = Number(f.capitalMin);
-  if (f.capitalMax) out["capitalMax"] = Number(f.capitalMax);
-  if (f.aberturaDe) out["aberturaDe"] = f.aberturaDe;
-  if (f.aberturaAte) out["aberturaAte"] = f.aberturaAte;
-  if (f.comTelefone) out["comTelefone"] = true;
-  if (f.comEmail) out["comEmail"] = true;
-  if (f.comSite) out["comSite"] = true;
-  if (f.comDecisor) out["comDecisor"] = true;
-  return out;
-}
-
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function Combo({
-  value,
-  onChange,
-  itens,
-  todos,
-  rotulo,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  itens: string[];
-  todos: string;
-  rotulo?: (v: string) => string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="todos">{todos}</SelectItem>
-        {itens.map((i) => (
-          <SelectItem key={i} value={i}>
-            {rotulo ? rotulo(i) : i}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
