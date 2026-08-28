@@ -24,6 +24,7 @@ export const PAGINAS: Pagina[] = [
   { rota: "/empresas", label: "Base de empresas", grupo: "Geral" },
   { rota: "/listas", label: "Listas", grupo: "Geral" },
   { rota: "/calculadora", label: "Calculadora", grupo: "Geral" },
+  { rota: "/clientes-potenciais", label: "Clientes potenciais", grupo: "Prospectar" },
   { rota: "/funil", label: "Funil", grupo: "Prospectar" },
   { rota: "/atividades", label: "Atividades", grupo: "Prospectar" },
   { rota: "/produtos", label: "Produtos e serviços", grupo: "Prospectar" },
