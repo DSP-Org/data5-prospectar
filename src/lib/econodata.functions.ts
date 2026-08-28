@@ -84,6 +84,7 @@ const filtrosSchema = z.object({
   capitalMax: z.number().nonnegative().optional(),
   aberturaDe: z.string().max(10).optional(),
   aberturaAte: z.string().max(10).optional(),
+  prospectar: z.boolean().optional(),
 });
 
 export const consultarChavesFn = createServerFn({ method: "POST" })
@@ -143,6 +144,7 @@ export const atualizarEmpresaFn = createServerFn({ method: "POST" })
         listId: z.string().uuid().nullable().optional(),
         productId: z.string().uuid().nullable().optional(),
         tags: z.array(z.string().max(40)).max(20).optional(),
+        prospectar: z.boolean().optional(),
       })
       .parse(d),
   )
