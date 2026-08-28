@@ -1,5 +1,6 @@
 // Mescla resultados parciais de várias fontes numa única empresa.
 
+import { canonizarNatureza } from "../natureza-juridica";
 import type { MappedCompany } from "../company-mapper.server";
 import type { SourceId } from "./catalog";
 import type { Partial2 } from "./adapters.server";
