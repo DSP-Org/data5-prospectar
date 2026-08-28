@@ -30,16 +30,22 @@ Novos papéis, substituindo a nomenclatura atual:
 Os papéis existentes são migrados: `master` → Master, `gestor` → Gestor de Equipe, `usuario` → Usuário Prospector.
 
 ### Página `/permissoes` — "Permissões e rotas"
-Página com abas dentro do módulo Administração:
+Nesta fase, "permissão" significa apenas **quais páginas cada usuário pode acessar** (sem níveis ver/editar). Página com abas dentro do módulo Administração:
 
-- **Aba Matriz por papel**: tabela rotas × papéis (Painel, Consulta, Base, Listas, Calculadora, Funil, Atividades, Produtos, Equipe, Relatórios, Unidades, Usuários, Permissões) com marcação de acesso e de nível (ver / editar). Editável apenas pelo master.
-- **Aba Por usuário**: cada pessoa mostra o que herdou do papel, e o master pode **restringir** ou **ampliar** rota a rota; um indicador mostra "herdado", "ampliado" ou "restrito", com botão de voltar ao padrão do papel.
-- **Aba Usuários**: a página de usuários atual passa a viver aqui como aba (criar/editar pessoa, papel, unidades, senha, ativo/inativo). A rota `/usuarios` continua funcionando e redireciona para essa aba, preservando links existentes.
+- **Aba Matriz por papel**: tabela páginas × papéis (Painel, Consulta, Base, Listas, Calculadora, Funil, Atividades, Produtos, Equipe, Relatórios, Unidades, Usuários, Permissões) com um marcador de acesso por célula. Editável apenas pelo master.
+- **Aba Por usuário**: cada pessoa mostra as páginas herdadas do papel, e o master pode **restringir** ou **ampliar** página a página; indicador "herdado", "ampliado" ou "restrito", com botão de voltar ao padrão do papel.
+- **Aba Usuários**: a página de usuários atual passa a viver aqui como aba. A rota `/usuarios` continua funcionando e redireciona para essa aba, preservando links existentes.
+
+### Criação de usuário exige unidade
+- A unidade precisa existir antes: só o master cria unidades em Administração → Unidades.
+- No formulário de criação de usuário, o vínculo com pelo menos uma unidade passa a ser **obrigatório** (exceto para o master).
+- Sem nenhuma unidade cadastrada, o formulário fica bloqueado com aviso e atalho para criar a unidade primeiro.
 
 ### Efeito das permissões
-- O menu lateral mostra apenas os itens permitidos.
-- As rotas protegidas verificam a permissão no servidor; sem acesso, exibem aviso de permissão negada em vez do conteúdo.
+- O menu lateral mostra apenas as páginas permitidas.
+- As páginas verificam a permissão no servidor; sem acesso, exibem aviso de permissão negada em vez do conteúdo.
 - Ações sensíveis (criar unidade, gerenciar permissões) continuam exclusivas do master, independentemente da matriz.
+
 
 ## Detalhes técnicos
 
