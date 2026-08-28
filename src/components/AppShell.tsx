@@ -15,6 +15,7 @@ import {
   Tags,
   Target,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 

@@ -16,6 +16,7 @@ import { Route as AuthenticatedAtividadesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedCalculadoraRouteImport } from './routes/_authenticated/calculadora'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedConsultaRouteImport } from './routes/_authenticated/consulta'
+import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
 import { Route as AuthenticatedFunilRouteImport } from './routes/_authenticated/funil'
 import { Route as AuthenticatedListasRouteImport } from './routes/_authenticated/listas'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
@@ -58,6 +59,11 @@ const AuthenticatedConfiguracoesRoute =
 const AuthenticatedConsultaRoute = AuthenticatedConsultaRouteImport.update({
   id: '/consulta',
   path: '/consulta',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEquipeRoute = AuthenticatedEquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFunilRoute = AuthenticatedFunilRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/calculadora': typeof AuthenticatedCalculadoraRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consulta': typeof AuthenticatedConsultaRoute
+  '/equipe': typeof AuthenticatedEquipeRoute
   '/funil': typeof AuthenticatedFunilRoute
   '/listas': typeof AuthenticatedListasRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/calculadora': typeof AuthenticatedCalculadoraRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consulta': typeof AuthenticatedConsultaRoute
+  '/equipe': typeof AuthenticatedEquipeRoute
   '/funil': typeof AuthenticatedFunilRoute
   '/listas': typeof AuthenticatedListasRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/_authenticated/calculadora': typeof AuthenticatedCalculadoraRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/consulta': typeof AuthenticatedConsultaRoute
+  '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
   '/_authenticated/funil': typeof AuthenticatedFunilRoute
   '/_authenticated/listas': typeof AuthenticatedListasRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/calculadora'
     | '/configuracoes'
     | '/consulta'
+    | '/equipe'
     | '/funil'
     | '/listas'
     | '/relatorios'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/calculadora'
     | '/configuracoes'
     | '/consulta'
+    | '/equipe'
     | '/funil'
     | '/listas'
     | '/relatorios'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calculadora'
     | '/_authenticated/configuracoes'
     | '/_authenticated/consulta'
+    | '/_authenticated/equipe'
     | '/_authenticated/funil'
     | '/_authenticated/listas'
     | '/_authenticated/relatorios'
@@ -250,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConsultaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/equipe': {
+      id: '/_authenticated/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof AuthenticatedEquipeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/funil': {
       id: '/_authenticated/funil'
       path: '/funil'
@@ -307,6 +326,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConsultaRoute: typeof AuthenticatedConsultaRoute
+  AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
   AuthenticatedFunilRoute: typeof AuthenticatedFunilRoute
   AuthenticatedListasRoute: typeof AuthenticatedListasRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
@@ -322,6 +342,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalculadoraRoute: AuthenticatedCalculadoraRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConsultaRoute: AuthenticatedConsultaRoute,
+  AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
   AuthenticatedFunilRoute: AuthenticatedFunilRoute,
   AuthenticatedListasRoute: AuthenticatedListasRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
