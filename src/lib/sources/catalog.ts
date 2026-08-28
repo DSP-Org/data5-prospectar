@@ -36,7 +36,7 @@ export const SOURCES: SourceMeta[] = [
   {
     id: "cnpja",
     label: "CNPJá",
-    descricao: "Cadastral completo com telefones e e-mails da Receita. Requer chave da conta CNPJá.",
+    descricao: "Cadastral completo com telefones e e-mails da Receita. Usa a base em cache da CNPJá (sem consumir crédito) e só vai online quando o dado passa da validade configurada.",
     requiresKey: true,
     defaultEnabled: false,
     contatos: true,
