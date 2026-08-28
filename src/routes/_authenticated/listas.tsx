@@ -40,7 +40,7 @@ export const Route = createFileRoute("/_authenticated/listas")({
 function Listas() {
   const qc = useQueryClient();
   const [nome, setNome] = useState("");
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const semLista = useQuery({ queryKey: ["sem-lista"], queryFn: () => contarSemListaFn() });
   const criar = useServerFn(criarListaFn);
   const excluir = useServerFn(excluirListaFn);

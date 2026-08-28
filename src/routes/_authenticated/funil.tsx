@@ -48,7 +48,7 @@ function Funil() {
     queryKey: ["funil", unidade],
     queryFn: () => funilDadosFn({ data: unidade ? { unidade } : {} }),
   });
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const atualizar = useServerFn(atualizarEmpresaFn);
 
   const [listaId, setListaId] = useState<string>("todas");

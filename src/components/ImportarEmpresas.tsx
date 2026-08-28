@@ -42,7 +42,7 @@ export function ImportarEmpresas() {
   const [enviando, setEnviando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const criarImportacao = useServerFn(criarImportacaoFn);
   const navigate = useNavigate();
   const qc = useQueryClient();

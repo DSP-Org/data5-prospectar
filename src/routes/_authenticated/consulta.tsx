@@ -65,7 +65,7 @@ function Consulta() {
   const [termoPago, setTermoPago] = useState("");
 
 
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
 
 

@@ -249,7 +249,7 @@ function Empresas() {
     grupoNatureza: grupo,
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
   };
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
     queryFn: () => listarEmpresasFn({ data: { ...filtros, page, perPage: 25 } }),

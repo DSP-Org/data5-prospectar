@@ -64,7 +64,7 @@ function ClientesPotenciais() {
   const [page, setPage] = useState(1);
 
   const filtros = { busca, status, listId: lista, prospectar: true };
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
   const empresas = useQuery({
     queryKey: ["clientes-potenciais", filtros, page],
     queryFn: () => listarEmpresasFn({ data: { ...filtros, page, perPage: 25 } }),

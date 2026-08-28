@@ -111,7 +111,7 @@ function Detalhe() {
     queryKey: ["empresa", cnpj],
     queryFn: () => obterEmpresaFn({ data: { cnpj } }),
   });
-  const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
+  const listas = useListas();
 
   const atualizar = useServerFn(atualizarEmpresaFn);
   const excluir = useServerFn(excluirEmpresaFn);
