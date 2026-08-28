@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ import {
 } from "@/lib/econodata.functions";
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
 import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
+import { buscarLocalFn } from "@/lib/busca-local.functions";
+
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,9 @@ function Consulta() {
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
+  const [subAba, setSubAba] = useState("ficha");
+  const [termoPago, setTermoPago] = useState("");
+
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
@@ -216,19 +221,26 @@ function Consulta() {
               </TabsContent>
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
-                <Tabs defaultValue="ficha">
+                <Tabs value={subAba} onValueChange={setSubAba}>
                   <TabsList>
-                    <TabsTrigger value="ficha">Ficha por CNPJ (grátis)</TabsTrigger>
+                    <TabsTrigger value="ficha">Buscar por nome ou CNPJ (grátis)</TabsTrigger>
                     <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
                   </TabsList>
                   <TabsContent value="ficha" className="pt-4">
-                    <JanelaCnpja listId={alvoLista} />
+                    <JanelaCnpja
+                      listId={alvoLista}
+                      onEscalar={(termo) => {
+                        setTermoPago(termo);
+                        setSubAba("avancada");
+                      }}
+                    />
                   </TabsContent>
                   <TabsContent value="avancada" className="pt-4">
-                    <BuscaAvancadaCnpja listId={alvoLista} />
+                    <BuscaAvancadaCnpja listId={alvoLista} nomeInicial={termoPago} />
                   </TabsContent>
                 </Tabs>
               </TabsContent>
+
 
             </Tabs>
 
@@ -319,12 +331,37 @@ const BLOCOS = [
 
 type BlocoId = (typeof BLOCOS)[number]["id"];
 
-function JanelaCnpja({ listId }: { listId: string | null }) {
+function JanelaCnpja({
+  listId,
+  onEscalar,
+}: {
+  listId: string | null;
+  onEscalar: (termo: string) => void;
+}) {
   const [cnpj, setCnpj] = useState("");
+  const [termoDebounce, setTermoDebounce] = useState("");
   const [visiveis, setVisiveis] = useState<BlocoId[]>(BLOCOS.map((b) => b.id));
   const consultar = useServerFn(fichaCnpjaAbertaFn);
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
+  const buscarLocal = useServerFn(buscarLocalFn);
   const qc = useQueryClient();
+
+  const digitos = cnpj.replace(/\D/g, "");
+  const ehCnpj = digitos.length === 14;
+  const termoNome = ehCnpj ? "" : cnpj.trim();
+
+  useEffect(() => {
+    const t = setTimeout(() => setTermoDebounce(termoNome), 400);
+    return () => clearTimeout(t);
+  }, [termoNome]);
+
+  // Só consulta a base local do sistema — nunca chama API paga.
+  const locais = useQuery({
+    queryKey: ["busca-local", termoDebounce],
+    queryFn: () => buscarLocal({ data: { termo: termoDebounce, limite: 20 } }),
+    enabled: termoDebounce.length >= 2,
+    staleTime: 30_000,
+  });
 
   const busca = useMutation({
     mutationFn: (valor: string) => consultar({ data: { cnpj: valor } }),
@@ -344,22 +381,27 @@ function JanelaCnpja({ listId }: { listId: string | null }) {
   const ficha = busca.data;
   const mostrar = (id: BlocoId) => visiveis.includes(id);
 
+  const abrirFicha = (valor: string) => {
+    setCnpj(formatCnpj(valor));
+    busca.mutate(valor);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[220px] flex-1 space-y-1">
-          <Label htmlFor="cnpja-cnpj">CNPJ</Label>
+          <Label htmlFor="cnpja-cnpj">CNPJ ou nome da empresa</Label>
           <Input
             id="cnpja-cnpj"
             value={cnpj}
             onChange={(e) => setCnpj(e.target.value)}
-            placeholder="00.000.000/0000-00"
+            placeholder="00.000.000/0000-00 ou parte do nome"
             onKeyDown={(e) => {
-              if (e.key === "Enter" && cnpj.trim()) busca.mutate(cnpj);
+              if (e.key === "Enter" && ehCnpj) busca.mutate(cnpj);
             }}
           />
         </div>
-        <Button onClick={() => busca.mutate(cnpj)} disabled={!cnpj.trim() || busca.isPending}>
+        <Button onClick={() => busca.mutate(cnpj)} disabled={!ehCnpj || busca.isPending}>
           {busca.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -378,10 +420,69 @@ function JanelaCnpja({ listId }: { listId: string | null }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Consulta pública e gratuita do CNPJá, sem consumo de créditos. Ao clicar em “Salvar na
-        base”, a empresa é gravada e enriquecida pelas demais fontes (respeitando cache e Modo
-        Econômico), na lista selecionada acima.
+        Digitando um nome, o sistema filtra a sua própria base de empresas — sem consumir créditos.
+        Digitando um CNPJ completo, a ficha pública e gratuita do CNPJá é consultada e pode ser
+        salva na lista selecionada acima (respeitando cache e Modo Econômico).
       </p>
+
+      {termoNome.length >= 2 && (
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">
+              Resultados na base local
+              {locais.data ? ` · ${locais.data.total}` : ""}
+            </p>
+            {locais.isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
+          </div>
+
+          {locais.data?.itens.length ? (
+            <ul className="divide-y">
+              {locais.data.itens.map((e) => (
+                <li key={e.cnpj} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{e.razaoSocial}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {formatCnpj(e.cnpj)}
+                      {e.nomeFantasia ? ` · ${e.nomeFantasia}` : ""}
+                      {e.cidade ? ` · ${e.cidade}${e.uf ? `/${e.uf}` : ""}` : ""}
+                      {e.telefone ? ` · ${e.telefone}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => abrirFicha(e.cnpj)}>
+                      Ver ficha
+                    </Button>
+                    <Button asChild size="sm" variant="ghost">
+                      <Link
+                        to="/empresas/$cnpj"
+                        params={{ cnpj: e.cnpj.replace(/\D/g, "") }}
+                      >
+                        Abrir
+                      </Link>
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            !locais.isFetching && (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma empresa com esse nome na base local.
+              </p>
+            )
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button size="sm" variant="secondary" onClick={() => onEscalar(termoNome)}>
+              Procurar nas fontes pagas
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Só consome crédito ao clicar em “Buscar” na busca avançada.
+            </span>
+          </div>
+        </div>
+      )}
+
 
       <div className="flex flex-wrap gap-4 rounded-md border bg-muted/30 p-3">
         {BLOCOS.map((b) => (
@@ -596,10 +697,21 @@ const FILTROS_INICIAIS: FiltrosCnpja = {
   limite: "20",
 };
 
-function BuscaAvancadaCnpja({ listId }: { listId: string | null }) {
+function BuscaAvancadaCnpja({
+  listId,
+  nomeInicial,
+}: {
+  listId: string | null;
+  nomeInicial?: string;
+}) {
   const [f, setF] = useState<FiltrosCnpja>(FILTROS_INICIAIS);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
+  }, [nomeInicial]);
+
   const qc = useQueryClient();
 
   const buscar = useServerFn(buscarCnpjaFn);
