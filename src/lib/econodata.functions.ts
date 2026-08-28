@@ -176,6 +176,21 @@ export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
     return vincularEmpresasLista(data.cnpjs, data.listId, await escopoDe(context.userId));
   });
 
+export const marcarProspectarFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        cnpjs: z.array(z.string().min(14).max(20)).min(1).max(500),
+        valor: z.boolean(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { marcarProspectar } = await import("./repo.server");
+    return marcarProspectar(data.cnpjs, data.valor, await escopoDe(context.userId));
+  });
+
 export const listarListasFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
