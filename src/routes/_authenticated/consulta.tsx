@@ -1131,8 +1131,23 @@ function BuscaAvancadaCnpja({
             ))}
           </div>
         </div>
+        </div>
+        </CollapsibleContent>
+      </Collapsible>
 
+      <Collapsible open={avancadosAbertos} onOpenChange={setAvancadosAbertos}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-between">
+            Filtros avançados (contato, CNAE secundário, Simples, CEP…)
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${avancadosAbertos ? "rotate-180" : ""}`}
+            />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
+
           <Label>Nome fantasia contém</Label>
           <Input value={f.nomeFantasia} onChange={(e) => set("nomeFantasia", e.target.value)} placeholder="Ex.: farmácia" />
         </div>
