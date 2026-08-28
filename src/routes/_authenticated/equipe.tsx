@@ -70,8 +70,6 @@ function EquipePage() {
     queryKey: ["produtos", unidade],
     queryFn: () => listarProdutosFn({ data: unidade ? { unidade } : {} }),
   });
-  const { data: unidades = [] } = useQuery({ queryKey: ["unidades"], queryFn: () => listarUnidadesFn(), enabled: master });
-  const { data: usuarios = [] } = useQuery({ queryKey: ["usuarios"], queryFn: () => listarUsuariosFn(), enabled: master });
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
