@@ -319,14 +319,26 @@ const BLOCOS = [
 
 type BlocoId = (typeof BLOCOS)[number]["id"];
 
-function JanelaCnpja() {
+function JanelaCnpja({ listId }: { listId: string | null }) {
   const [cnpj, setCnpj] = useState("");
   const [visiveis, setVisiveis] = useState<BlocoId[]>(BLOCOS.map((b) => b.id));
   const consultar = useServerFn(fichaCnpjaAbertaFn);
+  const consultarCnpjs = useServerFn(consultarCnpjsFn);
+  const qc = useQueryClient();
 
   const busca = useMutation({
     mutationFn: (valor: string) => consultar({ data: { cnpj: valor } }),
     onError: (e: Error) => toast.error(e.message || "Não foi possível consultar."),
+  });
+
+  const salvar = useMutation({
+    mutationFn: (valor: string) =>
+      consultarCnpjs({ data: { cnpjs: [valor.replace(/\D/g, "")], listId, completo: false } }),
+    onSuccess: () => {
+      toast.success("Empresa salva na base.");
+      void qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao salvar na base."),
   });
 
   const ficha = busca.data;
