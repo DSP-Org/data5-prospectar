@@ -46,6 +46,7 @@ function Funil() {
   const atualizar = useServerFn(atualizarEmpresaFn);
 
   const [listaId, setListaId] = useState<string>("todas");
+  const [grupo, setGrupo] = useState<string>("todas");
   const [busca, setBusca] = useState("");
 
   const mutStatus = useMutation({
