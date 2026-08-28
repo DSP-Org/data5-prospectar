@@ -72,8 +72,8 @@ function Consulta() {
   const alvoLista = listId === "nenhuma" ? null : listId;
 
   const mutCnpjs = useMutation({
-    mutationFn: (cnpjs: string[]) =>
-      consultarCnpjs({ data: { cnpjs, listId: alvoLista, completo: buscaTotal } }),
+    mutationFn: (p: { cnpjs: string[]; completo: boolean }) =>
+      consultarCnpjs({ data: { cnpjs: p.cnpjs, listId: alvoLista, completo: p.completo } }),
     onSuccess: (res) => {
       setItens(res.itens);
       const ok = res.itens.filter((i) => i.encontrada).length;
@@ -88,6 +88,9 @@ function Consulta() {
     .split(/[\s,;]+/)
     .map((v) => v.trim())
     .filter(Boolean);
+
+  const cnpjUnicoLimpo = cnpjUnico.trim();
+
 
   const carregando = mutCnpjs.isPending;
 
