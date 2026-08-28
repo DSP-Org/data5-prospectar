@@ -10,9 +10,17 @@ export type LoteResultado = Map<string, Partial2>;
 
 export type TesteResultado = { ok: boolean; mensagem: string };
 
+/** Opções de consumo repassadas às fontes pagas. */
+export type FetchOpts = {
+  /** Idade máxima aceita para dados em cache da fonte, em dias. */
+  maxAgeDias?: number | undefined;
+  /** Modo econômico evita consultas online que debitam crédito. */
+  economico?: boolean | undefined;
+};
+
 export type DataSource = {
   id: SourceId;
-  fetchLote(cnpjs: string[], key?: string | null): Promise<LoteResultado>;
+  fetchLote(cnpjs: string[], key?: string | null, opts?: FetchOpts): Promise<LoteResultado>;
   testar(key?: string | null): Promise<TesteResultado>;
 };
 
@@ -47,6 +55,30 @@ async function getJson(url: string, headers?: Record<string, string>, timeoutMs 
     return (await res.json()) as unknown;
   } catch {
     return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** Igual ao getJson, mas expõe o status HTTP (usado para tratar 429/limites). */
+async function getJsonStatus(
+  url: string,
+  headers?: Record<string, string>,
+  timeoutMs = 15000,
+): Promise<{ status: number; json: unknown }> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: headers ?? {}, signal: ctrl.signal });
+    let json: unknown = null;
+    try {
+      json = await res.json();
+    } catch {
+      json = null;
+    }
+    return { status: res.status, json };
+  } catch {
+    return { status: 0, json: null };
   } finally {
     clearTimeout(t);
   }
@@ -312,27 +344,66 @@ function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
   };
 }
 
+/**
+ * Estratégias de consumo da CNPJá:
+ * - CACHE: só base local da CNPJá, nunca debita crédito (404 quando não há dado).
+ * - CACHE_IF_FRESH: usa cache dentro de maxAge; fora dele consulta online (debita).
+ * - CACHE_IF_ERROR: tenta online e cai no cache se o órgão público estiver fora.
+ */
+type CnpjaStrategy = "CACHE" | "CACHE_IF_FRESH" | "CACHE_IF_ERROR" | "ONLINE";
+
+function cnpjaUrl(cnpj: string, strategy: CnpjaStrategy, maxAgeDias: number) {
+  const p = new URLSearchParams({ strategy });
+  if (strategy === "CACHE_IF_FRESH" || strategy === "CACHE_IF_ERROR") {
+    p.set("maxAge", String(Math.max(1, Math.min(365, Math.round(maxAgeDias)))));
+    p.set("maxStale", "365");
+  }
+  return `https://api.cnpja.com/office/${digitos(cnpj)}?${p.toString()}`;
+}
+
 const cnpja: DataSource = {
   id: "cnpja",
-  async fetchLote(cnpjs, key) {
+  async fetchLote(cnpjs, key, opts) {
     const out: LoteResultado = new Map();
     if (!key) return out;
+    // Modo econômico: prioriza a base em cache da CNPJá (sem consumo de crédito).
+    const strategy: CnpjaStrategy = opts?.economico ? "CACHE_IF_FRESH" : "CACHE_IF_ERROR";
+    const maxAge = opts?.maxAgeDias && opts.maxAgeDias > 0 ? opts.maxAgeDias : 45;
+    let limite: string | null = null;
     await comLimite(cnpjs, 3, async (cnpj) => {
-      const json = (await getJson(`https://api.cnpja.com/office/${digitos(cnpj)}`, {
-        Authorization: key,
-      })) as CnpjaResp | null;
+      if (limite) return;
+      const res = await getJsonStatus(cnpjaUrl(cnpj, strategy, maxAge), { Authorization: key });
+      if (res.status === 429) {
+        const msg = String((res.json as { message?: string } | null)?.message ?? "");
+        limite = msg.includes("rate limit")
+          ? "CNPJá: limite de requisições por minuto atingido."
+          : "CNPJá: créditos esgotados no plano atual.";
+        return;
+      }
+      const json = res.json as CnpjaResp | null;
       if (json?.company?.name) out.set(cnpj, mapCnpja(json, cnpj));
     });
+    if (limite) throw new Error(limite);
     return out;
   },
   async testar(key) {
     if (!key) return { ok: false, mensagem: "Informe a chave da CNPJá." };
-    const json = (await getJson("https://api.cnpja.com/office/00000000000191", {
-      Authorization: key,
-    })) as CnpjaResp | null;
-    return json?.company?.name
-      ? { ok: true, mensagem: "Chave CNPJá válida." }
-      : { ok: false, mensagem: "Chave inválida ou sem crédito na CNPJá." };
+    // Teste com strategy=CACHE: valida a chave sem debitar crédito.
+    const res = await getJsonStatus(cnpjaUrl("00000000000191", "CACHE", 45), { Authorization: key });
+    if (res.status === 401 || res.status === 403) return { ok: false, mensagem: "Chave CNPJá inválida." };
+    if (res.status === 429) {
+      const msg = String((res.json as { message?: string } | null)?.message ?? "");
+      return {
+        ok: false,
+        mensagem: msg.includes("rate limit")
+          ? "Chave válida, mas o limite de requisições por minuto foi atingido."
+          : "Chave válida, porém sem créditos disponíveis.",
+      };
+    }
+    if (res.status === 404) return { ok: true, mensagem: "Chave CNPJá válida (consulta em cache, sem consumo)." };
+    return (res.json as CnpjaResp | null)?.company?.name
+      ? { ok: true, mensagem: "Chave CNPJá válida (consulta em cache, sem consumo)." }
+      : { ok: false, mensagem: "Não foi possível validar a chave na CNPJá." };
   },
 };
 
