@@ -104,9 +104,26 @@ function AuthPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Acesso</CardTitle>
-            <CardDescription>Entre com seu e-mail e senha.</CardDescription>
+            <CardDescription>Entre com sua conta Google ou com e-mail e senha.</CardDescription>
           </CardHeader>
           <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              className="mb-3 w-full"
+              disabled={carregando}
+              onClick={() => void entrarComGoogle()}
+            >
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2 6.9 2.2 2.8 6.3 2.8 11.4S6.9 20.6 12 20.6c5.6 0 9.3-3.9 9.3-9.4 0-.6-.06-1-.14-1.5H12z" />
+              </svg>
+              Continuar com Google
+            </Button>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">ou</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
             <Tabs defaultValue="entrar">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="entrar">Entrar</TabsTrigger>
