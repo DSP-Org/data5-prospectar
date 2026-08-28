@@ -1,15 +1,18 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export type Papel = "master" | "gestor" | "usuario";
+export type Papel = "master" | "admin_unidade" | "gestor" | "usuario";
 
 export type Escopo = {
   userId: string;
   master: boolean;
   papel: Papel;
+  papeis: Papel[];
   /** Unidades que o usuário pode enxergar. */
   unitIds: string[];
   /** Unidade usada para gravar novos registros. */
   unidadeAtiva: string | null;
+  /** Páginas que o usuário pode acessar. */
+  rotas: string[];
 };
 
 /** Monta o escopo de acesso do usuário logado. */
@@ -21,7 +24,13 @@ export async function obterEscopo(userId: string, unidadeSolicitada?: string | n
 
   const papeis = (roles ?? []).map((r) => r.role as Papel);
   const master = papeis.includes("master");
-  const papel: Papel = master ? "master" : papeis.includes("gestor") ? "gestor" : "usuario";
+  const papel: Papel = master
+    ? "master"
+    : papeis.includes("admin_unidade")
+      ? "admin_unidade"
+      : papeis.includes("gestor")
+        ? "gestor"
+        : "usuario";
 
   let unitIds: string[];
   if (master) {
@@ -34,7 +43,10 @@ export async function obterEscopo(userId: string, unidadeSolicitada?: string | n
   const unidadeAtiva =
     unidadeSolicitada && unitIds.includes(unidadeSolicitada) ? unidadeSolicitada : (unitIds[0] ?? null);
 
-  return { userId, master, papel, unitIds, unidadeAtiva };
+  const { rotasEfetivas } = await import("./permissoes.server");
+  const rotas = await rotasEfetivas(userId, papeis.length ? papeis : ["usuario"], master);
+
+  return { userId, master, papel, papeis: papeis.length ? papeis : ["usuario"], unitIds, unidadeAtiva, rotas };
 }
 
 /** Lista de unidades para filtrar, ou null quando o usuário vê tudo (master). */

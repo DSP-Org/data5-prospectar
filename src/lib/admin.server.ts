@@ -2,6 +2,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { exigirMaster, type Escopo, type Papel } from "./escopo.server";
 
+const PESO_PAPEL: Record<Papel, number> = { usuario: 0, gestor: 1, admin_unidade: 2, master: 3 };
+
 export type Unidade = {
   id: string;
   nome: string;
@@ -117,7 +119,8 @@ export async function listarEquipe(escopo: Escopo) {
 
   const papelDe: Record<string, Papel> = {};
   for (const r of (roles ?? []) as Array<{ user_id: string; role: Papel }>) {
-    if (r.role === "master" || !papelDe[r.user_id]) papelDe[r.user_id] = r.role;
+    const atual = papelDe[r.user_id];
+    if (!atual || PESO_PAPEL[r.role] > PESO_PAPEL[atual]) papelDe[r.user_id] = r.role;
   }
   const unidadesDe: Record<string, string[]> = {};
   for (const v of (vinculos ?? []) as Array<{ user_id: string; unit_id: string }>) {
@@ -161,7 +164,8 @@ export async function listarUsuarios(escopo: Escopo): Promise<UsuarioAdmin[]> {
 
   const papelDe: Record<string, Papel> = {};
   for (const r of (roles ?? []) as Array<{ user_id: string; role: Papel }>) {
-    if (r.role === "master" || !papelDe[r.user_id]) papelDe[r.user_id] = r.role;
+    const atual = papelDe[r.user_id];
+    if (!atual || PESO_PAPEL[r.role] > PESO_PAPEL[atual]) papelDe[r.user_id] = r.role;
   }
   const unidadesDe: Record<string, string[]> = {};
   for (const v of (vinculos ?? []) as Array<{ user_id: string; unit_id: string }>) {
@@ -186,6 +190,9 @@ export async function criarUsuario(
   input: { email: string; senha: string; nome?: string | undefined; papel: Papel; unidades: string[] },
 ) {
   exigirMaster(escopo);
+  if (input.papel !== "master" && input.unidades.length === 0) {
+    throw new Error("Vincule o colaborador a pelo menos uma unidade. Crie a unidade antes do usuário.");
+  }
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email: input.email,
     password: input.senha,

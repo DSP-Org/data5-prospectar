@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const papelSchema = z.enum(["master", "gestor", "usuario"]);
+const papelSchema = z.enum(["master", "admin_unidade", "gestor", "usuario"]);
 
 /** Perfil, papel e unidades do usuário logado. */
 export const meFn = createServerFn({ method: "GET" })
@@ -25,6 +25,7 @@ export const meFn = createServerFn({ method: "GET" })
       nome: perfil?.nome ?? "",
       papel: escopo.papel,
       master: escopo.master,
+      rotas: escopo.rotas,
       unidades: unidades.map((u) => ({ id: u.id, nome: u.nome, cor: u.cor })),
     };
   });

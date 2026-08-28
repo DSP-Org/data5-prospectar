@@ -61,6 +61,7 @@ const filtrosSchema = z.object({
   status: z.string().max(30).optional(),
   uf: z.string().max(10).optional(),
   listId: z.string().max(40).optional(),
+  productId: z.string().max(40).optional(),
   cidade: z.string().max(80).optional(),
   bairro: z.string().max(80).optional(),
   cnae: z.string().max(80).optional(),
@@ -134,6 +135,7 @@ export const atualizarEmpresaFn = createServerFn({ method: "POST" })
         status: statusSchema.optional(),
         notas: z.string().max(5000).optional(),
         listId: z.string().uuid().nullable().optional(),
+        productId: z.string().uuid().nullable().optional(),
         tags: z.array(z.string().max(40)).max(20).optional(),
       })
       .parse(d),

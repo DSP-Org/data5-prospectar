@@ -21,6 +21,7 @@ export const listarAtividadesFn = createServerFn({ method: "GET" })
         ate: z.string().max(10).optional(),
         responsavel: z.string().max(80).optional(),
         pendente: z.boolean().optional(),
+        productId: z.string().max(40).optional(),
         limit: z.number().int().min(1).max(10000).optional(),
       })
       .parse(d ?? {}),
@@ -41,6 +42,7 @@ export const criarAtividadeFn = createServerFn({ method: "POST" })
         responsavel: z.string().max(80).optional(),
         scheduled_at: z.string().max(25).nullable().optional(),
         completed_at: z.string().max(25).nullable().optional(),
+        product_id: z.string().uuid().nullable().optional(),
       })
       .parse(d),
   )
@@ -59,6 +61,7 @@ export const atualizarAtividadeFn = createServerFn({ method: "POST" })
         responsavel: z.string().max(80).optional(),
         scheduled_at: z.string().max(25).nullable().optional(),
         completed_at: z.string().max(25).nullable().optional(),
+        product_id: z.string().uuid().nullable().optional(),
       })
       .parse(d),
   )

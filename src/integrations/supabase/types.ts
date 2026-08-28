@@ -62,6 +62,7 @@ export type Database = {
           notas: string
           numero: string | null
           porte_estimado: string | null
+          product_id: string | null
           qtd_funcionarios_estimada: string | null
           raw: Json
           razao_social: string
@@ -106,6 +107,7 @@ export type Database = {
           notas?: string
           numero?: string | null
           porte_estimado?: string | null
+          product_id?: string | null
           qtd_funcionarios_estimada?: string | null
           raw?: Json
           razao_social?: string
@@ -150,6 +152,7 @@ export type Database = {
           notas?: string
           numero?: string | null
           porte_estimado?: string | null
+          product_id?: string | null
           qtd_funcionarios_estimada?: string | null
           raw?: Json
           razao_social?: string
@@ -171,6 +174,13 @@ export type Database = {
             columns: ["list_id"]
             isOneToOne: false
             referencedRelation: "company_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
@@ -214,6 +224,50 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string
+          id: string
+          nome: string
+          tipo: string
+          unit_id: string | null
+          updated_at: string
+          valor_referencia: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome: string
+          tipo?: string
+          unit_id?: string | null
+          updated_at?: string
+          valor_referencia?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome?: string
+          tipo?: string
+          unit_id?: string | null
+          updated_at?: string
+          valor_referencia?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ativo: boolean
@@ -248,6 +302,7 @@ export type Database = {
           created_at: string
           id: string
           observacao: string
+          product_id: string | null
           responsavel: string | null
           scheduled_at: string | null
           tipo: string
@@ -260,6 +315,7 @@ export type Database = {
           created_at?: string
           id?: string
           observacao?: string
+          product_id?: string | null
           responsavel?: string | null
           scheduled_at?: string | null
           tipo: string
@@ -272,6 +328,7 @@ export type Database = {
           created_at?: string
           id?: string
           observacao?: string
+          product_id?: string | null
           responsavel?: string | null
           scheduled_at?: string | null
           tipo?: string
@@ -285,6 +342,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["cnpj"]
+          },
+          {
+            foreignKeyName: "prospection_activities_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "prospection_activities_unit_id_fkey"
@@ -325,6 +389,27 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          rota: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          rota: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          rota?: string
+        }
+        Relationships: []
+      }
       units: {
         Row: {
           ativa: boolean
@@ -355,6 +440,30 @@ export type Database = {
           nome?: string
           uf?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          created_at: string
+          efeito: string
+          id: string
+          rota: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          efeito?: string
+          id?: string
+          rota: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          efeito?: string
+          id?: string
+          rota?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -424,9 +533,13 @@ export type Database = {
         Args: { _unit_id: string; _user_id: string }
         Returns: boolean
       }
+      pode_acessar: {
+        Args: { _rota: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "master" | "gestor" | "usuario"
+      app_role: "master" | "gestor" | "usuario" | "admin_unidade"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -554,7 +667,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["master", "gestor", "usuario"],
+      app_role: ["master", "gestor", "usuario", "admin_unidade"],
     },
   },
 } as const
