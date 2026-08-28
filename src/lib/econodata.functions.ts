@@ -27,6 +27,8 @@ export const consultarCnpjsFn = createServerFn({ method: "POST" })
         unitId: z.string().uuid().nullable().optional(),
         salvar: z.boolean().optional(),
         forcar: z.boolean().optional(),
+        completo: z.boolean().optional(),
+
       })
       .parse(d),
   )
