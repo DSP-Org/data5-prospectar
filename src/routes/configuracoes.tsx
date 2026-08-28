@@ -25,12 +25,12 @@ export const Route = createFileRoute("/configuracoes")({
       { title: "Configurações | Prospectar360" },
       {
         name: "description",
-        content: "Configure a integração com a API Econodata no Prospectar360.",
+        content: "Configure as fontes de dados e chaves de integração do Prospectar360.",
       },
       { property: "og:title", content: "Configurações | Prospectar360" },
       {
         property: "og:description",
-        content: "Gerencie a chave da API Econodata usada para enriquecer empresas.",
+        content: "Gerencie as fontes de dados usadas para enriquecer empresas.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://data5-prospectar.lovable.app/configuracoes" },
@@ -38,6 +38,7 @@ export const Route = createFileRoute("/configuracoes")({
     ],
     links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/configuracoes" }],
   }),
+
   component: Configuracoes,
 });
 
@@ -103,21 +104,23 @@ function Configuracoes() {
       <header>
         <h1 className="text-3xl font-semibold">Configurações</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Gerencie a integração com a API Econodata.
+          Gerencie as fontes de dados e as chaves de integração do Prospectar360.
         </p>
       </header>
+
 
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-primary" />
-            <CardTitle>Chave da API Econodata</CardTitle>
+            <CardTitle>Chave de enriquecimento B2B</CardTitle>
           </div>
           <CardDescription>
-            Cole aqui o token de integração da sua conta. Ele fica armazenado no banco de dados com
-            acesso restrito ao servidor.
+            Token da fonte de enriquecimento com contatos e decisores. As demais fontes (cadastrais e
+            gratuitas) são configuradas abaixo, em Fontes de dados.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={configured ? "default" : "destructive"}>
