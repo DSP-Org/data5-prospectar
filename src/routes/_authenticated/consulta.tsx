@@ -703,6 +703,9 @@ const FILTROS_INICIAIS: FiltrosCnpja = {
   limite: "20",
 };
 
+const normalizar = (v: string) =>
+  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 function BuscaAvancadaCnpja({
   listId,
   nomeInicial,
