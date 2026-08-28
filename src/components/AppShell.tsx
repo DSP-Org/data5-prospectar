@@ -54,6 +54,7 @@ const grupos = [
       { to: "/empresas", label: "Base de Empresas - Geral", icon: Building2 },
       { to: "/listas", label: "Listas", icon: Tags },
       { to: "/calculadora", label: "Calculadora", icon: Calculator },
+      { to: "/importacoes", label: "Importações", icon: Upload },
     ],
   },
   {
