@@ -58,6 +58,9 @@ function Consulta() {
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
+  const [subAba, setSubAba] = useState("ficha");
+  const [termoPago, setTermoPago] = useState("");
+
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
@@ -216,19 +219,26 @@ function Consulta() {
               </TabsContent>
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
-                <Tabs defaultValue="ficha">
+                <Tabs value={subAba} onValueChange={setSubAba}>
                   <TabsList>
-                    <TabsTrigger value="ficha">Ficha por CNPJ (grátis)</TabsTrigger>
+                    <TabsTrigger value="ficha">Buscar por nome ou CNPJ (grátis)</TabsTrigger>
                     <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
                   </TabsList>
                   <TabsContent value="ficha" className="pt-4">
-                    <JanelaCnpja listId={alvoLista} />
+                    <JanelaCnpja
+                      listId={alvoLista}
+                      onEscalar={(termo) => {
+                        setTermoPago(termo);
+                        setSubAba("avancada");
+                      }}
+                    />
                   </TabsContent>
                   <TabsContent value="avancada" className="pt-4">
-                    <BuscaAvancadaCnpja listId={alvoLista} />
+                    <BuscaAvancadaCnpja listId={alvoLista} nomeInicial={termoPago} />
                   </TabsContent>
                 </Tabs>
               </TabsContent>
+
 
             </Tabs>
 
