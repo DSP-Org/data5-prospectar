@@ -100,43 +100,51 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Menu</SidebarGroupLabel>
-            <SidebarMenu>
-              {nav.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
-                    <Link
-                      to={item.to}
-                      activeOptions={{ exact: item.to === "/" }}
-                      className="flex items-center gap-2"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-          <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
-            <SidebarMenu>
-              {navAdmin
-                .filter((item) => !("masterOnly" in item && item.masterOnly) || me?.master)
-                .map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild tooltip={item.label}>
-                      <Link to={item.to} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-          </SidebarGroup>
+          {grupos.map((grupo) => {
+            const items = grupo.items.filter(
+              (item) => !("masterOnly" in item && item.masterOnly) || me?.master,
+            );
+            if (items.length === 0) return null;
+            const aberto = abertos[grupo.id] !== false;
+            return (
+              <Collapsible
+                key={grupo.id}
+                open={aberto}
+                onOpenChange={(v) => setAbertos((s) => ({ ...s, [grupo.id]: v }))}
+              >
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between">
+                      {grupo.label}
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${aberto ? "" : "-rotate-90"}`}
+                      />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarMenu>
+                      {items.map((item) => (
+                        <SidebarMenuItem key={item.to}>
+                          <SidebarMenuButton asChild tooltip={item.label}>
+                            <Link
+                              to={item.to}
+                              activeOptions={{ exact: item.to === "/" }}
+                              className="flex items-center gap-2"
+                            >
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            );
+          })}
         </SidebarContent>
+
         <SidebarFooter className="text-xs text-sidebar-foreground/50">
           Prospectar360 © {new Date().getFullYear()}
         </SidebarFooter>
