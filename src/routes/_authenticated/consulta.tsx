@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { AlertCircle, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
+import { AlertCircle, ChevronDown, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
 
@@ -18,6 +18,11 @@ import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
 import { Combobox, ComboboxMulti } from "@/components/Combobox";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -717,6 +722,8 @@ function BuscaAvancadaCnpja({
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [pedidoIa, setPedidoIa] = useState("");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(true);
+  const [avancadosAbertos, setAvancadosAbertos] = useState(false);
   const [conversa, setConversa] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
 
   useEffect(() => {
