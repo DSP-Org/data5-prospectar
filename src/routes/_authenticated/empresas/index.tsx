@@ -360,6 +360,25 @@ function Empresas() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={grupo}
+            onValueChange={(v) => {
+              setGrupo(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Natureza jurídica" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as naturezas</SelectItem>
+              {Object.entries(GRUPOS_NATUREZA).map(([k, v]) => (
+                <SelectItem key={k} value={k}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
