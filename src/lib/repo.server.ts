@@ -323,10 +323,23 @@ export async function atualizarEmpresa(input: {
   if (input.listId !== undefined) patch["list_id"] = input.listId;
   if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
+  if (input.prospectar !== undefined) patch["prospectar"] = input.prospectar;
   const uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
   const { data, error } = await uq.select("*").maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
+}
+
+/** Marca/desmarca empresas como "prospectar" (clientes potenciais). */
+export async function marcarProspectar(cnpjs: string[], valor: boolean, _escopo: Escopo) {
+  const chaves = cnpjs.map((c) => chave(c));
+  if (chaves.length === 0) return { ok: true, total: 0 };
+  const { error } = await supabaseAdmin
+    .from("companies")
+    .update({ prospectar: valor } as never)
+    .in("cnpj", chaves);
+  if (error) throw new Error(error.message);
+  return { ok: true, total: chaves.length };
 }
 
 export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, _escopo: Escopo) {
