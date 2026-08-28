@@ -2,7 +2,14 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ADAPTERS, type LoteResultado } from "./adapters.server";
-import { DEFAULT_PRIORITY, SOURCES, type SourceConfig, type SourceId } from "./catalog";
+import {
+  DEFAULT_PRIORITY,
+  SOURCES,
+  type EconomiaConfig,
+  type ModoConsulta,
+  type SourceConfig,
+  type SourceId,
+} from "./catalog";
 import { mesclar, type EmpresaMesclada, type EntradaFonte } from "./merge.server";
 
 const LEGACY_ECONODATA_KEY = "econodata_api_key";
@@ -10,6 +17,9 @@ const LEGACY_ECONODATA_KEY = "econodata_api_key";
 const keyKey = (id: SourceId) => (id === "econodata" ? LEGACY_ECONODATA_KEY : `source_${id}_key`);
 const enabledKey = (id: SourceId) => `source_${id}_enabled`;
 const PRIORITY_KEY = "sources_priority";
+const MODE_KEY = "sources_modo";
+const TTL_KEY = "sources_cache_ttl_dias";
+
 
 type Settings = Record<string, string>;
 
