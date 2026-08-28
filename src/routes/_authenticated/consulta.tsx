@@ -12,6 +12,7 @@ import {
   listarListasFn,
   opcoesFiltroFn,
 } from "@/lib/econodata.functions";
+import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
 import { formatCnpj, STATUSES, STATUS_LABEL, type Company, type LookupItem } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
