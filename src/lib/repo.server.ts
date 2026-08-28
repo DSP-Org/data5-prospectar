@@ -239,9 +239,9 @@ export async function listarEmpresas(input: {
 }) {
   const page = Math.max(1, input.page ?? 1);
   const perPage = Math.min(100, input.perPage ?? 25);
+  // A base de empresas pertence ao sistema: não é filtrada pela unidade ativa.
   let q = supabaseAdmin.from("companies").select("*", { count: "exact" });
-  const unidades = unidadesFiltro(input.escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+
 
   if (input.busca?.trim()) {
     const termo = input.busca.trim();
@@ -296,14 +296,13 @@ function chave(cnpj: string) {
   return formatCnpjApi(cnpj) ?? cnpj;
 }
 
-export async function obterEmpresa(cnpj: string, escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function obterEmpresa(cnpj: string, _escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
   const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
+
 
 export async function atualizarEmpresa(input: {
   escopo: Escopo;
