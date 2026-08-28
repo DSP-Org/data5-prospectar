@@ -3,9 +3,9 @@
 
 import { mapCompany, type MappedCompany } from "../company-mapper.server";
 import { buscarPorCnpjs, formatCnpjApi, validarToken, EconodataError } from "../econodata.server";
-import type { SourceId } from "./catalog";
+import type { ModulosCnpja, SourceId } from "./catalog";
 
-export type Partial2 = Partial<MappedCompany>;
+export type Partial2 = Partial<MappedCompany> & { extras?: Record<string, unknown> };
 export type LoteResultado = Map<string, Partial2>;
 
 export type TesteResultado = { ok: boolean; mensagem: string };
@@ -16,6 +16,10 @@ export type FetchOpts = {
   maxAgeDias?: number | undefined;
   /** Modo econômico evita consultas online que debitam crédito. */
   economico?: boolean | undefined;
+  /** Força consulta em tempo real nos órgãos públicos (consome crédito). */
+  online?: boolean | undefined;
+  /** Módulos adicionais pedidos à CNPJá. */
+  modulos?: ModulosCnpja | undefined;
 };
 
 export type DataSource = {
@@ -23,6 +27,7 @@ export type DataSource = {
   fetchLote(cnpjs: string[], key?: string | null, opts?: FetchOpts): Promise<LoteResultado>;
   testar(key?: string | null): Promise<TesteResultado>;
 };
+
 
 const digitos = (v: string) => v.replace(/\D/g, "");
 
