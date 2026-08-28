@@ -157,9 +157,10 @@ function Detalhe() {
 
 
   const mutSync = useMutation({
-    mutationFn: () => reconsultar({ data: { cnpjs: [cnpj], forcar: true } }),
+    mutationFn: (completo: boolean) =>
+      reconsultar({ data: { cnpjs: [cnpj], forcar: true, completo } }),
     onSuccess: () => {
-      toast.success("Dados atualizados na Econodata.");
+      toast.success("Dados atualizados nas fontes ativas.");
       void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -232,13 +233,24 @@ function Detalhe() {
 
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => mutSync.mutate()} disabled={mutSync.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => mutSync.mutate(false)}
+            disabled={mutSync.isPending}
+          >
             {mutSync.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
             Reconsultar
+          </Button>
+          <Button
+            onClick={() => mutSync.mutate(true)}
+            disabled={mutSync.isPending}
+            title="Consulta todas as fontes em tempo real com os módulos extras (consome mais créditos)"
+          >
+            <Sparkles className="h-4 w-4" /> Buscar tudo
           </Button>
           {e.link_detalhe && (
             <Button variant="outline" asChild>
