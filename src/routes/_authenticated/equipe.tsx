@@ -323,52 +323,6 @@ function EquipePage() {
         </div>
       )}
 
-      {master ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Vincular pessoas às unidades</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Marque as unidades de negócio / produto em que cada pessoa trabalha. Para cadastrar novos usuários, use a
-              página <Link to="/usuarios" className="underline">Usuários</Link>.
-            </p>
-            <div className="space-y-3">
-              {usuarios.map((u) => (
-                <div key={u.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-                  <div className="min-w-48 flex-1">
-                    <div className="text-sm font-medium">{u.nome || u.email}</div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {unidades.map((un) => {
-                      const marcada = u.unidades.includes(un.id);
-                      return (
-                        <label key={un.id} className="flex items-center gap-1.5 rounded border px-2 py-1 text-xs">
-                          <Checkbox
-                            checked={marcada}
-                            disabled={vincular.isPending}
-                            onCheckedChange={(c) =>
-                              vincular.mutate({
-                                id: u.id,
-                                unidades: c ? [...u.unidades, un.id] : u.unidades.filter((id) => id !== un.id),
-                              })
-                            }
-                          />
-                          {un.nome}
-                        </label>
-                      );
-                    })}
-                    {unidades.length === 0 ? (
-                      <span className="text-xs text-muted-foreground">Cadastre uma unidade primeiro.</span>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }
