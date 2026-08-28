@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { AlertCircle, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
+import { AlertCircle, ChevronDown, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
 
@@ -18,6 +18,11 @@ import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
 import { Combobox, ComboboxMulti } from "@/components/Combobox";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -717,6 +722,8 @@ function BuscaAvancadaCnpja({
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [pedidoIa, setPedidoIa] = useState("");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(true);
+  const [avancadosAbertos, setAvancadosAbertos] = useState(false);
   const [conversa, setConversa] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
 
   useEffect(() => {
@@ -1013,7 +1020,18 @@ function BuscaAvancadaCnpja({
       </div>
 
 
-      <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
+      <Collapsible open={filtrosAbertos} onOpenChange={setFiltrosAbertos}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-between">
+            Filtros principais
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${filtrosAbertos ? "rotate-180" : ""}`}
+            />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
+
         <div className="space-y-1">
           <Label>Nome / razão social contém</Label>
           <Input value={f.nome} onChange={(e) => set("nome", e.target.value)} placeholder="Ex.: transportes" />
@@ -1131,8 +1149,23 @@ function BuscaAvancadaCnpja({
             ))}
           </div>
         </div>
+        </div>
+        </CollapsibleContent>
+      </Collapsible>
 
+      <Collapsible open={avancadosAbertos} onOpenChange={setAvancadosAbertos}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-between">
+            Filtros avançados (contato, CNAE secundário, Simples, CEP…)
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${avancadosAbertos ? "rotate-180" : ""}`}
+            />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
+
           <Label>Nome fantasia contém</Label>
           <Input value={f.nomeFantasia} onChange={(e) => set("nomeFantasia", e.target.value)} placeholder="Ex.: farmácia" />
         </div>
@@ -1254,7 +1287,10 @@ function BuscaAvancadaCnpja({
             </SelectContent>
           </Select>
         </div>
-      </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
 
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => mut.mutate(null)} disabled={mut.isPending}>
