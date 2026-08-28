@@ -222,7 +222,7 @@ function Consulta() {
                     <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
                   </TabsList>
                   <TabsContent value="ficha" className="pt-4">
-                    <JanelaCnpja />
+                    <JanelaCnpja listId={alvoLista} />
                   </TabsContent>
                   <TabsContent value="avancada" className="pt-4">
                     <BuscaAvancadaCnpja listId={alvoLista} />
@@ -319,14 +319,26 @@ const BLOCOS = [
 
 type BlocoId = (typeof BLOCOS)[number]["id"];
 
-function JanelaCnpja() {
+function JanelaCnpja({ listId }: { listId: string | null }) {
   const [cnpj, setCnpj] = useState("");
   const [visiveis, setVisiveis] = useState<BlocoId[]>(BLOCOS.map((b) => b.id));
   const consultar = useServerFn(fichaCnpjaAbertaFn);
+  const consultarCnpjs = useServerFn(consultarCnpjsFn);
+  const qc = useQueryClient();
 
   const busca = useMutation({
     mutationFn: (valor: string) => consultar({ data: { cnpj: valor } }),
     onError: (e: Error) => toast.error(e.message || "Não foi possível consultar."),
+  });
+
+  const salvar = useMutation({
+    mutationFn: (valor: string) =>
+      consultarCnpjs({ data: { cnpjs: [valor.replace(/\D/g, "")], listId, completo: false } }),
+    onSuccess: () => {
+      toast.success("Empresa salva na base.");
+      void qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao salvar na base."),
   });
 
   const ficha = busca.data;
@@ -355,11 +367,20 @@ function JanelaCnpja() {
           )}
           Consultar
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => salvar.mutate(cnpj)}
+          disabled={!ficha || salvar.isPending}
+        >
+          {salvar.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          Salvar na base
+        </Button>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Consulta pública e gratuita do CNPJá, sem consumo de créditos. Os dados não são salvos na
-        base — use a aba “Por CNPJ” para gravar e enriquecer com as demais fontes.
+        Consulta pública e gratuita do CNPJá, sem consumo de créditos. Ao clicar em “Salvar na
+        base”, a empresa é gravada e enriquecida pelas demais fontes (respeitando cache e Modo
+        Econômico), na lista selecionada acima.
       </p>
 
       <div className="flex flex-wrap gap-4 rounded-md border bg-muted/30 p-3">
