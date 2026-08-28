@@ -1,3 +1,4 @@
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, Mail, ShieldCheck, UsersRound } from "lucide-react";
@@ -39,7 +40,11 @@ function EquipePage() {
   const qc = useQueryClient();
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const master = me?.master ?? false;
-  const { data: equipe = [], isLoading } = useQuery({ queryKey: ["equipe"], queryFn: () => listarEquipeFn() });
+  const { unidade } = useUnidadeAtiva();
+  const { data: equipe = [], isLoading } = useQuery({
+    queryKey: ["equipe", unidade],
+    queryFn: () => listarEquipeFn({ data: unidade ? { unidade } : {} }),
+  });
   const { data: unidades = [] } = useQuery({ queryKey: ["unidades"], queryFn: () => listarUnidadesFn(), enabled: master });
   const { data: usuarios = [] } = useQuery({ queryKey: ["usuarios"], queryFn: () => listarUsuariosFn(), enabled: master });
 

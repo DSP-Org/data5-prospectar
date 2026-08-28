@@ -138,7 +138,7 @@ export async function listarEquipe(escopo: Escopo) {
     }));
 
   const visiveis = (unidades ?? []) as Array<{ id: string; nome: string; cor: string; cidade: string | null; uf: string | null }>;
-  const escopoIds = escopo.master ? visiveis.map((u) => u.id) : escopo.unitIds;
+  const escopoIds = escopo.master && !escopo.restrito ? visiveis.map((u) => u.id) : escopo.unitIds;
 
   return visiveis
     .filter((u) => escopoIds.includes(u.id))
@@ -147,7 +147,7 @@ export async function listarEquipe(escopo: Escopo) {
       membros: usuarios.filter((p) => p.unidades.includes(u.id)),
     }))
     .concat(
-      escopo.master
+      escopo.master && !escopo.restrito
         ? [{ id: "", nome: "Sem unidade", cor: "slate", cidade: null, uf: null, membros: usuarios.filter((p) => p.unidades.length === 0) }]
         : [],
     );

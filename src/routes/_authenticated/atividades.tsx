@@ -1,3 +1,4 @@
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -44,9 +45,10 @@ function Atividades() {
   const [ate, setAte] = useState<string>("");
   const [pendente, setPendente] = useState<boolean>(false);
 
+  const { unidade } = useUnidadeAtiva();
   const listar = useServerFn(listarAtividadesFn);
   const { data, isLoading } = useQuery({
-    queryKey: ["atividades", { tipo, de, ate, pendente }],
+    queryKey: ["atividades", { tipo, de, ate, pendente, unidade }],
     queryFn: () =>
       listar({
         data: {
@@ -54,6 +56,7 @@ function Atividades() {
           de: de || undefined,
           ate: ate || undefined,
           pendente: pendente || undefined,
+          ...(unidade ? { unidade } : {}),
         },
       }),
   });

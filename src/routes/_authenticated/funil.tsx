@@ -1,3 +1,4 @@
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -42,7 +43,11 @@ function formatDataHora(iso?: string | null) {
 
 function Funil() {
   const qc = useQueryClient();
-  const dados = useQuery({ queryKey: ["funil"], queryFn: () => funilDadosFn() });
+  const { unidade } = useUnidadeAtiva();
+  const dados = useQuery({
+    queryKey: ["funil", unidade],
+    queryFn: () => funilDadosFn({ data: unidade ? { unidade } : {} }),
+  });
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const atualizar = useServerFn(atualizarEmpresaFn);
 
