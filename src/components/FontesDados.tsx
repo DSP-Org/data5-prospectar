@@ -6,11 +6,12 @@ import { toast } from "sonner";
 
 import {
   listarFontesFn,
+  salvarEconomiaFn,
   salvarFonteFn,
   salvarPrioridadeFn,
   testarFonteFn,
 } from "@/lib/sources.functions";
-import type { SourceId } from "@/lib/sources/catalog";
+import type { ModoConsulta, SourceId } from "@/lib/sources/catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,9 @@ export function FontesDados() {
   const salvarFonte = useServerFn(salvarFonteFn);
   const testarFonte = useServerFn(testarFonteFn);
   const salvarPrioridade = useServerFn(salvarPrioridadeFn);
+  const salvarEconomia = useServerFn(salvarEconomiaFn);
   const [chaves, setChaves] = useState<Record<string, string>>({});
+  const [ttl, setTtl] = useState<number | null>(null);
 
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["fontes"] });
 
@@ -53,6 +56,16 @@ export function FontesDados() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mutEconomia = useMutation({
+    mutationFn: (v: { modo?: ModoConsulta; ttlDias?: number }) => salvarEconomia({ data: v }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Preferências de consulta salvas.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const economia = fontes.data?.economia;
   const lista = fontes.data?.fontes ?? [];
 
   const mover = (idx: number, delta: number) => {
@@ -81,6 +94,56 @@ export function FontesDados() {
       <CardContent className="space-y-4">
         {fontes.isLoading && <p className="text-sm text-muted-foreground">Carregando fontes…</p>}
 
+        {economia && (
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-md">
+                <p className="text-sm font-medium">Modo econômico</p>
+                <p className="text-xs text-muted-foreground">
+                  Consulta primeiro as fontes gratuitas e só aciona as pagas para os CNPJs que
+                  ficarem sem telefone, e-mail ou decisor. Desligado, todas as fontes ativas são
+                  consultadas sempre.
+                </p>
+              </div>
+              <Switch
+                checked={economia.modo === "economico"}
+                aria-label="Ativar modo econômico"
+                onCheckedChange={(v) =>
+                  mutEconomia.mutate({ modo: v ? "economico" : "completo" })
+                }
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground" htmlFor="ttl-cache">
+                  Validade do cache (dias) — 0 desliga
+                </label>
+                <Input
+                  id="ttl-cache"
+                  type="number"
+                  min={0}
+                  max={365}
+                  className="mt-1 w-32"
+                  value={ttl ?? economia.ttlDias}
+                  onChange={(e) => setTtl(Number(e.target.value))}
+                />
+              </div>
+              <Button
+                size="sm"
+                disabled={mutEconomia.isPending || ttl === null || ttl === economia.ttlDias}
+                onClick={() => mutEconomia.mutate({ ttlDias: ttl ?? economia.ttlDias })}
+              >
+                <Save className="mr-1 h-4 w-4" />
+                Salvar cache
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Empresas sincronizadas dentro do prazo não são reconsultadas; a reconsulta manual na
+                ficha sempre ignora o cache.
+              </p>
+            </div>
+          </div>
+        )}
+
         {lista.map((f, idx) => (
           <div key={f.id} className="rounded-lg border border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -93,6 +156,9 @@ export function FontesDados() {
                     <span className="font-medium">{f.label}</span>
                     {f.contatos && <Badge variant="outline">contatos</Badge>}
                     {!f.requiresKey && <Badge variant="outline">sem chave</Badge>}
+                    <Badge variant={f.custo === "gratis" ? "secondary" : "default"}>
+                      {f.custo === "gratis" ? "gratuita" : "paga"}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{f.descricao}</p>
                 </div>
