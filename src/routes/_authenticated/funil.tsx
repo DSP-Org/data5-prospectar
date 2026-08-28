@@ -67,6 +67,7 @@ function Funil() {
     return empresas.filter((e) => {
       if (listaId === "sem_lista" && e.list_id !== null) return false;
       if (listaId !== "todas" && listaId !== "sem_lista" && e.list_id !== listaId) return false;
+      if (grupo !== "todas" && grupoDaNatureza(e.natureza_juridica) !== grupo) return false;
       if (termo) {
         const alvo = `${e.razao_social} ${e.nome_fantasia ?? ""} ${e.cnpj} ${e.cidade ?? ""}`.toLowerCase();
         if (!alvo.includes(termo)) return false;
