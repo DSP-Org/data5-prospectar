@@ -51,7 +51,7 @@ const grupos = [
     items: [
       { to: "/", label: "Painel", icon: LayoutDashboard },
       { to: "/consulta", label: "Consulta", icon: Search },
-      { to: "/empresas", label: "Base de empresas", icon: Building2 },
+      { to: "/empresas", label: "Base de Empresas - Geral", icon: Building2 },
       { to: "/listas", label: "Listas", icon: Tags },
       { to: "/calculadora", label: "Calculadora", icon: Calculator },
     ],
