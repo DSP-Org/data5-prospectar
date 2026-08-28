@@ -44,9 +44,12 @@ export const Route = createFileRoute("/_authenticated/configuracoes")({
 
 function Configuracoes() {
   const qc = useQueryClient();
+  const { data: me, isLoading: carregandoMe } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
+  const master = me?.master ?? false;
   const status = useQuery({
     queryKey: ["settings", "api-key"],
     queryFn: () => obterStatusChaveApiFn(),
+    enabled: master,
   });
 
   const [key, setKey] = useState("");
