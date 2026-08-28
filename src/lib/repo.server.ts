@@ -143,7 +143,7 @@ export async function consultarCnpjs(input: {
     });
 
 
-    for (const c of validos) {
+    for (const c of aConsultar) {
       const m = empresas.get(c);
       if (m) encontradas.push(m as unknown as Record<string, unknown>);
       else
@@ -158,10 +158,10 @@ export async function consultarCnpjs(input: {
     }
   } catch (e) {
     const err = e as EconodataError;
-    for (const c of validos) itens.push({ cnpj: c, encontrada: false, erro: err.message, salva: false });
+    for (const c of aConsultar) itens.push({ cnpj: c, encontrada: false, erro: err.message, salva: false });
     await logQuery({
       tipo: "cnpj",
-      entrada: validos.join(", "),
+      entrada: aConsultar.join(", "),
       resultado: "erro",
       mensagem: err.message,
       quantidade: 0,
@@ -187,7 +187,7 @@ export async function consultarCnpjs(input: {
   if (encontradas.length)
     await logQuery({
       tipo: "cnpj",
-      entrada: validos.join(", "),
+      entrada: aConsultar.join(", "),
       resultado: "ok",
       quantidade: encontradas.length,
     });
