@@ -60,8 +60,8 @@ function ProdutosPage() {
   const [tipo, setTipo] = useState<"produto" | "servico">("servico");
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
-  const [unitId, setUnitId] = useState<string>("");
-  const unidadeFormulario = unitId || unidade || "";
+  const unidadeFormulario = unidade || (unidades.length === 1 ? (unidades[0]?.id ?? "") : "");
+
 
   const invalidar = () => void qc.invalidateQueries({ queryKey: ["produtos"] });
 
@@ -147,21 +147,6 @@ function ProdutosPage() {
                   <SelectContent>
                     <SelectItem value="servico">Serviço</SelectItem>
                     <SelectItem value="produto">Produto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-48 space-y-1">
-                <Label>Unidade de negócio</Label>
-                <Select value={unidadeFormulario} onValueChange={setUnitId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unidades.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.nome}
-                      </SelectItem>
-                    ))}
                   </SelectContent>
                 </Select>
               </div>
