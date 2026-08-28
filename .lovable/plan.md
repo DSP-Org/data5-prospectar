@@ -1,44 +1,33 @@
-# Base global de empresas + ganho de desempenho
+# Busca por nome na aba gratuita
 
-Hoje a tabela de empresas tem `unit_id`, ou seja, a mesma empresa é "propriedade" de uma unidade. Isso quebra o modelo desejado (base pertence ao sistema) e ainda duplica consultas pagas às APIs: se duas unidades prospectam o mesmo CNPJ, o sistema consulta duas vezes.
+## O que acontece hoje
 
-## 1. Nova separação: base do sistema × trabalho da unidade
+Na página Consulta existem duas coisas diferentes:
 
-- **Empresas (base)** passam a ser globais: dados cadastrais, contatos, decisores, fontes e data de sincronização são compartilhados por todo o sistema. Toda unidade enxerga a base inteira na Consulta e na Base.
-- **Trabalho de prospecção** passa a ser por unidade, em um novo registro "empresa na unidade": status do funil, notas, tags, lista e produto/serviço.
-- **Listas** continuam pertencendo à unidade. Uma empresa entra na lista da unidade sem sair da base global; outra unidade pode ter a mesma empresa em outra lista, com outro status, sem interferência.
-- **Atividades** continuam por unidade, agora ligadas ao par empresa+unidade.
+- **Ficha por CNPJ (grátis)** — usa a base aberta do CNPJá, que só aceita o número do CNPJ. Ela não tem busca por nome: é um endpoint de consulta de um documento específico.
+- **Busca avançada (paga)** — já pesquisa por nome fantasia e razão social, além de UF, município, CNAE, porte, capital e data de abertura. Essa sim aceita texto.
 
-Efeito prático nas telas:
-- Base: mostra a base global; as colunas Status, Lista, Produto e Notas refletem a unidade ativa. Um selo indica "já na sua carteira" ou "disponível na base".
-- Listas, Funil, Atividades e Relatórios: continuam restritos à unidade ativa (nada muda para o usuário comum).
-- Consulta: antes de gastar fonte paga, reaproveita o que já existe na base global — economia direta de créditos.
+Ou seja, hoje pesquisar por nome já é possível, mas só na aba paga.
 
-Migração dos dados atuais: cada empresa com `unit_id` gera automaticamente o registro de trabalho daquela unidade, preservando status, notas, tags, lista e produto. Nada é perdido.
+## O que será feito
 
-## 2. Desempenho
+Transformar a aba gratuita em uma busca por nome de verdade, sem consumir crédito, em duas camadas:
 
-Problemas medidos no código e no banco:
+1. **Campo de busca por nome na aba gratuita**
+   Ao digitar um texto (em vez de um CNPJ), o sistema pesquisa primeiro na **base local de empresas** do próprio sistema (razão social, nome fantasia, cidade), respeitando as unidades do usuário. Resultados aparecem em lista; clicar abre a ficha completa.
 
-- Painel e Listas carregam **todas as linhas** e contam em JavaScript. Com 50 mil empresas isso significa dezenas de MB por acesso. Passam a usar contagens agregadas no banco.
-- A Base faz `select *`, trazendo os campos `raw`/`decisores` (JSON grande) mesmo na listagem. Passa a selecionar só as colunas exibidas; o JSON completo só na ficha.
-- Buscas por nome/cidade/CNAE usam `ilike %termo%`, que não usa índice. Entra índice de busca textual (trigram) nas colunas pesquisadas.
-- Faltam índices para os filtros e a ordenação mais usados (status por unidade, lista, criação, UF, situação, porte).
-- As configurações de fontes são lidas do banco a cada consulta; passam a ser lidas uma vez por requisição.
-- A consulta em lote dispara todos os CNPJs em paralelo sem limite; entra um teto de concorrência para não estourar rate limit das fontes.
-- Escopo do usuário (papéis, unidades, rotas) é recarregado várias vezes por navegação; passa a ser resolvido uma vez por requisição.
+2. **Escalonamento consciente para a fonte paga**
+   Quando a base local não tiver resultados suficientes, aparece um aviso com o botão "Procurar nas fontes pagas", que leva o mesmo termo para a Busca avançada do CNPJá já preenchido. Nada é cobrado sem esse clique explícito.
+
+3. **Detecção automática de entrada**
+   O mesmo campo aceita CNPJ ou nome: se o texto tiver 14 dígitos, faz a ficha gratuita direta como hoje; caso contrário, faz a busca por nome.
 
 ## Detalhes técnicos
 
-Migração única, com GRANTs e RLS:
-- `company_units` (unit_id, cnpj, status, notas, tags, list_id, product_id, timestamps; único por unidade+cnpj) + backfill a partir de `companies`.
-- `companies` perde `unit_id`, `status`, `notas`, `tags`, `list_id`, `product_id` (após o backfill).
-- `prospection_activities` mantém `unit_id`; índice composto (unit_id, company_cnpj, created_at desc).
-- Índices: `company_units(unit_id, status)`, `company_units(list_id)`, `company_units(product_id)`, `companies(created_at desc)`, `companies(uf)`, `companies(situacao)`, `pg_trgm` em `razao_social`, `nome_fantasia`, `cidade`, `cnae_descricao`.
-- Função `contar_base(unit_id)` retornando as agregações do painel em uma chamada.
+- Nova server function de busca local por nome em `src/lib/` (consulta `companies` com `ilike` em `razao_social`/`nome_fantasia`, filtro por unidade, limite e paginação simples).
+- `src/routes/_authenticated/consulta.tsx`: campo único com detecção CNPJ/nome, lista de resultados locais, ação de abrir ficha e ação de escalar para a aba de busca avançada com o termo preenchido.
+- Nenhuma alteração no fluxo de créditos: a camada local é 100% banco de dados; a chamada paga continua exclusiva da Busca avançada.
 
-Código:
-- `repo.server.ts`: listagem passa a fazer join da base global com `company_units` da unidade ativa; `atualizarEmpresa`, `vincularEmpresasLista` e status do funil gravam em `company_units` (upsert).
-- `escopo.server.ts`: memoização por requisição.
-- `sources/registry.server.ts`: cache das settings por requisição e limite de concorrência no lote.
-- Telas de Base, Funil, Listas, Atividades e Relatórios ajustadas para o novo formato de dados; sem mudança de layout.
+## Limitação a registrar
+
+Não existe API pública gratuita e confiável de busca de empresas por nome na Receita — as fontes abertas só respondem por CNPJ. Por isso a busca por nome fora da base local depende da API comercial do CNPJá que já está configurada.
