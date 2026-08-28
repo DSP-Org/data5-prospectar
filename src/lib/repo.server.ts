@@ -703,7 +703,7 @@ export async function obterUltimasAtividadesPorEmpresa(escopo: Escopo) {
 }
 
 export async function funilDados(escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("*");
+  let q = supabaseAdmin.from("companies").select("*").eq("prospectar", true);
   const unidades = unidadesFiltro(escopo);
   if (unidades) q = q.in("unit_id", unidades);
   const { data, error } = await q.order("updated_at", { ascending: false }).limit(2000);
