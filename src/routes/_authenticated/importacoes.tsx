@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -286,7 +286,7 @@ function Pagina() {
 
 type EtapaEstado = "ok" | "andamento" | "atencao" | "pendente";
 
-const ICONE: Record<EtapaEstado, React.ReactNode> = {
+const ICONE: Record<EtapaEstado, ReactNode> = {
   ok: <Check className="h-4 w-4 text-emerald-600" />,
   andamento: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
   atencao: <AlertTriangle className="h-4 w-4 text-amber-600" />,
