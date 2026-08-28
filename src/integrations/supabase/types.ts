@@ -410,6 +410,112 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_products: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_products_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          ativa: boolean
+          cor: string
+          created_at: string
+          descricao: string
+          id: string
+          nome: string
+          unit_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          cor?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          cor?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          nome?: string
+          unit_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           ativa: boolean
