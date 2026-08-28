@@ -15,6 +15,7 @@ import {
   Tags,
   Target,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -57,6 +58,7 @@ const grupos = [
     items: [
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/atividades", label: "Atividades", icon: ListTodo },
+      { to: "/equipe", label: "Equipe", icon: UsersRound },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
     ],
   },
