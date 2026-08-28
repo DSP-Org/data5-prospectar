@@ -40,13 +40,14 @@ export const Route = createFileRoute("/_authenticated/listas")({
 function Listas() {
   const qc = useQueryClient();
   const [nome, setNome] = useState("");
+  const { unidade } = useUnidadeAtiva();
   const listas = useListas();
   const semLista = useQuery({ queryKey: ["sem-lista"], queryFn: () => contarSemListaFn() });
   const criar = useServerFn(criarListaFn);
   const excluir = useServerFn(excluirListaFn);
 
   const mutCriar = useMutation({
-    mutationFn: () => criar({ data: { name: nome.trim() } }),
+    mutationFn: () => criar({ data: { name: nome.trim(), unitId: unidade } }),
     onSuccess: () => {
       setNome("");
       toast.success("Lista criada.");
