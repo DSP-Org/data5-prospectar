@@ -107,7 +107,7 @@ export function mesclar(cnpj: string, entradas: EntradaFonte[]): EmpresaMesclada
   out["raw"] = raw;
   out["synced_at"] = new Date().toISOString();
   out["fontes"] = validas.map((v) => v.fonte);
-  out["fonte_principal"] = validas[0]!.fonte;
+  out["fonte_principal"] = melhorFonte(validas);
 
   return out as unknown as EmpresaMesclada;
 }
