@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { listarUnidadesFn, listarUsuariosFn, meFn, atualizarUsuarioFn } from "@/lib/auth.functions";
+import { meFn } from "@/lib/auth.functions";
 import { listarEquipeFn } from "@/lib/equipe.functions";
 import {
   criarEquipeFn,
