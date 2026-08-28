@@ -103,15 +103,53 @@ function Consulta() {
       <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <Card>
           <CardContent className="pt-6">
-            <Tabs defaultValue="cnpj">
+            <Tabs defaultValue="individual">
               <TabsList>
-                <TabsTrigger value="cnpj">Por CNPJ</TabsTrigger>
-                
+                <TabsTrigger value="individual">CNPJ individual</TabsTrigger>
+                <TabsTrigger value="lista">Lista de CNPJs</TabsTrigger>
                 <TabsTrigger value="cnpja">Janela CNPJá</TabsTrigger>
               </TabsList>
 
+              <TabsContent value="individual" className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cnpj-unico">CNPJ</Label>
+                  <Input
+                    id="cnpj-unico"
+                    className="font-mono text-sm"
+                    placeholder="38.024.964/0001-42"
+                    value={cnpjUnico}
+                    onChange={(e) => setCnpjUnico(e.target.value)}
+                  />
+                </div>
+                <label className="flex items-start gap-3 rounded-md border border-dashed border-border p-3">
+                  <Checkbox
+                    checked={buscaTotal}
+                    onCheckedChange={(v) => setBuscaTotal(v === true)}
+                    aria-label="Buscar tudo"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Buscar tudo</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Ignora o cache, consulta todas as fontes ativas em tempo real e pede os
+                      módulos extras da CNPJá (Simples/MEI, inscrições estaduais, SUFRAMA,
+                      geolocalização e comprovantes). Consome mais créditos.
+                    </span>
+                  </span>
+                </label>
+                <Button
+                  disabled={cnpjUnicoLimpo.length === 0 || carregando}
+                  onClick={() => mutCnpjs.mutate([cnpjUnicoLimpo])}
+                >
+                  {mutCnpjs.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  Consultar CNPJ
+                </Button>
+              </TabsContent>
 
-              <TabsContent value="cnpj" className="space-y-4 pt-4">
+              <TabsContent value="lista" className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="cnpjs">CNPJs</Label>
                   <Textarea
@@ -126,39 +164,10 @@ function Consulta() {
                     Separe por linha, vírgula ou espaço. {cnpjs.length} identificado(s).
                   </p>
                 </div>
-                <label
-                  className={`flex items-start gap-3 rounded-md border border-dashed p-3 ${
-                    cnpjs.length > 1
-                      ? "border-border/60 bg-muted/30"
-                      : "border-border"
-                  }`}
-                >
-                  <Checkbox
-                    checked={buscaTotal && cnpjs.length <= 1}
-                    onCheckedChange={(v) => {
-                      if (cnpjs.length > 1) return;
-                      setBuscaTotal(v === true);
-                    }}
-                    disabled={cnpjs.length > 1}
-                    aria-label="Buscar tudo"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium">Buscar tudo</span>
-                    <span className="block text-xs text-muted-foreground">
-                      Ignora o cache, consulta todas as fontes ativas em tempo real e pede os
-                      módulos extras da CNPJá (Simples/MEI, inscrições estaduais, SUFRAMA,
-                      geolocalização e comprovantes). Consome mais créditos.
-                      {cnpjs.length > 1 && (
-                        <>
-                          {" "}
-                          <span className="text-amber-600 dark:text-amber-400">
-                            Disponível apenas para 1 CNPJ por vez para evitar consumo em massa.
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </span>
-                </label>
+                <p className="rounded-md border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Em lote o sistema usa o cache e as fontes gratuitas primeiro para economizar
+                  créditos. Use a aba “CNPJ individual” quando precisar do “Buscar tudo”.
+                </p>
                 <Button
                   disabled={cnpjs.length === 0 || carregando}
                   onClick={() => mutCnpjs.mutate(cnpjs)}
@@ -171,6 +180,7 @@ function Consulta() {
                   Consultar {cnpjs.length > 1 ? `${cnpjs.length} CNPJs` : "CNPJ"}
                 </Button>
               </TabsContent>
+
 
 
 
