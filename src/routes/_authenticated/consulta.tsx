@@ -11,6 +11,7 @@ import {
   listarListasFn,
 } from "@/lib/econodata.functions";
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
+import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -215,8 +216,20 @@ function Consulta() {
               </TabsContent>
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
-                <JanelaCnpja />
+                <Tabs defaultValue="ficha">
+                  <TabsList>
+                    <TabsTrigger value="ficha">Ficha por CNPJ (grátis)</TabsTrigger>
+                    <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="ficha" className="pt-4">
+                    <JanelaCnpja />
+                  </TabsContent>
+                  <TabsContent value="avancada" className="pt-4">
+                    <BuscaAvancadaCnpja listId={alvoLista} />
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
+
             </Tabs>
 
           </CardContent>
@@ -508,3 +521,330 @@ function CampoFicha({ rotulo, valor }: { rotulo: string; valor: string | null })
   );
 }
 
+
+// ===================== Busca avançada (API paga do CNPJá) =====================
+
+const PORTES = [
+  { id: "1", label: "MEI" },
+  { id: "2", label: "ME" },
+  { id: "3", label: "EPP" },
+  { id: "5", label: "Demais" },
+];
+
+const SITUACOES = [
+  { id: "1", label: "Nula" },
+  { id: "2", label: "Ativa" },
+  { id: "3", label: "Suspensa" },
+  { id: "4", label: "Inapta" },
+  { id: "8", label: "Baixada" },
+];
+
+type FiltrosCnpja = {
+  nome: string;
+  uf: string;
+  municipioIbge: string;
+  bairro: string;
+  cep: string;
+  cnaePrincipal: string;
+  cnaeQualquer: string;
+  porteIds: string[];
+  situacaoIds: string[];
+  capitalMin: string;
+  capitalMax: string;
+  aberturaDe: string;
+  aberturaAte: string;
+  somenteMatriz: boolean;
+  limite: string;
+};
+
+const FILTROS_INICIAIS: FiltrosCnpja = {
+  nome: "",
+  uf: "",
+  municipioIbge: "",
+  bairro: "",
+  cep: "",
+  cnaePrincipal: "",
+  cnaeQualquer: "",
+  porteIds: [],
+  situacaoIds: ["2"],
+  capitalMin: "",
+  capitalMax: "",
+  aberturaDe: "",
+  aberturaAte: "",
+  somenteMatriz: true,
+  limite: "20",
+};
+
+function BuscaAvancadaCnpja({ listId }: { listId: string | null }) {
+  const [f, setF] = useState<FiltrosCnpja>(FILTROS_INICIAIS);
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const buscar = useServerFn(buscarCnpjaFn);
+  const consultarCnpjs = useServerFn(consultarCnpjsFn);
+
+  const set = <K extends keyof FiltrosCnpja>(k: K, v: FiltrosCnpja[K]) =>
+    setF((atual) => ({ ...atual, [k]: v }));
+
+  const toggle = (k: "porteIds" | "situacaoIds", id: string) =>
+    setF((atual) => ({
+      ...atual,
+      [k]: atual[k].includes(id) ? atual[k].filter((v) => v !== id) : [...atual[k], id],
+    }));
+
+  const num = (v: string) => {
+    const n = Number(v.replace(/[^\d.,-]/g, "").replace(",", "."));
+    return Number.isFinite(n) && v.trim() !== "" ? n : null;
+  };
+
+  const mut = useMutation({
+    mutationFn: (proximo: string | null) =>
+      buscar({
+        data: {
+          nome: f.nome || null,
+          uf: f.uf || null,
+          municipioIbge: f.municipioIbge || null,
+          bairro: f.bairro || null,
+          cep: f.cep || null,
+          cnaePrincipal: f.cnaePrincipal || null,
+          cnaeQualquer: f.cnaeQualquer || null,
+          porteIds: f.porteIds.join(",") || null,
+          situacaoIds: f.situacaoIds.join(",") || null,
+          capitalMin: num(f.capitalMin),
+          capitalMax: num(f.capitalMax),
+          aberturaDe: f.aberturaDe || null,
+          aberturaAte: f.aberturaAte || null,
+          somenteMatriz: f.somenteMatriz,
+          limite: Number(f.limite) || 20,
+          cursor: proximo,
+        },
+      }),
+    onSuccess: (r) => {
+      setCursor(r.proximoCursor);
+      setSelecionados([]);
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível buscar."),
+  });
+
+  const salvar = useMutation({
+    mutationFn: (cnpjs: string[]) =>
+      consultarCnpjs({ data: { cnpjs, listId, completo: false } }),
+    onSuccess: (r) => {
+      toast.success(`${r.itens?.length ?? 0} empresa(s) salva(s) na base.`);
+      void qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao salvar na base."),
+  });
+
+  const resultado = mut.data;
+  const itens = resultado?.itens ?? [];
+  const todos = itens.length > 0 && selecionados.length === itens.length;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Busca por filtros na base completa do CNPJá usando sua chave paga. Consome créditos do seu
+        plano. Municípios usam o código IBGE (ex.: 3550308 = São Paulo).
+      </p>
+
+      <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-1">
+          <Label>Nome / razão social contém</Label>
+          <Input value={f.nome} onChange={(e) => set("nome", e.target.value)} placeholder="Ex.: transportes" />
+        </div>
+        <div className="space-y-1">
+          <Label>UF (separe por vírgula)</Label>
+          <Input value={f.uf} onChange={(e) => set("uf", e.target.value)} placeholder="SP, MG" />
+        </div>
+        <div className="space-y-1">
+          <Label>Município (código IBGE)</Label>
+          <Input
+            value={f.municipioIbge}
+            onChange={(e) => set("municipioIbge", e.target.value)}
+            placeholder="3550308"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Bairro</Label>
+          <Input value={f.bairro} onChange={(e) => set("bairro", e.target.value)} placeholder="CENTRO" />
+        </div>
+        <div className="space-y-1">
+          <Label>CEP</Label>
+          <Input value={f.cep} onChange={(e) => set("cep", e.target.value)} placeholder="01310000" />
+        </div>
+        <div className="space-y-1">
+          <Label>CNAE principal</Label>
+          <Input
+            value={f.cnaePrincipal}
+            onChange={(e) => set("cnaePrincipal", e.target.value)}
+            placeholder="6201501"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>CNAE (principal ou secundário)</Label>
+          <Input
+            value={f.cnaeQualquer}
+            onChange={(e) => set("cnaeQualquer", e.target.value)}
+            placeholder="4712100, 4711302"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Capital social mínimo</Label>
+          <Input value={f.capitalMin} onChange={(e) => set("capitalMin", e.target.value)} placeholder="100000" />
+        </div>
+        <div className="space-y-1">
+          <Label>Capital social máximo</Label>
+          <Input value={f.capitalMax} onChange={(e) => set("capitalMax", e.target.value)} placeholder="5000000" />
+        </div>
+        <div className="space-y-1">
+          <Label>Abertura de</Label>
+          <Input type="date" value={f.aberturaDe} onChange={(e) => set("aberturaDe", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>Abertura até</Label>
+          <Input type="date" value={f.aberturaAte} onChange={(e) => set("aberturaAte", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>Resultados por página</Label>
+          <Select value={f.limite} onValueChange={(v) => set("limite", v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {["10", "20", "50", "100"].map((v) => (
+                <SelectItem key={v} value={v}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+          <Label>Porte</Label>
+          <div className="flex flex-wrap gap-3">
+            {PORTES.map((p) => (
+              <label key={p.id} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={f.porteIds.includes(p.id)}
+                  onCheckedChange={() => toggle("porteIds", p.id)}
+                />
+                {p.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+          <Label>Situação cadastral</Label>
+          <div className="flex flex-wrap gap-3">
+            {SITUACOES.map((s) => (
+              <label key={s.id} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={f.situacaoIds.includes(s.id)}
+                  onCheckedChange={() => toggle("situacaoIds", s.id)}
+                />
+                {s.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3">
+          <Checkbox
+            checked={f.somenteMatriz}
+            onCheckedChange={(v) => set("somenteMatriz", Boolean(v))}
+          />
+          Somente matriz
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => mut.mutate(null)} disabled={mut.isPending}>
+          {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          Buscar
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setF(FILTROS_INICIAIS);
+            setCursor(null);
+          }}
+        >
+          Limpar filtros
+        </Button>
+        {resultado && (
+          <span className="text-sm text-muted-foreground">
+            {resultado.total.toLocaleString("pt-BR")} empresa(s) encontradas
+          </span>
+        )}
+      </div>
+
+      {mut.isError && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/40 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {(mut.error as Error).message}
+        </div>
+      )}
+
+      {itens.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={todos}
+                onCheckedChange={(v) => setSelecionados(v ? itens.map((i) => i.cnpj) : [])}
+              />
+              Selecionar todos
+            </label>
+            <Button
+              size="sm"
+              disabled={selecionados.length === 0 || salvar.isPending}
+              onClick={() => salvar.mutate(selecionados)}
+            >
+              {salvar.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar {selecionados.length || ""} na base
+            </Button>
+          </div>
+
+          <div className="divide-y rounded-md border">
+            {itens.map((i) => (
+              <div key={i.cnpj} className="flex items-start gap-3 p-3 text-sm">
+                <Checkbox
+                  className="mt-1"
+                  checked={selecionados.includes(i.cnpj)}
+                  onCheckedChange={(v) =>
+                    setSelecionados((atual) =>
+                      v ? [...new Set([...atual, i.cnpj])] : atual.filter((c) => c !== i.cnpj),
+                    )
+                  }
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{i.razaoSocial}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCnpj(i.cnpj)} · {i.matriz ? "Matriz" : "Filial"}
+                    {i.cidade ? ` · ${i.cidade}` : ""}
+                    {i.uf ? `/${i.uf}` : ""}
+                    {i.situacao ? ` · ${i.situacao}` : ""}
+                    {i.porte ? ` · ${i.porte}` : ""}
+                  </p>
+                  {i.cnaePrincipal && (
+                    <p className="text-xs text-muted-foreground">{i.cnaePrincipal}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {cursor && (
+            <Button variant="outline" onClick={() => mut.mutate(cursor)} disabled={mut.isPending}>
+              {mut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Carregar próxima página
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
