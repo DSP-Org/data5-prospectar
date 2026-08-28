@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ListTodo,
   LogOut,
+  Package,
   Search,
   Settings2,
   Tags,
@@ -58,6 +59,7 @@ const grupos = [
     items: [
       { to: "/funil", label: "Funil", icon: Kanban },
       { to: "/atividades", label: "Atividades", icon: ListTodo },
+      { to: "/produtos", label: "Produtos e serviços", icon: Package },
       { to: "/equipe", label: "Equipe", icon: UsersRound },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
     ],
@@ -67,11 +69,12 @@ const grupos = [
     label: "Administração",
     items: [
       { to: "/unidades", label: "Unidades", icon: Building },
-      { to: "/usuarios", label: "Usuários", icon: Users, masterOnly: true },
+      { to: "/permissoes", label: "Permissões e rotas", icon: Users, masterOnly: true },
       { to: "/configuracoes", label: "Configurações", icon: Settings2, masterOnly: true },
     ],
   },
 ] as const;
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -106,9 +109,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           {grupos.map((grupo) => {
-            const items = grupo.items.filter(
-              (item) => !("masterOnly" in item && item.masterOnly) || me?.master,
-            );
+            const items = grupo.items.filter((item) => {
+              if ("masterOnly" in item && item.masterOnly) return me?.master ?? false;
+              if (!me) return true;
+              if (me.master) return true;
+              return me.rotas.includes(item.to);
+            });
+
             if (items.length === 0) return null;
             const aberto = abertos[grupo.id] !== false;
             return (

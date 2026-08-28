@@ -62,6 +62,7 @@ export type Company = {
   notas: string;
   tags: string[];
   list_id: string | null;
+  product_id: string | null;
   synced_at: string;
   created_at: string;
   updated_at: string;
@@ -128,6 +129,7 @@ export type ProspectionActivity = {
   responsavel: string | null;
   scheduled_at: string | null;
   completed_at: string | null;
+  product_id: string | null;
   created_at: string;
   updated_at: string;
 };

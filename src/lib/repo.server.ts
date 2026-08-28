@@ -216,6 +216,7 @@ export async function listarEmpresas(input: {
   status?: string | undefined;
   uf?: string | undefined;
   listId?: string | undefined;
+  productId?: string | undefined;
   // filtros avançados abaixo
   cidade?: string | undefined;
   bairro?: string | undefined;
@@ -254,6 +255,8 @@ export async function listarEmpresas(input: {
   if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
   if (input.listId === "sem_lista") q = q.is("list_id", null);
   else if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
+  if (input.productId === "sem_produto") q = q.is("product_id", null);
+  else if (input.productId && input.productId !== "todos") q = q.eq("product_id", input.productId);
   if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
   if (input.bairro?.trim()) q = q.ilike("bairro", `%${input.bairro.trim()}%`);
   if (input.cnae?.trim()) {
@@ -308,12 +311,14 @@ export async function atualizarEmpresa(input: {
   status?: Status | undefined;
   notas?: string | undefined;
   listId?: string | null | undefined;
+  productId?: string | null | undefined;
   tags?: string[] | undefined;
 }) {
   const patch: Row = {};
   if (input.status) patch["status"] = input.status;
   if (input.notas !== undefined) patch["notas"] = input.notas;
   if (input.listId !== undefined) patch["list_id"] = input.listId;
+  if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
   let uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
   const unidadesUp = unidadesFiltro(input.escopo);
@@ -589,6 +594,7 @@ export type ActivityInput = {
   responsavel?: string | null | undefined;
   scheduled_at?: string | null | undefined;
   completed_at?: string | null | undefined;
+  product_id?: string | null | undefined;
 };
 
 function asActivity(row: Row): ProspectionActivity {
@@ -603,6 +609,7 @@ export async function listarAtividades(input: {
   ate?: string | undefined;
   responsavel?: string | undefined;
   pendente?: boolean | undefined;
+  productId?: string | undefined;
   limit?: number | undefined;
 }) {
   let q = supabaseAdmin.from("prospection_activities").select("*").order("created_at", { ascending: false });
@@ -614,6 +621,8 @@ export async function listarAtividades(input: {
   if (input.ate) q = q.lte("created_at", `${input.ate}T23:59:59`);
   if (input.responsavel?.trim()) q = q.ilike("responsavel", `%${input.responsavel.trim()}%`);
   if (input.pendente) q = q.is("completed_at", null);
+  if (input.productId === "sem_produto") q = q.is("product_id", null);
+  else if (input.productId && input.productId !== "todos") q = q.eq("product_id", input.productId);
   if (input.limit) q = q.limit(input.limit);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -631,6 +640,7 @@ export async function criarAtividade(input: ActivityInput, escopo: Escopo) {
     responsavel: input.responsavel ?? null,
     scheduled_at: input.scheduled_at ?? null,
     completed_at: input.completed_at ?? null,
+    product_id: input.product_id ?? (empresa as unknown as { product_id: string | null }).product_id ?? null,
   };
   const { data, error } = await supabaseAdmin.from("prospection_activities").insert(payload as never).select("*").single();
   if (error) throw new Error(error.message);
@@ -647,6 +657,7 @@ export async function atualizarAtividade(
   if (patch.responsavel !== undefined) payload["responsavel"] = patch.responsavel;
   if (patch.scheduled_at !== undefined) payload["scheduled_at"] = patch.scheduled_at ?? null;
   if (patch.completed_at !== undefined) payload["completed_at"] = patch.completed_at ?? null;
+  if (patch.product_id !== undefined) payload["product_id"] = patch.product_id ?? null;
   if (Object.keys(payload).length === 0) return null;
   let uq = supabaseAdmin.from("prospection_activities").update(payload as never).eq("id", id);
   const unidadesUp = unidadesFiltro(escopo);
