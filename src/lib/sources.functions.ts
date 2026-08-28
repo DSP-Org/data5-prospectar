@@ -72,3 +72,23 @@ export const salvarEconomiaFn = createServerFn({ method: "POST" })
     const { salvarEconomia } = await import("./sources/registry.server");
     return salvarEconomia(data);
   });
+
+export const salvarModulosCnpjaFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        simples: z.boolean().optional(),
+        registrations: z.boolean().optional(),
+        suframa: z.boolean().optional(),
+        geocoding: z.boolean().optional(),
+        links: z.boolean().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await exigirMasterDe(context.userId);
+    const { salvarModulosCnpja } = await import("./sources/registry.server");
+    return salvarModulosCnpja(data);
+  });
+
