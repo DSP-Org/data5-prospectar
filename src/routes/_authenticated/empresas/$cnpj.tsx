@@ -203,7 +203,7 @@ function Detalhe() {
 
   const pessoas = [...(e.contatos ?? []), ...(e.decisores ?? [])];
 
-  const raw = (e.raw ?? {}) as Record<string, unknown>;
+  const raw = ((e as unknown as { raw?: Record<string, unknown> }).raw ?? {}) as Record<string, unknown>;
   const ex = ((raw["cnpja"] as Record<string, unknown> | undefined)?.["extras"] ?? {}) as Record<
     string,
     unknown
@@ -427,7 +427,7 @@ function Detalhe() {
                 <CardTitle className="text-base">Dados complementares</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
-                {(ex["situacao_data"] || ex["situacao_motivo"]) && (
+                {Boolean(ex["situacao_data"] ?? ex["situacao_motivo"]) && (
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       Situação cadastral
