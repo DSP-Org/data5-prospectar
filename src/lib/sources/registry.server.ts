@@ -78,11 +78,21 @@ export function economiaDe(s: Settings): EconomiaConfig {
   return { modo, ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30 };
 }
 
+/** Módulos adicionais da CNPJá configurados pelo master. */
+export function modulosCnpjaDe(s: Settings): ModulosCnpja {
+  const out = { ...MODULOS_CNPJA_PADRAO };
+  for (const id of Object.keys(MODULOS_CNPJA_PADRAO) as Array<keyof ModulosCnpja>) {
+    out[id] = s[moduloKey(id)] === "true";
+  }
+  return out;
+}
+
 /** Configuração das fontes para a tela de Configurações. */
 export async function listarFontes(): Promise<{
   fontes: SourceConfig[];
   prioridade: SourceId[];
   economia: EconomiaConfig;
+  modulosCnpja: ModulosCnpja;
 }> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
@@ -101,7 +111,7 @@ export async function listarFontes(): Promise<{
       maskedKey: mascarar(chave),
     } satisfies SourceConfig;
   });
-  return { fontes, prioridade, economia: economiaDe(s) };
+  return { fontes, prioridade, economia: economiaDe(s), modulosCnpja: modulosCnpjaDe(s) };
 }
 
 export async function salvarFonte(input: {
@@ -117,11 +127,20 @@ export async function salvarFonte(input: {
   return { ok: true };
 }
 
+export async function salvarModulosCnpja(input: Partial<ModulosCnpja>) {
+  for (const [id, valor] of Object.entries(input)) {
+    if (valor === undefined) continue;
+    await gravar(moduloKey(id as keyof ModulosCnpja), valor ? "true" : "false");
+  }
+  return { ok: true };
+}
+
 export async function salvarEconomia(input: { modo?: ModoConsulta | undefined; ttlDias?: number | undefined }) {
   if (input.modo) await gravar(MODE_KEY, input.modo);
   if (input.ttlDias !== undefined) await gravar(TTL_KEY, String(Math.max(0, Math.min(365, Math.round(input.ttlDias)))));
   return { ok: true };
 }
+
 
 export async function salvarPrioridade(ordem: SourceId[]) {
   const limpa = ordem.filter((id) => DEFAULT_PRIORITY.includes(id));
