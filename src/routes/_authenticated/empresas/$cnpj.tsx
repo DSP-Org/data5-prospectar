@@ -2,7 +2,21 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, Plus, RefreshCw, Save, Sparkles, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Crown,
+  ExternalLink,
+  Loader2,
+  Phone,
+  Plus,
+  RefreshCw,
+  Save,
+  Smartphone,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,7 +31,20 @@ import {
   listarAtividadesFn,
   atualizarAtividadeFn,
 } from "@/lib/prospection.functions";
-import { STATUS_LABEL, ACTIVITY_LABEL, ACTIVITY_TYPES, formatCnpj, type ActivityType, type Contato, type Status } from "@/lib/types";
+import {
+  STATUS_LABEL,
+  ACTIVITY_LABEL,
+  ACTIVITY_TYPES,
+  formatCnpj,
+  classificarTelefone,
+  possuiWhatsapp,
+  isEmailContabil,
+  ordenarComAdministradorNoTopo,
+  TIPO_TELEFONE_LABEL,
+  type ActivityType,
+  type Contato,
+  type Status,
+} from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { SOURCE_LABEL } from "@/lib/sources/catalog";
@@ -201,7 +228,7 @@ function Detalhe() {
     .filter((p) => p && String(p).trim() !== "")
     .join(" · ");
 
-  const pessoas = [...(e.contatos ?? []), ...(e.decisores ?? [])];
+  const pessoas = ordenarComAdministradorNoTopo([...(e.contatos ?? []), ...(e.decisores ?? [])]);
 
   const raw = ((e as unknown as { raw?: Record<string, unknown> }).raw ?? {}) as Record<string, unknown>;
   const ex = ((raw["cnpja"] as Record<string, unknown> | undefined)?.["extras"] ?? {}) as Record<
@@ -360,20 +387,49 @@ function Detalhe() {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Telefones</p>
                   {e.telefones.length === 0 && <p className="text-sm">—</p>}
-                  {e.telefones.map((t) => (
-                    <a key={t} href={`tel:${t}`} className="block text-sm hover:text-accent">
-                      {t}
-                    </a>
-                  ))}
+                  {e.telefones.map((t) => {
+                    const whatsapp = possuiWhatsapp(t);
+                    return (
+                      <a
+                        key={t}
+                        href={`tel:${t}`}
+                        className="flex items-center gap-2 py-0.5 text-sm hover:text-accent"
+                      >
+                        {whatsapp ? (
+                          <Smartphone className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                        ) : (
+                          <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        )}
+                        <span>{t}</span>
+                        <Badge
+                          variant="outline"
+                          className={whatsapp ? "border-green-600 text-green-700" : "text-muted-foreground"}
+                        >
+                          {whatsapp ? "WhatsApp" : TIPO_TELEFONE_LABEL[classificarTelefone(t)]}
+                        </Badge>
+                      </a>
+                    );
+                  })}
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">E-mails</p>
                   {e.emails.length === 0 && <p className="text-sm">—</p>}
-                  {e.emails.map((m) => (
-                    <a key={m} href={`mailto:${m}`} className="block break-all text-sm hover:text-accent">
-                      {m}
-                    </a>
-                  ))}
+                  {e.emails.map((m) => {
+                    const contabil = isEmailContabil(m);
+                    return (
+                      <div key={m} className="flex flex-wrap items-center gap-2 py-0.5">
+                        <a href={`mailto:${m}`} className="break-all text-sm hover:text-accent">
+                          {m}
+                        </a>
+                        {contabil && (
+                          <Badge variant="outline" className="gap-1 border-amber-500 text-amber-700">
+                            <AlertTriangle className="h-3 w-3" />
+                            E-mail Contábil
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="sm:col-span-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Sites</p>
@@ -398,8 +454,23 @@ function Detalhe() {
                     Sócios e decisores
                   </p>
                   {pessoas.map((p, i) => (
-                    <div key={`${p.nome ?? "pessoa"}-${i}`} className="rounded-sm border border-border p-3">
-                      <p className="text-sm font-medium">{txt(p.nome) || "Sem nome"}</p>
+                    <div
+                      key={`${p.nome ?? "pessoa"}-${i}`}
+                      className={
+                        p.is_administrador
+                          ? "rounded-sm border border-amber-400 bg-amber-50 p-3 dark:bg-amber-950/20"
+                          : "rounded-sm border border-border p-3"
+                      }
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium">{txt(p.nome) || "Sem nome"}</p>
+                        {p.is_administrador && (
+                          <Badge className="gap-1 border-transparent bg-amber-500 text-white hover:bg-amber-500">
+                            <Crown className="h-3 w-3" />
+                            Administrador
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {txt(p.qualificacao) || txt(p.cargo) || txt(p.key) || "—"}
                       </p>

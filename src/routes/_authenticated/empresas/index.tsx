@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Columns3, Download, Loader2, Star } from "lucide-react";
+import { AlertTriangle, Columns3, Download, Loader2, Smartphone, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -13,9 +13,17 @@ import {
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
 import { cn } from "@/lib/utils";
-import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
+import {
+  STATUS_LABEL,
+  formatCnpj,
+  isEmailContabil,
+  possuiWhatsapp,
+  type Company,
+  type Status,
+} from "@/lib/types";
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -152,7 +160,38 @@ const COLUNAS: Coluna[] = [
     key: "contato",
     label: "Contato",
     padrao: true,
-    cell: (c) => c.melhor_telefone ?? c.emails[0] ?? "—",
+    cell: (c) => {
+      if (c.melhor_telefone) {
+        const whatsapp = possuiWhatsapp(c.melhor_telefone);
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            {whatsapp && <Smartphone className="h-3.5 w-3.5 shrink-0 text-green-600" />}
+            {c.melhor_telefone}
+            {whatsapp && (
+              <Badge variant="outline" className="border-green-600 text-[10px] text-green-700">
+                WhatsApp
+              </Badge>
+            )}
+          </span>
+        );
+      }
+      const primeiroEmail = c.emails[0];
+      if (primeiroEmail) {
+        const contabil = isEmailContabil(primeiroEmail);
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            {primeiroEmail}
+            {contabil && (
+              <Badge variant="outline" className="gap-1 border-amber-500 text-[10px] text-amber-700">
+                <AlertTriangle className="h-3 w-3" />
+                Contábil
+              </Badge>
+            )}
+          </span>
+        );
+      }
+      return "—";
+    },
     csv: [
       ["Telefone", (c) => c.melhor_telefone ?? ""],
       ["Telefones", (c) => c.telefones.join(" | ")],

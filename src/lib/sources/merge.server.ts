@@ -1,6 +1,7 @@
 // Mescla resultados parciais de várias fontes numa única empresa.
 
 import { canonizarNatureza } from "../natureza-juridica";
+import { isAdministrador, onlyDigits, type Json } from "../types";
 import type { MappedCompany } from "../company-mapper.server";
 import type { SourceId } from "./catalog";
 import type { Partial2 } from "./adapters.server";
@@ -156,6 +157,31 @@ export function mesclar(cnpj: string, entradas: EntradaFonte[]): EmpresaMesclada
 
 
   out["natureza_juridica"] = canonizarNatureza(out["natureza_juridica"] as string | null);
+
+  // Higienização: telefones sempre em dígitos (sem máscara/DDI) e sem duplicatas.
+  if (typeof out["melhor_telefone"] === "string") {
+    out["melhor_telefone"] = onlyDigits(out["melhor_telefone"] as string) || null;
+  }
+  if (Array.isArray(out["telefones"])) {
+    const vistos = new Set<string>();
+    out["telefones"] = (out["telefones"] as unknown[])
+      .map((t) => (typeof t === "string" ? onlyDigits(t) : ""))
+      .filter((t) => {
+        if (!t || vistos.has(t)) return false;
+        vistos.add(t);
+        return true;
+      });
+  }
+
+  // Marca administrador/presidente/diretor em cada sócio ou decisor mesclado.
+  for (const campoPessoas of ["contatos", "decisores"] as const) {
+    if (Array.isArray(out[campoPessoas])) {
+      out[campoPessoas] = (out[campoPessoas] as Array<Record<string, unknown>>).map((pessoa) => ({
+        ...pessoa,
+        is_administrador: isAdministrador(pessoa as { qualificacao?: Json; cargo?: Json }),
+      }));
+    }
+  }
 
   out["raw"] = raw;
   out["synced_at"] = new Date().toISOString();

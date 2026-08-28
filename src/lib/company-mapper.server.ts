@@ -1,4 +1,5 @@
 import type { EconodataCompany, FaixaEconodata } from "./econodata.server";
+import { isAdministrador, onlyDigits, type Json } from "./types";
 
 function faixaTexto(v: FaixaEconodata): string | null {
   if (v == null) return null;
@@ -23,6 +24,22 @@ function faixaSimples(v: FaixaEconodata): string | null {
 function limpar(list: unknown): string[] {
   if (!Array.isArray(list)) return [];
   return list.filter((v): v is string => typeof v === "string" && v.trim() !== "");
+}
+
+/** Normaliza uma lista de telefones para dígitos apenas (sem máscara/DDI), sem vazios. */
+function limparTelefones(list: unknown): string[] {
+  return limpar(list)
+    .map(onlyDigits)
+    .filter((v) => v.length > 0);
+}
+
+/** Marca cada sócio/decisor com is_administrador conforme a qualificação/cargo. */
+function marcarAdministradores(lista: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(lista)) return [];
+  return lista.map((pessoa) => {
+    const p = (pessoa ?? {}) as Record<string, unknown>;
+    return { ...p, is_administrador: isAdministrador(p as { qualificacao?: Json; cargo?: Json }) };
+  });
 }
 
 function coletarEmails(c: EconodataCompany): string[] {
@@ -69,21 +86,21 @@ export function mapCompany(c: EconodataCompany) {
     qtd_funcionarios_estimada: faixaSimples(c.qtdFuncionariosEstimada ?? null),
     capital_social: capital != null && Number.isFinite(capital) ? capital : null,
     data_abertura: c.dataAbertura ? c.dataAbertura.slice(0, 10) : null,
-    melhor_telefone: c.melhorTelefone ?? null,
+    melhor_telefone: c.melhorTelefone ? onlyDigits(c.melhorTelefone) || null : null,
     telefones: [
       ...new Set([
-        ...limpar(c.telefonesAltaAssertividade),
-        ...limpar(c.telefonesMediaAssertividade),
-        ...limpar(c.telefonesBaixaAssertividade),
-        ...limpar([c.melhorTelefone, c.segundoMelhorTelefone, c.terceiroMelhorTelefone]),
+        ...limparTelefones(c.telefonesAltaAssertividade),
+        ...limparTelefones(c.telefonesMediaAssertividade),
+        ...limparTelefones(c.telefonesBaixaAssertividade),
+        ...limparTelefones([c.melhorTelefone, c.segundoMelhorTelefone, c.terceiroMelhorTelefone]),
       ]),
     ],
     melhor_site: c.melhorSite ?? null,
     sites: [...new Set([...limpar(c.sites), ...limpar([c.melhorSite, c.segundoMelhorSite])])],
     email_receita: c.emailReceitaFederal ?? null,
     emails: coletarEmails(c),
-    contatos: (c.contatos ?? []) as unknown as Record<string, unknown>[],
-    decisores: (c.decisores ?? []) as unknown as Record<string, unknown>[],
+    contatos: marcarAdministradores(c.contatos ?? []),
+    decisores: marcarAdministradores(c.decisores ?? []),
     link_detalhe: c.linkDetalhe ?? null,
     raw: c as unknown as Record<string, unknown>,
     synced_at: new Date().toISOString(),

@@ -20,6 +20,8 @@ export type Contato = {
   dataEntradaSociedade?: Json;
   emails?: Json;
   email?: Json;
+  /** Marcado automaticamente quando a qualificação/cargo indica administrador, presidente ou diretor. */
+  is_administrador?: boolean;
   [k: string]: Json | undefined;
 };
 
@@ -139,3 +141,94 @@ export type ProspectionActivity = {
 export function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
+
+// ==================== Higienização de contatos ====================
+
+export type TipoTelefone = "CELULAR" | "FIXO" | "DESCONHECIDO";
+
+export const TIPO_TELEFONE_LABEL: Record<TipoTelefone, string> = {
+  CELULAR: "Celular",
+  FIXO: "Fixo",
+  DESCONHECIDO: "Indefinido",
+};
+
+/** Remove tudo que não for dígito e descarta o DDI 55 quando presente. */
+export function normalizarTelefone(valor: string): string {
+  const d = onlyDigits(valor);
+  if (d.length > 11 && d.startsWith("55")) return d.slice(2);
+  return d;
+}
+
+/**
+ * Classifica um telefone brasileiro em CELULAR (DDD + 9 dígitos) ou
+ * FIXO (DDD + 8 dígitos). Fora desse padrão, volta como DESCONHECIDO.
+ */
+export function classificarTelefone(valor: string): TipoTelefone {
+  const d = normalizarTelefone(valor);
+  if (d.length === 11) return "CELULAR";
+  if (d.length === 10) return "FIXO";
+  return "DESCONHECIDO";
+}
+
+/** No Brasil, todo número CELULAR (com o 9º dígito) é apto a ter WhatsApp. */
+export function possuiWhatsapp(valor: string): boolean {
+  return classificarTelefone(valor) === "CELULAR";
+}
+
+const PADROES_EMAIL_CONTABIL: RegExp[] = [
+  /contabil/i,
+  /escritorio/i,
+  /contabilidade/i,
+  /^fiscal@/i,
+  /^dp@/i,
+];
+
+/**
+ * Identifica e-mails característicos de escritórios de contabilidade
+ * (@contabil, @escritorio, *contabilidade*, fiscal@, dp@), para evitar o
+ * envio de comunicações comerciais ao contador em vez do decisor da empresa.
+ */
+export function isEmailContabil(email: string): boolean {
+  const e = email.trim().toLowerCase();
+  if (!e) return false;
+  return PADROES_EMAIL_CONTABIL.some((re) => re.test(e));
+}
+
+export type EmailClassificado = { email: string; is_contabil: boolean };
+
+export function classificarEmail(email: string): EmailClassificado {
+  return { email, is_contabil: isEmailContabil(email) };
+}
+
+const TERMOS_ADMINISTRADOR = [
+  "socio-administrador",
+  "administrador",
+  "presidente",
+  "diretor",
+];
+
+function semAcentos(v: string): string {
+  return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Identifica, pela qualificação/cargo do sócio, se a pessoa é
+ * administradora/representante legal da empresa (Sócio-Administrador,
+ * Administrador, Presidente ou Diretor).
+ */
+export function isAdministrador(pessoa: { qualificacao?: Json; cargo?: Json }): boolean {
+  const qualificacao = typeof pessoa.qualificacao === "string" ? pessoa.qualificacao : "";
+  const cargo = typeof pessoa.cargo === "string" ? pessoa.cargo : "";
+  const texto = semAcentos(`${qualificacao} ${cargo}`.toLowerCase());
+  return TERMOS_ADMINISTRADOR.some((termo) => texto.includes(semAcentos(termo)));
+}
+
+/** Recebe sócios/decisores, marca quem é administrador e traz esses nomes para o topo da lista. */
+export function ordenarComAdministradorNoTopo<
+  T extends { qualificacao?: Json; cargo?: Json; is_administrador?: boolean },
+>(pessoas: T[]): Array<T & { is_administrador: boolean }> {
+  return pessoas
+    .map((p) => ({ ...p, is_administrador: p.is_administrador ?? isAdministrador(p) }))
+    .sort((a, b) => Number(b.is_administrador) - Number(a.is_administrador));
+}
+
