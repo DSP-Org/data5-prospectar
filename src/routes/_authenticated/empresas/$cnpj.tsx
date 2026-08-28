@@ -12,6 +12,7 @@ import {
   Loader2,
   Phone,
   Plus,
+  Printer,
   RefreshCw,
   Save,
   Smartphone,
@@ -46,6 +47,7 @@ import {
   type Status,
 } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FichaImpressao } from "@/components/FichaImpressao";
 import { Badge } from "@/components/ui/badge";
 import { SOURCE_LABEL } from "@/lib/sources/catalog";
 
