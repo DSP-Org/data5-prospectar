@@ -222,7 +222,7 @@ function Consulta() {
                     <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
                   </TabsList>
                   <TabsContent value="ficha" className="pt-4">
-                    <JanelaCnpja />
+                    <JanelaCnpja listId={alvoLista} />
                   </TabsContent>
                   <TabsContent value="avancada" className="pt-4">
                     <BuscaAvancadaCnpja listId={alvoLista} />
