@@ -55,6 +55,12 @@ function Pagina() {
   const [rodando, setRodando] = useState<string | null>(null);
   const parar = useRef(false);
 
+  function pausar() {
+    parar.current = true;
+    autoIniciado.current = true;
+    toast.info("Pausando após o bloco atual…");
+  }
+
   const processar = useServerFn(processarLoteFn);
   const reprocessar = useServerFn(reprocessarFalhasFn);
   const excluir = useServerFn(excluirImportacaoFn);
