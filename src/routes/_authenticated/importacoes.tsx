@@ -216,9 +216,15 @@ function Pagina() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      disabled={rodando !== null}
                       onClick={async () => {
+                        const ok = window.confirm(
+                          "Excluir esta importação? As empresas já importadas continuam na base; some apenas a fila e o que ainda estava pendente.",
+                        );
+                        if (!ok) return;
+                        parar.current = true;
+                        if (ativo === j.id) setAtivo(null);
                         await excluir({ data: { jobId: j.id } });
+                        toast.success("Importação excluída. As empresas já importadas foram mantidas.");
                         qc.invalidateQueries({ queryKey: ["importacoes"] });
                       }}
                     >
