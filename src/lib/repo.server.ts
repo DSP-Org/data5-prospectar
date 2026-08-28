@@ -104,12 +104,44 @@ export async function consultarCnpjs(input: {
     return { itens };
   }
 
+  // Empresas que já estão na base não vão para as fontes (não gasta crédito).
+  // "Buscar tudo" / reconsulta forçada ignoram esse atalho.
+  let aConsultar = validos;
+  if (!input.forcar && !input.completo) {
+    const { data: jaNaBase } = await supabaseAdmin
+      .from("companies")
+      .select("*")
+      .in("cnpj", validos);
+    const existentes = ((jaNaBase ?? []) as Row[]).map(asCompany);
+    if (existentes.length) {
+      const idsExistentes = new Set(existentes.map((c) => c.cnpj));
+      aConsultar = validos.filter((c) => !idsExistentes.has(c));
+      // Se houver lista de destino, apenas vincula sem reconsultar as fontes.
+      if (input.listId && input.salvar !== false) {
+        await supabaseAdmin
+          .from("companies")
+          .update({ list_id: input.listId } as never)
+          .in("cnpj", Array.from(idsExistentes));
+      }
+      for (const c of existentes)
+        itens.push({
+          cnpj: c.cnpj,
+          encontrada: true,
+          company: input.listId ? { ...c, list_id: input.listId } : c,
+          salva: true,
+        });
+    }
+  }
+
+  if (aConsultar.length === 0) return { itens };
+
   const encontradas: Record<string, unknown>[] = [];
   try {
-    const { empresas, falhas } = await buscarMultiFonte(validos, {
+    const { empresas, falhas } = await buscarMultiFonte(aConsultar, {
       forcar: input.forcar,
       completo: input.completo,
     });
+
 
     for (const c of validos) {
       const m = empresas.get(c);
