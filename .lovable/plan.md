@@ -53,8 +53,8 @@ Migração de banco (uma única migração, com GRANTs e RLS):
 - `products` (unit_id, nome, tipo, descricao, valor_referencia, ativo, timestamps).
 - `companies.product_id` e `prospection_activities.product_id` (nullable, FK para `products`).
 - `app_role` recebe `admin_unidade`; papéis existentes remapeados.
-- `role_permissions` (role, rota, nivel) — matriz padrão semeada na própria migração.
-- `user_permissions` (user_id, rota, nivel, origem `permitir`/`negar`) — sobreposições por pessoa.
+- `role_permissions` (role, rota) — matriz padrão de páginas por papel, semeada na própria migração.
+- `user_permissions` (user_id, rota, efeito `permitir`/`negar`) — sobreposições por pessoa.
 - Função security definer `pode_acessar(_user_id, _rota)` combinando papel + sobreposição, usada nas policies e no servidor.
 
 Código:
