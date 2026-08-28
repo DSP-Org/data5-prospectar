@@ -5,6 +5,7 @@ import {
   Building,
   Building2,
   Calculator,
+  ChevronDown,
   Kanban,
   LayoutDashboard,
   ListTodo,
@@ -15,10 +16,11 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
@@ -72,6 +74,7 @@ const grupos = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
 
   async function sair() {
