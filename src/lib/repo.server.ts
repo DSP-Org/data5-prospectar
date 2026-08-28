@@ -239,9 +239,9 @@ export async function listarEmpresas(input: {
 }) {
   const page = Math.max(1, input.page ?? 1);
   const perPage = Math.min(100, input.perPage ?? 25);
+  // A base de empresas pertence ao sistema: não é filtrada pela unidade ativa.
   let q = supabaseAdmin.from("companies").select("*", { count: "exact" });
-  const unidades = unidadesFiltro(input.escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+
 
   if (input.busca?.trim()) {
     const termo = input.busca.trim();
@@ -296,14 +296,13 @@ function chave(cnpj: string) {
   return formatCnpjApi(cnpj) ?? cnpj;
 }
 
-export async function obterEmpresa(cnpj: string, escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function obterEmpresa(cnpj: string, _escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
   const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
+
 
 export async function atualizarEmpresa(input: {
   escopo: Escopo;
@@ -320,33 +319,28 @@ export async function atualizarEmpresa(input: {
   if (input.listId !== undefined) patch["list_id"] = input.listId;
   if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
-  let uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
-  const unidadesUp = unidadesFiltro(input.escopo);
-  if (unidadesUp) uq = uq.in("unit_id", unidadesUp);
+  const uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
   const { data, error } = await uq.select("*").maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
 }
 
-export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, escopo: Escopo) {
+export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, _escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0 };
-  let q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+  const q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
   const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true, total: chaves.length };
 }
 
-export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function excluirEmpresa(cnpj: string, _escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
   const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true };
 }
+
 
 export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   const unidades = unidadesFiltro(escopo);
@@ -355,8 +349,8 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   const { data, error } = await lq;
   if (error) throw new Error(error.message);
 
-  let cq = supabaseAdmin.from("companies").select("list_id");
-  if (unidades) cq = cq.in("unit_id", unidades);
+  // Contagem sobre a base do sistema (sem filtro de unidade); as listas é que pertencem à unidade.
+  const cq = supabaseAdmin.from("companies").select("list_id");
   const { data: rows } = await cq;
   const contagem: Record<string, number> = {};
   for (const r of (rows ?? []) as Array<{ list_id: string | null }>) {
@@ -371,10 +365,9 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
 }
 
 /** Quantidade de empresas ainda sem lista. */
-export async function contarSemLista(escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function contarSemLista(_escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
+
   const { count } = await q;
   return count ?? 0;
 }
@@ -398,15 +391,16 @@ export async function excluirLista(id: string, escopo: Escopo) {
   return { ok: true };
 }
 
-export async function obterPainel(escopo: Escopo) {
-  const unidades = unidadesFiltro(escopo);
-  const escopar = <T extends { in: (c: string, v: string[]) => T }>(q: T): T => (unidades ? q.in("unit_id", unidades) : q);
+export async function obterPainel(_escopo: Escopo) {
+  // Painel reflete a base de empresas do sistema, sem recorte por unidade.
+  const escopar = <T,>(q: T): T => q;
 
   const { count: total } = await escopar(
     supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }),
   );
 
   const { data: statusRows } = await escopar(supabaseAdmin.from("companies").select("status, uf, created_at"));
+
   const porStatus: Record<string, number> = {};
   const porUf: Record<string, number> = {};
   let ultimos30 = 0;
@@ -500,10 +494,9 @@ export async function consultarChaves(input: {
 }
 
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
-export async function opcoesFiltro(escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores");
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function opcoesFiltro(_escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores");
+
   const { data } = await q.limit(5000);
   const ufs = new Set<string>();
   const cidades = new Set<string>();
