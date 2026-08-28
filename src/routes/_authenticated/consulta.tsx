@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ import {
 } from "@/lib/econodata.functions";
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
 import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
+import { buscarLocalFn } from "@/lib/busca-local.functions";
+
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -695,10 +697,21 @@ const FILTROS_INICIAIS: FiltrosCnpja = {
   limite: "20",
 };
 
-function BuscaAvancadaCnpja({ listId }: { listId: string | null }) {
+function BuscaAvancadaCnpja({
+  listId,
+  nomeInicial,
+}: {
+  listId: string | null;
+  nomeInicial?: string;
+}) {
   const [f, setF] = useState<FiltrosCnpja>(FILTROS_INICIAIS);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
+  }, [nomeInicial]);
+
   const qc = useQueryClient();
 
   const buscar = useServerFn(buscarCnpjaFn);
