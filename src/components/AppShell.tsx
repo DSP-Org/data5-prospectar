@@ -16,6 +16,7 @@ import {
   Star,
   Tags,
   Target,
+  Upload,
   Users,
   UsersRound,
 } from "lucide-react";
