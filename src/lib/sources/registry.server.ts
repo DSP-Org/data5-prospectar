@@ -277,16 +277,23 @@ export async function buscarMultiFonte(
   };
 
 
+  // Só conta como crédito gasto quando a fonte paga de fato retornou dados.
+  const contarPagas = (candidatos: string[]) => {
+    for (const cnpj of candidatos) {
+      if (pagas.some((id) => resultados.get(id)?.get(cnpj))) pagasUsadas.push(cnpj);
+    }
+  };
+
   if (modo === "completo") {
     await rodarFontes(ativas, pendentes, s, resultados, falhas, fetchOpts);
-    if (pagas.length) pagasUsadas.push(...pendentes);
+    if (pagas.length) contarPagas(pendentes);
   } else {
     await rodarFontes(gratis, pendentes, s, resultados, falhas, fetchOpts);
     const parciais = mesclarTodos(pendentes, prioridade, resultados);
     const semContato = pendentes.filter((c) => !temContato(parciais.get(c)));
     if (pagas.length && semContato.length) {
       await rodarFontes(pagas, semContato, s, resultados, falhas, fetchOpts);
-      pagasUsadas.push(...semContato);
+      contarPagas(semContato);
     }
   }
 
