@@ -89,7 +89,7 @@ function Pagina() {
         qc.invalidateQueries({ queryKey: ["importacoes"] });
         if (r.processados === 0 || r.pendentes === 0) break;
       }
-      toast.success("Importação processada.");
+      toast.success(parar.current ? "Importação pausada." : "Importação processada.");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
