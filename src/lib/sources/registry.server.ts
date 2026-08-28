@@ -4,9 +4,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ADAPTERS, type FetchOpts, type LoteResultado } from "./adapters.server";
 import {
   DEFAULT_PRIORITY,
+  MODULOS_CNPJA_PADRAO,
   SOURCES,
   type EconomiaConfig,
   type ModoConsulta,
+  type ModulosCnpja,
   type SourceConfig,
   type SourceId,
 } from "./catalog";
@@ -19,6 +21,8 @@ const enabledKey = (id: SourceId) => `source_${id}_enabled`;
 const PRIORITY_KEY = "sources_priority";
 const MODE_KEY = "sources_modo";
 const TTL_KEY = "sources_cache_ttl_dias";
+const moduloKey = (id: keyof ModulosCnpja) => `cnpja_modulo_${id}`;
+
 
 
 type Settings = Record<string, string>;
