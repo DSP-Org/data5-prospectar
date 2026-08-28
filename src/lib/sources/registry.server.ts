@@ -67,8 +67,19 @@ function mascarar(v: string | null) {
   return v ? "••••••••••••" + v.slice(-4) : null;
 }
 
+/** Modo de consulta e validade do cache. */
+export function economiaDe(s: Settings): EconomiaConfig {
+  const modo: ModoConsulta = s[MODE_KEY] === "completo" ? "completo" : "economico";
+  const ttl = Number(s[TTL_KEY] ?? "30");
+  return { modo, ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30 };
+}
+
 /** Configuração das fontes para a tela de Configurações. */
-export async function listarFontes(): Promise<{ fontes: SourceConfig[]; prioridade: SourceId[] }> {
+export async function listarFontes(): Promise<{
+  fontes: SourceConfig[];
+  prioridade: SourceId[];
+  economia: EconomiaConfig;
+}> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
   const fontes = prioridade.map((id) => {
@@ -80,12 +91,13 @@ export async function listarFontes(): Promise<{ fontes: SourceConfig[]; priorida
       descricao: meta.descricao,
       requiresKey: meta.requiresKey,
       contatos: meta.contatos,
+      custo: meta.custo,
       enabled: ativa(id, s, Boolean(chave)),
       hasKey: Boolean(chave),
       maskedKey: mascarar(chave),
     } satisfies SourceConfig;
   });
-  return { fontes, prioridade };
+  return { fontes, prioridade, economia: economiaDe(s) };
 }
 
 export async function salvarFonte(input: {
@@ -98,6 +110,12 @@ export async function salvarFonte(input: {
     else await gravar(keyKey(input.id), input.key);
   }
   if (input.enabled !== undefined) await gravar(enabledKey(input.id), input.enabled ? "true" : "false");
+  return { ok: true };
+}
+
+export async function salvarEconomia(input: { modo?: ModoConsulta | undefined; ttlDias?: number | undefined }) {
+  if (input.modo) await gravar(MODE_KEY, input.modo);
+  if (input.ttlDias !== undefined) await gravar(TTL_KEY, String(Math.max(0, Math.min(365, Math.round(input.ttlDias)))));
   return { ok: true };
 }
 
@@ -117,27 +135,61 @@ export type ResultadoMultiFonte = {
   empresas: Map<string, EmpresaMesclada>;
   falhas: Array<{ fonte: SourceId; erro: string }>;
   fontesUsadas: SourceId[];
+  /** CNPJs atendidos pelo cache local, sem consultar fonte externa. */
+  doCache: string[];
+  /** CNPJs que consumiram fonte paga. */
+  pagasUsadas: string[];
 };
 
-/** Consulta todas as fontes ativas em paralelo e mescla por CNPJ. */
-export async function buscarMultiFonte(cnpjs: string[]): Promise<ResultadoMultiFonte> {
-  const s = await lerSettings();
-  const prioridade = ordemPrioridade(s);
-  const ativas = prioridade.filter((id) => ativa(id, s, Boolean(chaveDaFonte(id, s))));
+function temContato(e: EmpresaMesclada | undefined) {
+  if (!e) return false;
+  const r = e as unknown as Record<string, unknown>;
+  const arr = (k: string) => (Array.isArray(r[k]) ? (r[k] as unknown[]).length > 0 : false);
+  return arr("telefones") || arr("emails") || arr("decisores") || Boolean(r["melhor_telefone"]);
+}
 
-  const falhas: Array<{ fonte: SourceId; erro: string }> = [];
-  const resultados = new Map<SourceId, LoteResultado>();
+/** Busca no cache local as empresas sincronizadas dentro da validade. */
+async function lerCache(cnpjs: string[], ttlDias: number) {
+  const out = new Map<string, EmpresaMesclada>();
+  if (ttlDias <= 0 || cnpjs.length === 0) return out;
+  const limite = new Date(Date.now() - ttlDias * 86400000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("companies")
+    .select("*")
+    .in("cnpj", cnpjs)
+    .gte("synced_at", limite);
+  if (error) return out;
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const cnpj = String(row["cnpj"] ?? "");
+    if (cnpj) out.set(cnpj, row as unknown as EmpresaMesclada);
+  }
+  return out;
+}
 
+async function rodarFontes(
+  ids: SourceId[],
+  cnpjs: string[],
+  s: Settings,
+  destino: Map<SourceId, LoteResultado>,
+  falhas: Array<{ fonte: SourceId; erro: string }>,
+) {
+  if (ids.length === 0 || cnpjs.length === 0) return;
   await Promise.all(
-    ativas.map(async (id) => {
+    ids.map(async (id) => {
       try {
-        resultados.set(id, await ADAPTERS[id].fetchLote(cnpjs, chaveDaFonte(id, s)));
+        destino.set(id, await ADAPTERS[id].fetchLote(cnpjs, chaveDaFonte(id, s)));
       } catch (e) {
         falhas.push({ fonte: id, erro: e instanceof Error ? e.message : "Falha desconhecida." });
       }
     }),
   );
+}
 
+function mesclarTodos(
+  cnpjs: string[],
+  prioridade: SourceId[],
+  resultados: Map<SourceId, LoteResultado>,
+) {
   const empresas = new Map<string, EmpresaMesclada>();
   for (const cnpj of cnpjs) {
     const entradas: EntradaFonte[] = [];
@@ -148,6 +200,58 @@ export async function buscarMultiFonte(cnpjs: string[]): Promise<ResultadoMultiF
     const mesclada = mesclar(cnpj, entradas);
     if (mesclada) empresas.set(cnpj, mesclada);
   }
+  return empresas;
+}
 
-  return { empresas, falhas, fontesUsadas: ativas };
+/**
+ * Consulta as fontes ativas e mescla por CNPJ.
+ * No modo econômico, as fontes gratuitas vêm primeiro e as pagas só são
+ * acionadas para os CNPJs que ficaram sem contato (telefone/e-mail/decisor).
+ * O cache local evita reconsultar empresas sincronizadas recentemente.
+ */
+export async function buscarMultiFonte(
+  cnpjs: string[],
+  opts?: { forcar?: boolean | undefined; modo?: ModoConsulta | undefined },
+): Promise<ResultadoMultiFonte> {
+  const s = await lerSettings();
+  const prioridade = ordemPrioridade(s);
+  const ativas = prioridade.filter((id) => ativa(id, s, Boolean(chaveDaFonte(id, s))));
+  const { modo: modoSalvo, ttlDias } = economiaDe(s);
+  const modo = opts?.modo ?? modoSalvo;
+
+  const empresas = new Map<string, EmpresaMesclada>();
+  const doCache: string[] = [];
+  if (!opts?.forcar) {
+    const cache = await lerCache(cnpjs, ttlDias);
+    for (const [cnpj, empresa] of cache) {
+      empresas.set(cnpj, empresa);
+      doCache.push(cnpj);
+    }
+  }
+
+  const pendentes = cnpjs.filter((c) => !empresas.has(c));
+  const falhas: Array<{ fonte: SourceId; erro: string }> = [];
+  const resultados = new Map<SourceId, LoteResultado>();
+  const gratis = ativas.filter((id) => SOURCES.find((m) => m.id === id)!.custo === "gratis");
+  const pagas = ativas.filter((id) => SOURCES.find((m) => m.id === id)!.custo === "pago");
+  const pagasUsadas: string[] = [];
+
+  if (modo === "completo") {
+    await rodarFontes(ativas, pendentes, s, resultados, falhas);
+    if (pagas.length) pagasUsadas.push(...pendentes);
+  } else {
+    await rodarFontes(gratis, pendentes, s, resultados, falhas);
+    const parciais = mesclarTodos(pendentes, prioridade, resultados);
+    const semContato = pendentes.filter((c) => !temContato(parciais.get(c)));
+    if (pagas.length && semContato.length) {
+      await rodarFontes(pagas, semContato, s, resultados, falhas);
+      pagasUsadas.push(...semContato);
+    }
+  }
+
+  for (const [cnpj, empresa] of mesclarTodos(pendentes, prioridade, resultados)) {
+    empresas.set(cnpj, empresa);
+  }
+
+  return { empresas, falhas, fontesUsadas: ativas, doCache, pagasUsadas };
 }
