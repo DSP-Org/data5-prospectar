@@ -5,6 +5,7 @@ import {
   Building,
   Building2,
   Calculator,
+  ChevronDown,
   Kanban,
   LayoutDashboard,
   ListTodo,
@@ -15,10 +16,11 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
@@ -37,25 +39,42 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { meFn } from "@/lib/auth.functions";
 
-const nav = [
-  { to: "/", label: "Painel", icon: LayoutDashboard },
-  { to: "/consulta", label: "Consulta", icon: Search },
-  { to: "/empresas", label: "Base de empresas", icon: Building2 },
-  { to: "/listas", label: "Listas", icon: Tags },
-  { to: "/funil", label: "Funil", icon: Kanban },
-  { to: "/atividades", label: "Atividades", icon: ListTodo },
-  { to: "/calculadora", label: "Calculadora", icon: Calculator },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
+const grupos = [
+  {
+    id: "geral",
+    label: "Geral",
+    items: [
+      { to: "/", label: "Painel", icon: LayoutDashboard },
+      { to: "/consulta", label: "Consulta", icon: Search },
+      { to: "/empresas", label: "Base de empresas", icon: Building2 },
+      { to: "/listas", label: "Listas", icon: Tags },
+      { to: "/calculadora", label: "Calculadora", icon: Calculator },
+    ],
+  },
+  {
+    id: "prospectar",
+    label: "Prospectar",
+    items: [
+      { to: "/funil", label: "Funil", icon: Kanban },
+      { to: "/atividades", label: "Atividades", icon: ListTodo },
+      { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
+    ],
+  },
+  {
+    id: "admin",
+    label: "Administração",
+    items: [
+      { to: "/unidades", label: "Unidades", icon: Building },
+      { to: "/usuarios", label: "Usuários", icon: Users, masterOnly: true },
+      { to: "/configuracoes", label: "Configurações", icon: Settings2, masterOnly: true },
+    ],
+  },
 ] as const;
 
-const navAdmin = [
-  { to: "/unidades", label: "Unidades", icon: Building },
-  { to: "/usuarios", label: "Usuários", icon: Users, masterOnly: true },
-  { to: "/configuracoes", label: "Configurações", icon: Settings2, masterOnly: true },
-] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
 
   async function sair() {
@@ -84,43 +103,51 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Menu</SidebarGroupLabel>
-            <SidebarMenu>
-              {nav.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
-                    <Link
-                      to={item.to}
-                      activeOptions={{ exact: item.to === "/" }}
-                      className="flex items-center gap-2"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-          <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
-            <SidebarMenu>
-              {navAdmin
-                .filter((item) => !("masterOnly" in item && item.masterOnly) || me?.master)
-                .map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild tooltip={item.label}>
-                      <Link to={item.to} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-          </SidebarGroup>
+          {grupos.map((grupo) => {
+            const items = grupo.items.filter(
+              (item) => !("masterOnly" in item && item.masterOnly) || me?.master,
+            );
+            if (items.length === 0) return null;
+            const aberto = abertos[grupo.id] !== false;
+            return (
+              <Collapsible
+                key={grupo.id}
+                open={aberto}
+                onOpenChange={(v) => setAbertos((s) => ({ ...s, [grupo.id]: v }))}
+              >
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between">
+                      {grupo.label}
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${aberto ? "" : "-rotate-90"}`}
+                      />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <SidebarMenu>
+                      {items.map((item) => (
+                        <SidebarMenuItem key={item.to}>
+                          <SidebarMenuButton asChild tooltip={item.label}>
+                            <Link
+                              to={item.to}
+                              activeOptions={{ exact: item.to === "/" }}
+                              className="flex items-center gap-2"
+                            >
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            );
+          })}
         </SidebarContent>
+
         <SidebarFooter className="text-xs text-sidebar-foreground/50">
           Prospectar360 © {new Date().getFullYear()}
         </SidebarFooter>
