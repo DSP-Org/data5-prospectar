@@ -21,7 +21,7 @@ export type Pagina = { rota: string; label: string; grupo: string; masterOnly?: 
 export const PAGINAS: Pagina[] = [
   { rota: "/", label: "Painel", grupo: "Geral" },
   { rota: "/consulta", label: "Consulta", grupo: "Geral" },
-  { rota: "/empresas", label: "Base de empresas", grupo: "Geral" },
+  { rota: "/empresas", label: "Base de Empresas - Geral", grupo: "Geral" },
   { rota: "/listas", label: "Listas", grupo: "Geral" },
   { rota: "/calculadora", label: "Calculadora", grupo: "Geral" },
   { rota: "/clientes-potenciais", label: "Clientes potenciais", grupo: "Prospectar" },
