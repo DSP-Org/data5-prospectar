@@ -6,10 +6,11 @@ import { useMemo, useState } from "react";
 import { formatCnpj, ACTIVITY_LABEL, STATUS_LABEL, STATUSES, type Status } from "@/lib/types";
 import { funilDadosFn } from "@/lib/prospection.functions";
 import { GRUPOS_NATUREZA, grupoDaNatureza } from "@/lib/natureza-juridica";
-import { atualizarEmpresaFn, listarListasFn } from "@/lib/econodata.functions";
+import { atualizarEmpresaFn } from "@/lib/econodata.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+import { useListas } from "@/lib/use-listas";
   Select,
   SelectContent,
   SelectItem,

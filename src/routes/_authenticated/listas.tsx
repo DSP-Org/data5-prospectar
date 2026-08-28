@@ -4,12 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
 
 import {
   contarSemListaFn,
   criarListaFn,
   excluirListaFn,
-  listarListasFn,
 } from "@/lib/econodata.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

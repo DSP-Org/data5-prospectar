@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
+import { useListas } from "@/lib/use-listas";
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
@@ -23,7 +24,6 @@ import {
   atualizarEmpresaFn,
   consultarCnpjsFn,
   excluirEmpresaFn,
-  listarListasFn,
   obterEmpresaFn,
 } from "@/lib/econodata.functions";
 import {

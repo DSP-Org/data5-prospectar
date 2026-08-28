@@ -4,11 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { AlertTriangle, Columns3, Download, Loader2, Smartphone, Star } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
 
 import {
   exportarEmpresasFn,
   listarEmpresasFn,
-  listarListasFn,
   marcarProspectarFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";

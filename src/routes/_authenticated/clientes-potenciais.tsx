@@ -4,10 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Loader2, Star, StarOff } from "lucide-react";
 import { toast } from "sonner";
+import { useListas } from "@/lib/use-listas";
 
 import {
   listarEmpresasFn,
-  listarListasFn,
   marcarProspectarFn,
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Status } from "@/lib/types";
