@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { Fragment } from "react";
 import { toast } from "sonner";
 
 import { GestaoUsuarios } from "@/components/GestaoUsuarios";
@@ -121,8 +122,8 @@ function PermissoesPage() {
                 </TableHeader>
                 <TableBody>
                   {grupos.map((grupo) => (
-                    <>
-                      <TableRow key={grupo} className="bg-muted/40">
+                    <Fragment key={grupo}>
+                      <TableRow className="bg-muted/40">
                         <TableCell colSpan={PAPEIS_MATRIZ.length + 1} className="py-2 text-xs font-medium uppercase">
                           {grupo}
                         </TableCell>
@@ -155,7 +156,7 @@ function PermissoesPage() {
                           ))}
                         </TableRow>
                       ))}
-                    </>
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>
