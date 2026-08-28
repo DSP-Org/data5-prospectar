@@ -2,15 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Columns3, Download, Loader2 } from "lucide-react";
+import { Columns3, Download, Loader2, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   exportarEmpresasFn,
   listarEmpresasFn,
   listarListasFn,
+  marcarProspectarFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
+import { cn } from "@/lib/utils";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
