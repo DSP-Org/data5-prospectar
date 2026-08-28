@@ -58,16 +58,18 @@ function Pagina() {
   const processar = useServerFn(processarLoteFn);
   const reprocessar = useServerFn(reprocessarFalhasFn);
   const excluir = useServerFn(excluirImportacaoFn);
+  const listar = useServerFn(listarImportacoesFn);
+  const itens = useServerFn(itensImportacaoFn);
 
   const jobs = useQuery({
     queryKey: ["importacoes"],
-    queryFn: () => listarImportacoesFn(),
+    queryFn: () => listar(undefined as never),
     refetchInterval: rodando ? 3000 : false,
   });
 
   const falhas = useQuery({
     queryKey: ["importacao-itens", ativo],
-    queryFn: () => itensImportacaoFn({ data: { jobId: ativo as string } }),
+    queryFn: () => itens({ data: { jobId: ativo as string } }),
     enabled: Boolean(ativo),
   });
 
