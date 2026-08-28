@@ -12,6 +12,7 @@ import {
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
+import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 import { Button } from "@/components/ui/button";
