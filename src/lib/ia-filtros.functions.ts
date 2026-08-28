@@ -37,7 +37,7 @@ Responda SOMENTE com JSON válido, sem markdown, no formato:
 {"nome":null,"nomeFantasia":null,"uf":null,"municipios":[],"bairro":null,"cnaeTermos":[],"porteIds":[],"situacaoIds":[],"capitalMin":null,"capitalMax":null,"aberturaDe":null,"aberturaAte":null,"matrizFilial":null,"simples":null,"mei":null,"temTelefone":null,"temEmail":null,"ddd":null,"limite":null,"explicacao":""}
 Regras:
 - uf: sigla de 2 letras em maiúsculo (ex.: SP). municipios: nomes por extenso.
-- cnaeTermos: palavras-chave da atividade econômica (ex.: "restaurante", "transporte rodoviário de carga") ou códigos CNAE numéricos.
+- cnaeTermos: SEMPRE preencha quando o pedido citar qualquer tipo de negócio, produto ou atividade (ex.: "padarias", "clínicas", "transportadoras"). Use de 1 a 3 termos curtos com o vocabulário oficial do CNAE/IBGE (ex.: "padaria" -> "fabricação de produtos de padaria", "confeitaria"; "transportadora" -> "transporte rodoviário de carga"). Códigos CNAE numéricos também são aceitos.
 - porteIds: "1"=ME, "3"=EPP, "5"=Demais. situacaoIds: "2"=Ativa, "4"=Inapta, "8"=Baixada. Se o pedido não citar, use ["2"].
 - matrizFilial: "matriz", "filial" ou "" (ambos).
 - simples/mei/temTelefone/temEmail: "sim", "nao" ou "" quando não citado.
