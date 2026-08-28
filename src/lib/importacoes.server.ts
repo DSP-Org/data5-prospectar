@@ -122,13 +122,35 @@ export async function processarLote(input: {
     .order("created_at", { ascending: true })
     .limit(tamanho);
 
-  const pendentes = (data ?? []) as { id: string; cnpj: string }[];
+  let pendentes = (data ?? []) as { id: string; cnpj: string }[];
   if (pendentes.length === 0) {
     const resumo = await recontar(job.id);
     return { processados: 0, ...resumo };
   }
 
   await db().from("import_jobs").update({ status: "processando" }).eq("id", job.id);
+
+  // Se o CNPJ já está na base, pula a consulta e segue para o próximo.
+  const { data: jaExistem } = await db()
+    .from("companies")
+    .select("cnpj")
+    .in("cnpj", pendentes.map((p) => p.cnpj));
+  const existentes = new Set(((jaExistem ?? []) as { cnpj: string }[]).map((c) => c.cnpj));
+  const pulados = pendentes.filter((p) => existentes.has(p.cnpj));
+  for (const item of pulados) {
+    await db()
+      .from("import_items")
+      .update({ status: "concluido", erro: null })
+      .eq("id", item.id);
+    if (job.list_id) {
+      await db().from("companies").update({ list_id: job.list_id }).eq("cnpj", item.cnpj);
+    }
+  }
+  pendentes = pendentes.filter((p) => !existentes.has(p.cnpj));
+  if (pendentes.length === 0) {
+    const resumo = await recontar(job.id);
+    return { processados: pulados.length, ...resumo };
+  }
 
   try {
     const r = await consultarCnpjs({
@@ -162,7 +184,7 @@ export async function processarLote(input: {
   }
 
   const resumo = await recontar(job.id);
-  return { processados: pendentes.length, ...resumo };
+  return { processados: pendentes.length + pulados.length, ...resumo };
 }
 
 export async function statusImportacao(jobId: string, escopo: Escopo) {
