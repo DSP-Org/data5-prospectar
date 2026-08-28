@@ -193,9 +193,10 @@ export const marcarProspectarFn = createServerFn({ method: "POST" })
 
 export const listarListasFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { listarListas } = await import("./repo.server");
-    return listarListas(await escopoDe(context.userId));
+    return listarListas(await escopoNaUnidade(context.userId, data.unidade));
   });
 
 export const criarListaFn = createServerFn({ method: "POST" })
