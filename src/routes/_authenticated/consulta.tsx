@@ -2,18 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertCircle, ExternalLink, Loader2, Search, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   consultarChavesFn,
   consultarCnpjsFn,
-  listarEmpresasFn,
   listarListasFn,
-  opcoesFiltroFn,
 } from "@/lib/econodata.functions";
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
-import { formatCnpj, STATUSES, STATUS_LABEL, type Company, type LookupItem } from "@/lib/types";
+import { formatCnpj, type LookupItem } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
