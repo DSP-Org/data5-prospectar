@@ -17,7 +17,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/atividades")({
+export const Route = createFileRoute("/_authenticated/atividades")({
   head: () => ({
     meta: [
       { title: "Atividades de prospecção | Prospectar360" },

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/listas")({
+export const Route = createFileRoute("/_authenticated/listas")({
   head: () => ({
     meta: [
       { title: "Listas | Prospectar360" },

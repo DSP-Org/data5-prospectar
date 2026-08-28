@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
 
-export const Route = createFileRoute("/calculadora")({
+export const Route = createFileRoute("/_authenticated/calculadora")({
   head: () => ({
     meta: [
       { title: "Calculadora de prospecção | Prospectar360" },
