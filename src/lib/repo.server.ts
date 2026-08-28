@@ -349,8 +349,8 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   const { data, error } = await lq;
   if (error) throw new Error(error.message);
 
-  let cq = supabaseAdmin.from("companies").select("list_id");
-  if (unidades) cq = cq.in("unit_id", unidades);
+  // Contagem sobre a base do sistema (sem filtro de unidade); as listas é que pertencem à unidade.
+  const cq = supabaseAdmin.from("companies").select("list_id");
   const { data: rows } = await cq;
   const contagem: Record<string, number> = {};
   for (const r of (rows ?? []) as Array<{ list_id: string | null }>) {
@@ -365,10 +365,9 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
 }
 
 /** Quantidade de empresas ainda sem lista. */
-export async function contarSemLista(escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function contarSemLista(_escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
+
   const { count } = await q;
   return count ?? 0;
 }
