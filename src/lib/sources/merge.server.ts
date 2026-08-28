@@ -95,8 +95,12 @@ export function mesclar(cnpj: string, entradas: EntradaFonte[]): EmpresaMesclada
 
   const raw: Record<string, unknown> = {};
   for (const { fonte, dados } of validas) {
-    raw[fonte] = (dados as { raw?: unknown }).raw ?? dados;
+    const d = dados as { raw?: unknown; extras?: Record<string, unknown> };
+    const base = (d.raw ?? dados) as Record<string, unknown>;
+    raw[fonte] =
+      d.extras && Object.keys(d.extras).length > 0 ? { ...base, extras: d.extras } : base;
   }
+
 
   out["natureza_juridica"] = canonizarNatureza(out["natureza_juridica"] as string | null);
 
