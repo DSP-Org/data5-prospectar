@@ -367,11 +367,20 @@ function JanelaCnpja({ listId }: { listId: string | null }) {
           )}
           Consultar
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => salvar.mutate(cnpj)}
+          disabled={!ficha || salvar.isPending}
+        >
+          {salvar.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          Salvar na base
+        </Button>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Consulta pública e gratuita do CNPJá, sem consumo de créditos. Os dados não são salvos na
-        base — use a aba “Por CNPJ” para gravar e enriquecer com as demais fontes.
+        Consulta pública e gratuita do CNPJá, sem consumo de créditos. Ao clicar em “Salvar na
+        base”, a empresa é gravada e enriquecida pelas demais fontes (respeitando cache e Modo
+        Econômico), na lista selecionada acima.
       </p>
 
       <div className="flex flex-wrap gap-4 rounded-md border bg-muted/30 p-3">
