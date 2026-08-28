@@ -60,6 +60,30 @@ async function getJson(url: string, headers?: Record<string, string>, timeoutMs 
   }
 }
 
+/** Igual ao getJson, mas expõe o status HTTP (usado para tratar 429/limites). */
+async function getJsonStatus(
+  url: string,
+  headers?: Record<string, string>,
+  timeoutMs = 15000,
+): Promise<{ status: number; json: unknown }> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: headers ?? {}, signal: ctrl.signal });
+    let json: unknown = null;
+    try {
+      json = await res.json();
+    } catch {
+      json = null;
+    }
+    return { status: res.status, json };
+  } catch {
+    return { status: 0, json: null };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 /* ------------------------------------------------------------------ Econodata */
 
 const econodata: DataSource = {
