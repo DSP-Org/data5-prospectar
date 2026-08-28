@@ -72,8 +72,19 @@ export function FontesDados() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mutModulos = useMutation({
+    mutationFn: (v: Partial<ModulosCnpja>) => salvarModulosCnpja({ data: v }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Módulos da CNPJá atualizados.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const economia = fontes.data?.economia;
+  const modulos = fontes.data?.modulosCnpja;
   const lista = fontes.data?.fontes ?? [];
+
 
   const mover = (idx: number, delta: number) => {
     const ordem = lista.map((f) => f.id as SourceId);
