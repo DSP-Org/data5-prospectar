@@ -407,8 +407,25 @@ function Empresas() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={potencial}
+            onValueChange={(v) => {
+              setPotencial(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Clientes potenciais" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as empresas</SelectItem>
+              <SelectItem value="sim">Somente clientes potenciais</SelectItem>
+              <SelectItem value="nao">Sem marcação de prospectar</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
+
 
       {selecionados.length > 0 && (
         <Card>
