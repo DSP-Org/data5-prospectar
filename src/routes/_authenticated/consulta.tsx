@@ -688,12 +688,12 @@ function JanelaCnpja() {
 
           {mostrar("cadastro") && (
             <BlocoFicha titulo="Cadastro e endereço">
-              <Campo rotulo="Situação" valor={ficha.situacao} />
-              <Campo rotulo="Data da situação" valor={ficha.dataSituacao} />
-              <Campo rotulo="Motivo" valor={ficha.motivoSituacao} />
-              <Campo rotulo="Abertura" valor={ficha.dataAbertura} />
-              <Campo rotulo="Natureza jurídica" valor={ficha.naturezaJuridica} />
-              <Campo rotulo="Porte" valor={ficha.porte} />
+              <CampoFicha rotulo="Situação" valor={ficha.situacao} />
+              <CampoFicha rotulo="Data da situação" valor={ficha.dataSituacao} />
+              <CampoFicha rotulo="Motivo" valor={ficha.motivoSituacao} />
+              <CampoFicha rotulo="Abertura" valor={ficha.dataAbertura} />
+              <CampoFicha rotulo="Natureza jurídica" valor={ficha.naturezaJuridica} />
+              <CampoFicha rotulo="Porte" valor={ficha.porte} />
               <Campo
                 rotulo="Capital social"
                 valor={
@@ -705,19 +705,19 @@ function JanelaCnpja() {
                     : null
                 }
               />
-              <Campo rotulo="Endereço" valor={ficha.endereco} />
+              <CampoFicha rotulo="Endereço" valor={ficha.endereco} />
               <Campo
                 rotulo="Município / UF"
                 valor={[ficha.municipio, ficha.uf].filter(Boolean).join(" / ") || null}
               />
-              <Campo rotulo="CEP" valor={ficha.cep} />
+              <CampoFicha rotulo="CEP" valor={ficha.cep} />
             </BlocoFicha>
           )}
 
           {mostrar("contatos") && (
             <BlocoFicha titulo="Contatos">
-              <Campo rotulo="Telefones" valor={ficha.telefones.join(" · ") || null} />
-              <Campo rotulo="E-mails" valor={ficha.emails.join(" · ") || null} />
+              <CampoFicha rotulo="Telefones" valor={ficha.telefones.join(" · ") || null} />
+              <CampoFicha rotulo="E-mails" valor={ficha.emails.join(" · ") || null} />
             </BlocoFicha>
           )}
 
@@ -766,8 +766,8 @@ function JanelaCnpja() {
 
           {mostrar("tributario") && (
             <BlocoFicha titulo="Tributário">
-              <Campo rotulo="Simples Nacional" valor={ficha.simples} />
-              <Campo rotulo="MEI" valor={ficha.mei} />
+              <CampoFicha rotulo="Simples Nacional" valor={ficha.simples} />
+              <CampoFicha rotulo="MEI" valor={ficha.mei} />
               <Campo
                 rotulo="Atualizado em"
                 valor={
@@ -802,7 +802,7 @@ function BlocoFicha({ titulo, children }: { titulo: string; children: React.Reac
   );
 }
 
-function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+function CampoFicha({ rotulo, valor }: { rotulo: string; valor: string | null }) {
   if (!valor) return null;
   return (
     <div className="space-y-0.5">
