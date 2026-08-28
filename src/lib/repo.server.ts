@@ -439,6 +439,7 @@ export async function exportarEmpresas(input: {
   uf?: string | undefined;
   listId?: string | undefined;
   busca?: string | undefined;
+  grupoNatureza?: string | undefined;
 }) {
   const out: Company[] = [];
   for (let page = 1; page <= 40; page += 1) {
