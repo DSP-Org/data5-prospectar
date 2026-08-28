@@ -1,3 +1,4 @@
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -48,10 +49,15 @@ function Relatorios() {
   const painelFn = useServerFn(obterPainelFn);
   const ativFn = useServerFn(relatorioAtividadesFn);
 
-  const painel = useQuery({ queryKey: ["painel"], queryFn: () => painelFn() });
+  const { unidade } = useUnidadeAtiva();
+  const painel = useQuery({
+    queryKey: ["painel", unidade],
+    queryFn: () => painelFn({ data: unidade ? { unidade } : {} }),
+  });
   const ativ = useQuery({
-    queryKey: ["relatorio-atividades", de, ate],
-    queryFn: () => ativFn({ data: { de: de || undefined, ate: ate || undefined } }),
+    queryKey: ["relatorio-atividades", de, ate, unidade],
+    queryFn: () =>
+      ativFn({ data: { de: de || undefined, ate: ate || undefined, ...(unidade ? { unidade } : {}) } }),
   });
 
   const statusEntries = painel.data?.porStatus ? Object.entries(painel.data.porStatus) : [];

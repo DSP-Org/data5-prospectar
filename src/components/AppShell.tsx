@@ -38,8 +38,10 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { meFn } from "@/lib/auth.functions";
+import { UnidadeAtivaProvider, useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 const grupos = [
   {
@@ -78,9 +80,18 @@ const grupos = [
 
 
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <UnidadeAtivaProvider>
+      <AppShellInterno>{children}</AppShellInterno>
+    </UnidadeAtivaProvider>
+  );
+}
+
+function AppShellInterno({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
+  const { unidade, setUnidade } = useUnidadeAtiva();
 
   async function sair() {
     await supabase.auth.signOut();
@@ -167,19 +178,35 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SidebarTrigger className="-ml-2" />
           <span className="text-sm text-muted-foreground">Prospectar360</span>
           <div className="ml-auto flex items-center gap-3">
+            {me && me.unidades.length > 1 ? (
+              <Select
+                value={unidade ?? "todas"}
+                onValueChange={(v) => setUnidade(v === "todas" ? null : v)}
+              >
+                <SelectTrigger className="h-8 w-44 text-xs" aria-label="Unidade de negócio">
+                  <SelectValue placeholder="Unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as unidades</SelectItem>
+                  {me.unidades.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             {me ? (
               <>
                 <span className="hidden text-xs text-muted-foreground sm:inline">{me.nome || me.email}</span>
                 <Badge variant={me.master ? "default" : "secondary"} className="capitalize">
                   {me.master ? "master" : me.papel}
                 </Badge>
-                <span className="hidden text-xs text-muted-foreground md:inline">
-                  {me.unidades.length === 0
-                    ? "sem unidade"
-                    : me.unidades.length === 1
-                      ? me.unidades[0]?.nome
-                      : `${me.unidades.length} unidades`}
-                </span>
+                {me.unidades.length <= 1 ? (
+                  <span className="hidden text-xs text-muted-foreground md:inline">
+                    {me.unidades.length === 0 ? "sem unidade" : me.unidades[0]?.nome}
+                  </span>
+                ) : null}
               </>
             ) : null}
             <Button variant="ghost" size="sm" onClick={() => void sair()}>

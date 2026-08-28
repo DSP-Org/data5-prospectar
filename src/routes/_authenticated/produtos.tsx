@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { listarUnidadesFn, meFn } from "@/lib/auth.functions";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import {
   atualizarProdutoFn,
   criarProdutoFn,
@@ -49,9 +50,10 @@ function ProdutosPage() {
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const podeGerenciar = (me?.master ?? false) || me?.papel === "admin_unidade";
   const { data: unidades = [] } = useQuery({ queryKey: ["unidades"], queryFn: () => listarUnidadesFn() });
+  const { unidade } = useUnidadeAtiva();
   const { data: produtos = [], isLoading } = useQuery({
-    queryKey: ["produtos"],
-    queryFn: () => listarProdutosFn(),
+    queryKey: ["produtos", unidade],
+    queryFn: () => listarProdutosFn({ data: unidade ? { unidade } : {} }),
   });
 
   const [nome, setNome] = useState("");
@@ -59,6 +61,7 @@ function ProdutosPage() {
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [unitId, setUnitId] = useState<string>("");
+  const unidadeFormulario = unitId || unidade || "";
 
   const invalidar = () => void qc.invalidateQueries({ queryKey: ["produtos"] });
 
@@ -70,7 +73,7 @@ function ProdutosPage() {
           tipo,
           descricao: descricao.trim() || undefined,
           valor_referencia: valor ? Number(valor.replace(",", ".")) : null,
-          unit_id: unitId || null,
+          unit_id: unidadeFormulario || null,
         },
       }),
     onSuccess: () => {
@@ -124,7 +127,7 @@ function ProdutosPage() {
                   toast.error("Informe o nome do produto ou serviço.");
                   return;
                 }
-                if (!unitId && unidades.length > 1) {
+                if (!unidadeFormulario && unidades.length > 1) {
                   toast.error("Selecione a unidade de negócio.");
                   return;
                 }
@@ -149,7 +152,7 @@ function ProdutosPage() {
               </div>
               <div className="w-48 space-y-1">
                 <Label>Unidade de negócio</Label>
-                <Select value={unitId} onValueChange={setUnitId}>
+                <Select value={unidadeFormulario} onValueChange={setUnitId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>

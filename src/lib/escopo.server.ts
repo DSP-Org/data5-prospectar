@@ -13,7 +13,16 @@ export type Escopo = {
   unidadeAtiva: string | null;
   /** Páginas que o usuário pode acessar. */
   rotas: string[];
+  /** Quando true, o escopo foi restrito a uma única unidade escolhida na interface. */
+  restrito?: boolean;
 };
+
+/** Restringe o escopo a uma unidade específica (seletor de unidade da interface). */
+export function restringirUnidade(escopo: Escopo, unitId?: string | null): Escopo {
+  if (!unitId) return escopo;
+  if (!escopo.unitIds.includes(unitId)) return escopo;
+  return { ...escopo, unitIds: [unitId], unidadeAtiva: unitId, restrito: true };
+}
 
 /** Monta o escopo de acesso do usuário logado. */
 export async function obterEscopo(userId: string, unidadeSolicitada?: string | null): Promise<Escopo> {
@@ -51,6 +60,7 @@ export async function obterEscopo(userId: string, unidadeSolicitada?: string | n
 
 /** Lista de unidades para filtrar, ou null quando o usuário vê tudo (master). */
 export function unidadesFiltro(escopo: Escopo): string[] | null {
+  if (escopo.restrito) return escopo.unitIds.length ? escopo.unitIds : null;
   if (escopo.master) return null;
   return escopo.unitIds.length ? escopo.unitIds : ["00000000-0000-0000-0000-000000000000"];
 }
