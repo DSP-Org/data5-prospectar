@@ -713,6 +713,7 @@ function BuscaAvancadaCnpja({
   const [f, setF] = useState<FiltrosCnpja>(FILTROS_INICIAIS);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [pedidoIa, setPedidoIa] = useState("");
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
