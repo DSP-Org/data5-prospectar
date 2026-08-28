@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAtividadesRouteImport } from './routes/_authenticated/atividades'
 import { Route as AuthenticatedCalculadoraRouteImport } from './routes/_authenticated/calculadora'
+import { Route as AuthenticatedClientesPotenciaisRouteImport } from './routes/_authenticated/clientes-potenciais'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedConsultaRouteImport } from './routes/_authenticated/consulta'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
@@ -50,6 +51,12 @@ const AuthenticatedCalculadoraRoute =
   AuthenticatedCalculadoraRouteImport.update({
     id: '/calculadora',
     path: '/calculadora',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientesPotenciaisRoute =
+  AuthenticatedClientesPotenciaisRouteImport.update({
+    id: '/clientes-potenciais',
+    path: '/clientes-potenciais',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedConfiguracoesRoute =
@@ -121,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
   '/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/clientes-potenciais': typeof AuthenticatedClientesPotenciaisRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consulta': typeof AuthenticatedConsultaRoute
   '/equipe': typeof AuthenticatedEquipeRoute
@@ -138,6 +146,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/atividades': typeof AuthenticatedAtividadesRoute
   '/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/clientes-potenciais': typeof AuthenticatedClientesPotenciaisRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consulta': typeof AuthenticatedConsultaRoute
   '/equipe': typeof AuthenticatedEquipeRoute
@@ -158,6 +167,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/atividades': typeof AuthenticatedAtividadesRoute
   '/_authenticated/calculadora': typeof AuthenticatedCalculadoraRoute
+  '/_authenticated/clientes-potenciais': typeof AuthenticatedClientesPotenciaisRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/consulta': typeof AuthenticatedConsultaRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/atividades'
     | '/calculadora'
+    | '/clientes-potenciais'
     | '/configuracoes'
     | '/consulta'
     | '/equipe'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/atividades'
     | '/calculadora'
+    | '/clientes-potenciais'
     | '/configuracoes'
     | '/consulta'
     | '/equipe'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/atividades'
     | '/_authenticated/calculadora'
+    | '/_authenticated/clientes-potenciais'
     | '/_authenticated/configuracoes'
     | '/_authenticated/consulta'
     | '/_authenticated/equipe'
@@ -270,6 +283,13 @@ declare module '@tanstack/react-router' {
       path: '/calculadora'
       fullPath: '/calculadora'
       preLoaderRoute: typeof AuthenticatedCalculadoraRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clientes-potenciais': {
+      id: '/_authenticated/clientes-potenciais'
+      path: '/clientes-potenciais'
+      fullPath: '/clientes-potenciais'
+      preLoaderRoute: typeof AuthenticatedClientesPotenciaisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/configuracoes': {
@@ -362,6 +382,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAtividadesRoute: typeof AuthenticatedAtividadesRoute
   AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
+  AuthenticatedClientesPotenciaisRoute: typeof AuthenticatedClientesPotenciaisRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConsultaRoute: typeof AuthenticatedConsultaRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
@@ -380,6 +401,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAtividadesRoute: AuthenticatedAtividadesRoute,
   AuthenticatedCalculadoraRoute: AuthenticatedCalculadoraRoute,
+  AuthenticatedClientesPotenciaisRoute: AuthenticatedClientesPotenciaisRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConsultaRoute: AuthenticatedConsultaRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
