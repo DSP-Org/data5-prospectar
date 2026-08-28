@@ -1,3 +1,4 @@
+import { useListas } from "@/lib/use-listas";
 import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
