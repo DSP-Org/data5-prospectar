@@ -60,6 +60,7 @@ function Consulta() {
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
+  const [cnpjUnico, setCnpjUnico] = useState("");
   const [subAba, setSubAba] = useState("ficha");
   const [termoPago, setTermoPago] = useState("");
 
