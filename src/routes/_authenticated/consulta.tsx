@@ -1254,7 +1254,10 @@ function BuscaAvancadaCnpja({
             </SelectContent>
           </Select>
         </div>
-      </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
 
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => mut.mutate(null)} disabled={mut.isPending}>
