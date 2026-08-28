@@ -59,20 +59,11 @@ function Consulta() {
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
-  const [filtrosAtivos, setFiltrosAtivos] = useState<Filtros | null>(null);
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
-  const opcoes = useQuery({ queryKey: ["opcoes-filtro"], queryFn: () => opcoesFiltroFn() });
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
   const consultarChaves = useServerFn(consultarChavesFn);
-  const listarEmpresas = useServerFn(listarEmpresasFn);
 
-  const baseQuery = useQuery({
-    queryKey: ["busca-avancada", filtrosAtivos],
-    enabled: filtrosAtivos !== null,
-    queryFn: () => listarEmpresas({ data: { ...montarFiltros(filtrosAtivos!), perPage: 50 } }),
-  });
 
   const alvoLista = listId === "nenhuma" ? null : listId;
 
@@ -304,113 +295,6 @@ function Consulta() {
         </section>
       )}
     </div>
-  );
-}
-
-type Filtros = {
-  busca: string;
-  cnae: string;
-  cidade: string;
-  bairro: string;
-  uf: string;
-  porte: string;
-  situacao: string;
-  setor: string;
-  naturezaJuridica: string;
-  status: string;
-  listId: string;
-  capitalMin: string;
-  capitalMax: string;
-  aberturaDe: string;
-  aberturaAte: string;
-  comTelefone: boolean;
-  comEmail: boolean;
-  comSite: boolean;
-  comDecisor: boolean;
-};
-
-const FILTROS_VAZIOS: Filtros = {
-  busca: "",
-  cnae: "",
-  cidade: "",
-  bairro: "",
-  uf: "todos",
-  porte: "todos",
-  situacao: "todos",
-  setor: "todos",
-  naturezaJuridica: "",
-  status: "todos",
-  listId: "todos",
-  capitalMin: "",
-  capitalMax: "",
-  aberturaDe: "",
-  aberturaAte: "",
-  comTelefone: false,
-  comEmail: false,
-  comSite: false,
-  comDecisor: false,
-};
-
-function montarFiltros(f: Filtros) {
-  const out: Record<string, unknown> = {};
-  if (f.busca.trim()) out["busca"] = f.busca.trim();
-  if (f.cnae.trim()) out["cnae"] = f.cnae.trim();
-  if (f.cidade.trim()) out["cidade"] = f.cidade.trim();
-  if (f.bairro.trim()) out["bairro"] = f.bairro.trim();
-  if (f.naturezaJuridica.trim()) out["naturezaJuridica"] = f.naturezaJuridica.trim();
-  if (f.uf !== "todos") out["uf"] = f.uf;
-  if (f.porte !== "todos") out["porte"] = f.porte;
-  if (f.situacao !== "todos") out["situacao"] = f.situacao;
-  if (f.setor !== "todos") out["setor"] = f.setor;
-  if (f.status !== "todos") out["status"] = f.status;
-  if (f.listId !== "todos") out["listId"] = f.listId;
-  if (f.capitalMin) out["capitalMin"] = Number(f.capitalMin);
-  if (f.capitalMax) out["capitalMax"] = Number(f.capitalMax);
-  if (f.aberturaDe) out["aberturaDe"] = f.aberturaDe;
-  if (f.aberturaAte) out["aberturaAte"] = f.aberturaAte;
-  if (f.comTelefone) out["comTelefone"] = true;
-  if (f.comEmail) out["comEmail"] = true;
-  if (f.comSite) out["comSite"] = true;
-  if (f.comDecisor) out["comDecisor"] = true;
-  return out;
-}
-
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function Combo({
-  value,
-  onChange,
-  itens,
-  todos,
-  rotulo,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  itens: string[];
-  todos: string;
-  rotulo?: (v: string) => string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="todos">{todos}</SelectItem>
-        {itens.map((i) => (
-          <SelectItem key={i} value={i}>
-            {rotulo ? rotulo(i) : i}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
