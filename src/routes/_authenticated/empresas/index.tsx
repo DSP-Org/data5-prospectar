@@ -218,6 +218,7 @@ function Empresas() {
   });
   const exportar = useServerFn(exportarEmpresasFn);
   const vincular = useServerFn(vincularEmpresasListaFn);
+  const marcar = useServerFn(marcarProspectarFn);
   const qc = useQueryClient();
   const [selecionados, setSelecionados] = useState<string[]>([]);
 
@@ -232,6 +233,21 @@ function Empresas() {
       qc.invalidateQueries({ queryKey: ["empresas"] });
       qc.invalidateQueries({ queryKey: ["listas"] });
       qc.invalidateQueries({ queryKey: ["sem-lista"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const mutProspectar = useMutation({
+    mutationFn: ({ cnpjs, valor }: { cnpjs: string[]; valor: boolean }) =>
+      marcar({ data: { cnpjs, valor } }),
+    onSuccess: (r, v) => {
+      toast.success(
+        v.valor
+          ? `${r.total} empresa(s) marcada(s) como cliente potencial.`
+          : `${r.total} empresa(s) removida(s) dos clientes potenciais.`,
+      );
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+      void qc.invalidateQueries({ queryKey: ["clientes-potenciais"] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
