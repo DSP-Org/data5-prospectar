@@ -215,8 +215,20 @@ function Consulta() {
               </TabsContent>
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
-                <JanelaCnpja />
+                <Tabs defaultValue="ficha">
+                  <TabsList>
+                    <TabsTrigger value="ficha">Ficha por CNPJ (grátis)</TabsTrigger>
+                    <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="ficha" className="pt-4">
+                    <JanelaCnpja />
+                  </TabsContent>
+                  <TabsContent value="avancada" className="pt-4">
+                    <BuscaAvancadaCnpja listId={alvoLista} />
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
+
             </Tabs>
 
           </CardContent>
