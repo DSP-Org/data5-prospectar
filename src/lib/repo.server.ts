@@ -494,10 +494,9 @@ export async function consultarChaves(input: {
 }
 
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
-export async function opcoesFiltro(escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores");
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+export async function opcoesFiltro(_escopo: Escopo) {
+  const q = supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores");
+
   const { data } = await q.limit(5000);
   const ufs = new Set<string>();
   const cidades = new Set<string>();
