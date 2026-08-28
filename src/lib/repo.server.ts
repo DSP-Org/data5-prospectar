@@ -60,6 +60,8 @@ export async function consultarCnpjs(input: {
   cnpjs: string[];
   listId?: string | null | undefined;
   salvar?: boolean | undefined;
+  /** Ignora o cache local e reconsulta as fontes. */
+  forcar?: boolean | undefined;
 }): Promise<{ itens: LookupItem[] }> {
   const invalidos: string[] = [];
   const validos: string[] = [];
@@ -85,7 +87,7 @@ export async function consultarCnpjs(input: {
 
   const encontradas: Record<string, unknown>[] = [];
   try {
-    const { empresas, falhas } = await buscarMultiFonte(validos);
+    const { empresas, falhas } = await buscarMultiFonte(validos, { forcar: input.forcar });
     for (const c of validos) {
       const m = empresas.get(c);
       if (m) encontradas.push(m as unknown as Record<string, unknown>);
@@ -160,7 +162,7 @@ export async function consultarChave(input: {
       fontes: ["econodata"],
     };
     try {
-      const { empresas } = await buscarMultiFonte([mapped.cnpj]);
+      const { empresas } = await buscarMultiFonte([mapped.cnpj], { forcar: true });
       const m = empresas.get(mapped.cnpj);
       if (m) final = m as unknown as Record<string, unknown>;
     } catch {
