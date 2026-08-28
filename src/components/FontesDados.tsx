@@ -8,10 +8,17 @@ import {
   listarFontesFn,
   salvarEconomiaFn,
   salvarFonteFn,
+  salvarModulosCnpjaFn,
   salvarPrioridadeFn,
   testarFonteFn,
 } from "@/lib/sources.functions";
-import type { ModoConsulta, SourceId } from "@/lib/sources/catalog";
+import {
+  MODULOS_CNPJA_META,
+  type ModoConsulta,
+  type ModulosCnpja,
+  type SourceId,
+} from "@/lib/sources/catalog";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
