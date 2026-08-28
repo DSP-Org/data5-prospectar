@@ -1,7 +1,7 @@
 // Orquestrador multi-fonte: lê configuração, consulta as fontes ativas e mescla.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ADAPTERS, type LoteResultado } from "./adapters.server";
+import { ADAPTERS, type FetchOpts, type LoteResultado } from "./adapters.server";
 import {
   DEFAULT_PRIORITY,
   SOURCES,
