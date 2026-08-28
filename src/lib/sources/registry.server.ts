@@ -127,7 +127,7 @@ export async function salvarFonte(input: {
   return { ok: true };
 }
 
-export async function salvarModulosCnpja(input: Partial<ModulosCnpja>) {
+export async function salvarModulosCnpja(input: { [K in keyof ModulosCnpja]?: boolean | undefined }) {
   for (const [id, valor] of Object.entries(input)) {
     if (valor === undefined) continue;
     await gravar(moduloKey(id as keyof ModulosCnpja), valor ? "true" : "false");
