@@ -694,7 +694,7 @@ function JanelaCnpja() {
               <CampoFicha rotulo="Abertura" valor={ficha.dataAbertura} />
               <CampoFicha rotulo="Natureza jurídica" valor={ficha.naturezaJuridica} />
               <CampoFicha rotulo="Porte" valor={ficha.porte} />
-              <Campo
+              <CampoFicha
                 rotulo="Capital social"
                 valor={
                   ficha.capitalSocial != null
@@ -706,7 +706,7 @@ function JanelaCnpja() {
                 }
               />
               <CampoFicha rotulo="Endereço" valor={ficha.endereco} />
-              <Campo
+              <CampoFicha
                 rotulo="Município / UF"
                 valor={[ficha.municipio, ficha.uf].filter(Boolean).join(" / ") || null}
               />
@@ -723,7 +723,7 @@ function JanelaCnpja() {
 
           {mostrar("atividades") && (
             <BlocoFicha titulo="Atividades (CNAE)">
-              <Campo
+              <CampoFicha
                 rotulo="Principal"
                 valor={
                   ficha.atividadePrincipal
@@ -768,7 +768,7 @@ function JanelaCnpja() {
             <BlocoFicha titulo="Tributário">
               <CampoFicha rotulo="Simples Nacional" valor={ficha.simples} />
               <CampoFicha rotulo="MEI" valor={ficha.mei} />
-              <Campo
+              <CampoFicha
                 rotulo="Atualizado em"
                 valor={
                   ficha.atualizadoEm ? new Date(ficha.atualizadoEm).toLocaleString("pt-BR") : null
