@@ -10,6 +10,8 @@ export type SourceMeta = {
   defaultEnabled: boolean;
   /** Traz telefones/e-mails/decisores? */
   contatos: boolean;
+  /** Consulta consome crédito pago? */
+  custo: "gratis" | "pago";
 };
 
 export const SOURCES: SourceMeta[] = [
@@ -20,6 +22,7 @@ export const SOURCES: SourceMeta[] = [
     requiresKey: true,
     defaultEnabled: true,
     contatos: true,
+    custo: "pago",
   },
   {
     id: "brasilapi",
@@ -28,6 +31,7 @@ export const SOURCES: SourceMeta[] = [
     requiresKey: false,
     defaultEnabled: true,
     contatos: false,
+    custo: "gratis",
   },
   {
     id: "cnpja",
@@ -36,6 +40,7 @@ export const SOURCES: SourceMeta[] = [
     requiresKey: true,
     defaultEnabled: false,
     contatos: true,
+    custo: "pago",
   },
   {
     id: "speedio",
@@ -44,6 +49,7 @@ export const SOURCES: SourceMeta[] = [
     requiresKey: false,
     defaultEnabled: false,
     contatos: true,
+    custo: "gratis",
   },
 ];
 
@@ -60,7 +66,16 @@ export type SourceConfig = {
   descricao: string;
   requiresKey: boolean;
   contatos: boolean;
+  custo: "gratis" | "pago";
   enabled: boolean;
   hasKey: boolean;
   maskedKey: string | null;
+};
+
+export type ModoConsulta = "economico" | "completo";
+
+export type EconomiaConfig = {
+  modo: ModoConsulta;
+  /** Dias de validade do cache local; 0 desliga o cache. */
+  ttlDias: number;
 };

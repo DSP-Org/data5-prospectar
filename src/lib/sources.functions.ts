@@ -38,3 +38,17 @@ export const salvarPrioridadeFn = createServerFn({ method: "POST" })
     const { salvarPrioridade } = await import("./sources/registry.server");
     return salvarPrioridade(data.ordem);
   });
+
+export const salvarEconomiaFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        modo: z.enum(["economico", "completo"]).optional(),
+        ttlDias: z.number().int().min(0).max(365).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { salvarEconomia } = await import("./sources/registry.server");
+    return salvarEconomia(data);
+  });

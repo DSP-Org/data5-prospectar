@@ -157,7 +157,7 @@ function Detalhe() {
 
 
   const mutSync = useMutation({
-    mutationFn: () => reconsultar({ data: { cnpjs: [cnpj] } }),
+    mutationFn: () => reconsultar({ data: { cnpjs: [cnpj], forcar: true } }),
     onSuccess: () => {
       toast.success("Dados atualizados na Econodata.");
       void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });

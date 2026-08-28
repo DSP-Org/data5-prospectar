@@ -15,6 +15,7 @@ export const consultarCnpjsFn = createServerFn({ method: "POST" })
         cnpjs: z.array(z.string()).min(1).max(300),
         listId: z.string().uuid().nullable().optional(),
         salvar: z.boolean().optional(),
+        forcar: z.boolean().optional(),
       })
       .parse(d),
   )
