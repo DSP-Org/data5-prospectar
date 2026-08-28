@@ -6,7 +6,6 @@ import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  consultarChavesFn,
   consultarCnpjsFn,
   listarListasFn,
 } from "@/lib/econodata.functions";
@@ -58,7 +57,6 @@ export const Route = createFileRoute("/_authenticated/consulta")({
 function Consulta() {
   const qc = useQueryClient();
   const [texto, setTexto] = useState("");
-  const [chaves, setChaves] = useState("");
   const [listId, setListId] = useState("nenhuma");
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
@@ -68,7 +66,6 @@ function Consulta() {
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
-  const consultarChaves = useServerFn(consultarChavesFn);
 
 
   const alvoLista = listId === "nenhuma" ? null : listId;
@@ -86,30 +83,12 @@ function Consulta() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const mutChaves = useMutation({
-    mutationFn: (lista: string[]) => consultarChaves({ data: { chaves: lista, listId: alvoLista } }),
-    onSuccess: (res) => {
-      setItens(res.itens);
-      const ok = res.itens.filter((i) => i.encontrada).length;
-      if (ok) toast.success(`${ok} empresa(s) encontrada(s) e salva(s).`);
-      else toast.error("Nenhuma empresa encontrada.");
-      void qc.invalidateQueries({ queryKey: ["painel"] });
-      void qc.invalidateQueries({ queryKey: ["empresas"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const cnpjs = texto
     .split(/[\s,;]+/)
     .map((v) => v.trim())
     .filter(Boolean);
 
-  const listaChaves = chaves
-    .split(/[\s,;]+/)
-    .map((v) => v.trim())
-    .filter(Boolean);
-
-  const carregando = mutCnpjs.isPending || mutChaves.isPending;
+  const carregando = mutCnpjs.isPending;
 
   return (
     <div className="space-y-8">
@@ -127,7 +106,7 @@ function Consulta() {
             <Tabs defaultValue="cnpj">
               <TabsList>
                 <TabsTrigger value="cnpj">Por CNPJ</TabsTrigger>
-                <TabsTrigger value="chave">Site / e-mail</TabsTrigger>
+                
                 <TabsTrigger value="cnpja">Janela CNPJá</TabsTrigger>
               </TabsList>
 
@@ -193,34 +172,8 @@ function Consulta() {
                 </Button>
               </TabsContent>
 
-              <TabsContent value="chave" className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="chaves">Sites, e-mails ou CNPJs</Label>
-                  <Textarea
-                    id="chaves"
-                    rows={6}
-                    className="font-mono text-sm"
-                    placeholder={"empresa.com.br\ncontato@empresa.com.br\n38.024.964/0001-42"}
-                    value={chaves}
-                    onChange={(e) => setChaves(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Pode misturar site, e-mail e CNPJ na mesma lista. {listaChaves.length}{" "}
-                    identificado(s).
-                  </p>
-                </div>
-                <Button
-                  disabled={listaChaves.length === 0 || carregando}
-                  onClick={() => mutChaves.mutate(listaChaves)}
-                >
-                  {mutChaves.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Buscar {listaChaves.length > 1 ? `${listaChaves.length} chaves` : ""}
-                </Button>
-              </TabsContent>
+
+
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
                 <Tabs value={subAba} onValueChange={setSubAba}>
