@@ -224,7 +224,7 @@ function Consulta() {
                     <JanelaCnpja />
                   </TabsContent>
                   <TabsContent value="avancada" className="pt-4">
-                    <BuscaAvancadaCnpja listId={alvoLista} />
+                    <BuscaAvancadaCnpja listId={listId} />
                   </TabsContent>
                 </Tabs>
               </TabsContent>
