@@ -172,12 +172,13 @@ async function rodarFontes(
   s: Settings,
   destino: Map<SourceId, LoteResultado>,
   falhas: Array<{ fonte: SourceId; erro: string }>,
+  opts?: FetchOpts,
 ) {
   if (ids.length === 0 || cnpjs.length === 0) return;
   await Promise.all(
     ids.map(async (id) => {
       try {
-        destino.set(id, await ADAPTERS[id].fetchLote(cnpjs, chaveDaFonte(id, s)));
+        destino.set(id, await ADAPTERS[id].fetchLote(cnpjs, chaveDaFonte(id, s), opts));
       } catch (e) {
         falhas.push({ fonte: id, erro: e instanceof Error ? e.message : "Falha desconhecida." });
       }
