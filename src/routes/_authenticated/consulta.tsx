@@ -920,36 +920,85 @@ function BuscaAvancadaCnpja({
         plano. Estados, municípios e atividades econômicas vêm das listas oficiais do IBGE.
       </p>
 
-      <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+      <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-primary" />
-          Assistente de IA — descreva o que procura
+          Assistente de IA — converse até mandar aplicar
         </div>
+
+        <div className="max-h-64 space-y-2 overflow-y-auto rounded-md bg-background/60 p-2">
+          {conversa.length === 0 ? (
+            <p className="p-2 text-xs text-muted-foreground">
+              Diga o que procura (ex.: “transportadoras em Salvador”). Eu pergunto os detalhes e só
+              preencho os filtros quando você disser “aplicar”.
+            </p>
+          ) : (
+            conversa.map((m, i) => (
+              <div
+                key={i}
+                className={
+                  m.role === "user"
+                    ? "ml-auto w-fit max-w-[85%] rounded-md bg-primary px-3 py-2 text-xs text-primary-foreground"
+                    : "w-fit max-w-[85%] rounded-md bg-muted px-3 py-2 text-xs whitespace-pre-wrap"
+                }
+              >
+                {m.content}
+              </div>
+            ))
+          )}
+          {ia.isPending ? (
+            <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> pensando…
+            </div>
+          ) : null}
+        </div>
+
         <Textarea
           value={pedidoIa}
           onChange={(e) => setPedidoIa(e.target.value)}
           rows={2}
-          placeholder="Ex.: transportadoras ativas em Salvador e Feira de Santana, capital acima de 100 mil, abertas depois de 2018, só matriz"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!ia.isPending && pedidoIa.trim().length >= 2) ia.mutate(pedidoIa.trim());
+            }
+          }}
+          placeholder="Ex.: transportadoras ativas em Salvador, capital acima de 100 mil… depois escreva “aplicar”"
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             size="sm"
             onClick={() => ia.mutate(pedidoIa.trim())}
-            disabled={ia.isPending || pedidoIa.trim().length < 3}
+            disabled={ia.isPending || pedidoIa.trim().length < 2}
           >
             {ia.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Sparkles className="mr-2 h-4 w-4" />
             )}
-            Preencher filtros com IA
+            Enviar
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => ia.mutate("aplicar")}
+            disabled={ia.isPending || conversa.length === 0}
+          >
+            Aplicar filtros
+          </Button>
+          {conversa.length > 0 ? (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setConversa([])}>
+              Limpar conversa
+            </Button>
+          ) : null}
           <span className="text-xs text-muted-foreground">
-            A IA só preenche os campos abaixo — nada é consultado até você clicar em buscar.
+            Nada é consultado na API até você clicar em buscar.
           </span>
         </div>
       </div>
+
 
       <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
