@@ -216,6 +216,7 @@ export async function listarEmpresas(input: {
   porte?: string | undefined;
   situacao?: string | undefined;
   naturezaJuridica?: string | undefined;
+  grupoNatureza?: string | undefined;
   setor?: string | undefined;
   comTelefone?: boolean | undefined;
   comEmail?: boolean | undefined;
