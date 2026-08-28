@@ -109,9 +109,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           {grupos.map((grupo) => {
-            const items = grupo.items.filter(
-              (item) => !("masterOnly" in item && item.masterOnly) || me?.master,
-            );
+            const items = grupo.items.filter((item) => {
+              if ("masterOnly" in item && item.masterOnly) return me?.master ?? false;
+              if (!me) return true;
+              if (me.master) return true;
+              return me.rotas.includes(item.to);
+            });
+
             if (items.length === 0) return null;
             const aberto = abertos[grupo.id] !== false;
             return (
