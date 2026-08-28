@@ -15,6 +15,8 @@ import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { buscarLocalFn } from "@/lib/busca-local.functions";
 
 import { formatCnpj, type LookupItem } from "@/lib/types";
+import { UFS, listarCnaes, listarMunicipios } from "@/lib/ibge";
+import { Combobox, ComboboxMulti } from "@/components/Combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
