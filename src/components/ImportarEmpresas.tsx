@@ -63,13 +63,20 @@ export function ImportarEmpresas() {
 
   async function importar() {
     if (cnpjs.length === 0) return;
+    // Lotes pequenos: cada CNPJ consulta várias fontes, então lotes grandes
+    // estouram o tempo limite da requisição em importações de milhares.
+    const TAM_LOTE = 20;
     const lotes: string[][] = [];
-    for (let i = 0; i < cnpjs.length; i += 100) lotes.push(cnpjs.slice(i, i + 100));
+    for (let i = 0; i < cnpjs.length; i += TAM_LOTE) lotes.push(cnpjs.slice(i, i + TAM_LOTE));
     setProgresso({ feito: 0, total: cnpjs.length });
     let encontradas = 0;
     let falhas = 0;
-    try {
-      for (const lote of lotes) {
+    let lotesComErro = 0;
+    let ultimoErro = "";
+
+    for (const lote of lotes) {
+      // Um lote que falhar não pode abortar a importação inteira.
+      try {
         const r = await consultar({
           data: {
             cnpjs: lote,
@@ -81,21 +88,32 @@ export function ImportarEmpresas() {
           if (item.encontrada) encontradas += 1;
           else falhas += 1;
         }
-        setProgresso((p) => (p ? { ...p, feito: p.feito + lote.length } : p));
+      } catch (e) {
+        lotesComErro += 1;
+        falhas += lote.length;
+        ultimoErro = (e as Error).message;
       }
-      qc.invalidateQueries({ queryKey: ["empresas"] });
-      qc.invalidateQueries({ queryKey: ["listas"] });
-      qc.invalidateQueries({ queryKey: ["sem-lista"] });
-      qc.invalidateQueries({ queryKey: ["painel"] });
-      toast.success(`${encontradas} empresa(s) importada(s). ${falhas} sem retorno.`);
-      setAberto(false);
-      limpar();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setProgresso(null);
+      setProgresso((p) => (p ? { ...p, feito: p.feito + lote.length } : p));
     }
+
+    qc.invalidateQueries({ queryKey: ["empresas"] });
+    qc.invalidateQueries({ queryKey: ["listas"] });
+    qc.invalidateQueries({ queryKey: ["sem-lista"] });
+    qc.invalidateQueries({ queryKey: ["painel"] });
+    setProgresso(null);
+
+    if (encontradas === 0 && lotesComErro > 0) {
+      toast.error(`Falha na importação: ${ultimoErro || "erro ao consultar as fontes."}`);
+      return;
+    }
+    toast.success(
+      `${encontradas} empresa(s) importada(s). ${falhas} sem retorno.` +
+        (lotesComErro ? ` ${lotesComErro} lote(s) com erro.` : ""),
+    );
+    setAberto(false);
+    limpar();
   }
+
 
   function baixarModelo() {
     const conteudo = [
