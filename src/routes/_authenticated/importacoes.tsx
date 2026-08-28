@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Loader2, Play, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,12 @@ function Pagina() {
   const [rodando, setRodando] = useState<string | null>(null);
   const parar = useRef(false);
 
+  function pausar() {
+    parar.current = true;
+    autoIniciado.current = true;
+    toast.info("Pausando após o bloco atual…");
+  }
+
   const processar = useServerFn(processarLoteFn);
   const reprocessar = useServerFn(reprocessarFalhasFn);
   const excluir = useServerFn(excluirImportacaoFn);
@@ -83,7 +89,7 @@ function Pagina() {
         qc.invalidateQueries({ queryKey: ["importacoes"] });
         if (r.processados === 0 || r.pendentes === 0) break;
       }
-      toast.success("Importação processada.");
+      toast.success(parar.current ? "Importação pausada." : "Importação processada.");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -168,18 +174,25 @@ function Pagina() {
                     {j.nao_encontrados} sem retorno · {j.erros} com erro
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={rodando !== null || pendentes === 0}
-                      onClick={() => void rodar(j.id)}
-                    >
-                      {rodando === j.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
+                    {rodando === j.id ? (
+                      <Button size="sm" variant="secondary" onClick={pausar}>
+                        <Pause className="h-4 w-4" />
+                        Pausar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={rodando !== null || pendentes === 0}
+                        onClick={() => void rodar(j.id)}
+                      >
                         <Play className="h-4 w-4" />
-                      )}
-                      {pendentes === 0 ? "Sem pendências" : "Processar"}
-                    </Button>
+                        {pendentes === 0
+                          ? "Sem pendências"
+                          : feitos > 0
+                            ? "Retomar"
+                            : "Processar"}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -203,9 +216,15 @@ function Pagina() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      disabled={rodando !== null}
                       onClick={async () => {
+                        const ok = window.confirm(
+                          "Excluir esta importação? As empresas já importadas continuam na base; some apenas a fila e o que ainda estava pendente.",
+                        );
+                        if (!ok) return;
+                        parar.current = true;
+                        if (ativo === j.id) setAtivo(null);
                         await excluir({ data: { jobId: j.id } });
+                        toast.success("Importação excluída. As empresas já importadas foram mantidas.");
                         qc.invalidateQueries({ queryKey: ["importacoes"] });
                       }}
                     >
