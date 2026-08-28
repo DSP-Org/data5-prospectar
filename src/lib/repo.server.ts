@@ -78,6 +78,9 @@ export async function consultarCnpjs(input: {
   salvar?: boolean | undefined;
   /** Ignora o cache local e reconsulta as fontes. */
   forcar?: boolean | undefined;
+  /** Busca máxima: todas as fontes, dados em tempo real e módulos extras. */
+  completo?: boolean | undefined;
+
 }): Promise<{ itens: LookupItem[] }> {
   const invalidos: string[] = [];
   const validos: string[] = [];
