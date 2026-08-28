@@ -108,14 +108,6 @@ function EquipePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const vincular = useMutation({
-    mutationFn: (input: { id: string; unidades: string[] }) => atualizarUsuarioFn({ data: input }),
-    onSuccess: () => {
-      toast.success("Vínculos atualizados.");
-      void qc.invalidateQueries({ queryKey: ["equipe"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const totalPessoas = new Set(equipe.flatMap((u) => u.membros.map((m) => m.id))).size;
   const pessoasDaUnidade = (unitId: string | null) =>
