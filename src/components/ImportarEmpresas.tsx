@@ -106,7 +106,7 @@ export function ImportarEmpresas() {
     URL.revokeObjectURL(url);
   }
 
-  const importando = progresso !== null;
+  const importando = enviando;
 
   return (
     <Dialog
@@ -127,8 +127,8 @@ export function ImportarEmpresas() {
         <DialogHeader>
           <DialogTitle>Importar empresas</DialogTitle>
           <DialogDescription>
-            Envie um arquivo CSV ou TXT com CNPJs. Cada CNPJ encontrado é consultado na
-            Econodata e salvo na base.
+            Envie um arquivo CSV ou TXT com CNPJs. O sistema recebe a lista na hora e o
+            enriquecimento roda depois, em blocos, na tela de Importações.
           </DialogDescription>
         </DialogHeader>
 
@@ -168,11 +168,6 @@ export function ImportarEmpresas() {
             </Select>
           </div>
 
-          {progresso ? (
-            <p className="text-sm text-muted-foreground">
-              Consultando {progresso.feito} de {progresso.total}…
-            </p>
-          ) : null}
         </div>
 
         <DialogFooter className="sm:justify-between">
@@ -182,7 +177,7 @@ export function ImportarEmpresas() {
           </Button>
           <Button onClick={() => void importar()} disabled={importando || cnpjs.length === 0}>
             {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Importar {cnpjs.length > 0 ? `${cnpjs.length} CNPJ(s)` : ""}
+            Enviar para a fila {cnpjs.length > 0 ? `${cnpjs.length} CNPJ(s)` : ""}
           </Button>
         </DialogFooter>
       </DialogContent>
