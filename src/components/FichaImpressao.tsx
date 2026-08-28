@@ -39,7 +39,7 @@ function txt(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-function Linha({ label, valor }: { label: string; valor?: string | null }) {
+function Linha({ label, valor }: { label: string; valor?: string | null | undefined }) {
   return (
     <div className="ficha-linha">
       <span className="ficha-label">{label}</span>
