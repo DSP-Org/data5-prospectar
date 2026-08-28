@@ -15,7 +15,7 @@ import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { buscarLocalFn } from "@/lib/busca-local.functions";
 
 import { formatCnpj, type LookupItem } from "@/lib/types";
-import { UFS, listarCnaes, listarMunicipios } from "@/lib/ibge";
+import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
 import { Combobox, ComboboxMulti } from "@/components/Combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -813,7 +813,7 @@ function BuscaAvancadaCnpja({
         <div className="space-y-1">
           <Label>Municípios</Label>
           <ComboboxMulti
-            opcoes={(municipios.data ?? []).map((m) => ({ value: m.id, label: m.nome }))}
+            opcoes={(municipios.data ?? []).map((m: MunicipioIbge) => ({ value: m.id, label: m.nome }))}
             valores={f.municipiosIbge}
             onChange={(v) => set("municipiosIbge", v)}
             disabled={!f.uf}
@@ -833,7 +833,7 @@ function BuscaAvancadaCnpja({
         <div className="space-y-1">
           <Label>Atividade econômica (CNAE principal)</Label>
           <ComboboxMulti
-            opcoes={(cnaes.data ?? []).map((c) => ({
+            opcoes={(cnaes.data ?? []).map((c: CnaeIbge) => ({
               value: c.id,
               label: `${c.id} — ${c.descricao}`,
             }))}
