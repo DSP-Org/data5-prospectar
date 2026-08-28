@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Download, Loader2, Play, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,7 +111,7 @@ function Pagina() {
   const lista = (jobs.data ?? []) as unknown as Job[];
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6 p-4 md:p-6">
         <header>
           <h1 className="font-display text-2xl font-semibold">Importações</h1>
@@ -234,6 +233,6 @@ function Pagina() {
           })}
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }
