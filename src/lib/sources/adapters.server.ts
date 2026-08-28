@@ -10,9 +10,17 @@ export type LoteResultado = Map<string, Partial2>;
 
 export type TesteResultado = { ok: boolean; mensagem: string };
 
+/** Opções de consumo repassadas às fontes pagas. */
+export type FetchOpts = {
+  /** Idade máxima aceita para dados em cache da fonte, em dias. */
+  maxAgeDias?: number | undefined;
+  /** Modo econômico evita consultas online que debitam crédito. */
+  economico?: boolean | undefined;
+};
+
 export type DataSource = {
   id: SourceId;
-  fetchLote(cnpjs: string[], key?: string | null): Promise<LoteResultado>;
+  fetchLote(cnpjs: string[], key?: string | null, opts?: FetchOpts): Promise<LoteResultado>;
   testar(key?: string | null): Promise<TesteResultado>;
 };
 
