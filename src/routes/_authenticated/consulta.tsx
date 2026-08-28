@@ -223,7 +223,12 @@ function Consulta() {
                   Buscar {listaChaves.length > 1 ? `${listaChaves.length} chaves` : ""}
                 </Button>
               </TabsContent>
+
+              <TabsContent value="cnpja" className="space-y-3 pt-4">
+                <JanelaCnpja />
+              </TabsContent>
             </Tabs>
+
           </CardContent>
         </Card>
 
