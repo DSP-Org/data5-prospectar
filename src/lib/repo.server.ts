@@ -280,6 +280,7 @@ export async function listarEmpresas(input: {
   if (typeof input.capitalMax === "number") q = q.lte("capital_social", input.capitalMax);
   if (input.aberturaDe) q = q.gte("data_abertura", input.aberturaDe);
   if (input.aberturaAte) q = q.lte("data_abertura", input.aberturaAte);
+  if (typeof input.prospectar === "boolean") q = q.eq("prospectar", input.prospectar);
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
@@ -314,6 +315,7 @@ export async function atualizarEmpresa(input: {
   listId?: string | null | undefined;
   productId?: string | null | undefined;
   tags?: string[] | undefined;
+  prospectar?: boolean | undefined;
 }) {
   const patch: Row = {};
   if (input.status) patch["status"] = input.status;
