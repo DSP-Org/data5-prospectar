@@ -12,6 +12,7 @@ import {
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
 import { STATUS_LABEL, formatCnpj, type Company, type Status } from "@/lib/types";
+import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 import { Button } from "@/components/ui/button";
@@ -189,6 +190,7 @@ function Empresas() {
   const [uf, setUf] = useState("todos");
   const { lista: listaInicial } = Route.useSearch();
   const [lista, setLista] = useState(listaInicial ?? "todas");
+  const [grupo, setGrupo] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
   const [colunas, setColunas] = useState<string[]>(
@@ -196,7 +198,7 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const filtros = { busca, status, uf, listId: lista };
+  const filtros = { busca, status, uf, listId: lista, grupoNatureza: grupo };
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
@@ -355,6 +357,25 @@ function Empresas() {
               {(listas.data ?? []).map((l) => (
                 <SelectItem key={l.id} value={l.id}>
                   {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={grupo}
+            onValueChange={(v) => {
+              setGrupo(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Natureza jurídica" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as naturezas</SelectItem>
+              {Object.entries(GRUPOS_NATUREZA).map(([k, v]) => (
+                <SelectItem key={k} value={k}>
+                  {v}
                 </SelectItem>
               ))}
             </SelectContent>

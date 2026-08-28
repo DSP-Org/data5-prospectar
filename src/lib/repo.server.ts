@@ -216,6 +216,7 @@ export async function listarEmpresas(input: {
   porte?: string | undefined;
   situacao?: string | undefined;
   naturezaJuridica?: string | undefined;
+  grupoNatureza?: string | undefined;
   setor?: string | undefined;
   comTelefone?: boolean | undefined;
   comEmail?: boolean | undefined;
@@ -256,6 +257,8 @@ export async function listarEmpresas(input: {
   if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
   if (input.naturezaJuridica?.trim())
     q = q.ilike("natureza_juridica", `%${input.naturezaJuridica.trim()}%`);
+  if (input.grupoNatureza && input.grupoNatureza !== "todas")
+    q = q.ilike("natureza_juridica", `${input.grupoNatureza}%`);
   if (input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
   if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
   if (input.comSite) q = q.not("melhor_site", "is", null);
@@ -436,6 +439,7 @@ export async function exportarEmpresas(input: {
   uf?: string | undefined;
   listId?: string | undefined;
   busca?: string | undefined;
+  grupoNatureza?: string | undefined;
 }) {
   const out: Company[] = [];
   for (let page = 1; page <= 40; page += 1) {

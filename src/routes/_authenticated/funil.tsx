@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { formatCnpj, ACTIVITY_LABEL, STATUS_LABEL, STATUSES, type Status } from "@/lib/types";
 import { funilDadosFn } from "@/lib/prospection.functions";
+import { GRUPOS_NATUREZA, grupoDaNatureza } from "@/lib/natureza-juridica";
 import { atualizarEmpresaFn, listarListasFn } from "@/lib/econodata.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ function Funil() {
   const atualizar = useServerFn(atualizarEmpresaFn);
 
   const [listaId, setListaId] = useState<string>("todas");
+  const [grupo, setGrupo] = useState<string>("todas");
   const [busca, setBusca] = useState("");
 
   const mutStatus = useMutation({
@@ -66,13 +68,14 @@ function Funil() {
     return empresas.filter((e) => {
       if (listaId === "sem_lista" && e.list_id !== null) return false;
       if (listaId !== "todas" && listaId !== "sem_lista" && e.list_id !== listaId) return false;
+      if (grupo !== "todas" && grupoDaNatureza(e.natureza_juridica) !== grupo) return false;
       if (termo) {
         const alvo = `${e.razao_social} ${e.nome_fantasia ?? ""} ${e.cnpj} ${e.cidade ?? ""}`.toLowerCase();
         if (!alvo.includes(termo)) return false;
       }
       return true;
     });
-  }, [dados.data, listaId, busca]);
+  }, [dados.data, listaId, grupo, busca]);
 
   if (dados.isLoading) {
     return (
@@ -96,7 +99,7 @@ function Funil() {
     if (porStatus[s]) porStatus[s].push(e);
   }
 
-  const temFiltro = listaId !== "todas" || busca.trim() !== "";
+  const temFiltro = listaId !== "todas" || grupo !== "todas" || busca.trim() !== "";
 
   return (
     <div className="space-y-4">
@@ -124,6 +127,19 @@ function Funil() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={grupo} onValueChange={setGrupo}>
+            <SelectTrigger className="sm:w-56">
+              <SelectValue placeholder="Natureza jurídica" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as naturezas</SelectItem>
+              {Object.entries(GRUPOS_NATUREZA).map(([k, v]) => (
+                <SelectItem key={k} value={k}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             placeholder="Buscar por nome, CNPJ ou cidade…"
             value={busca}
@@ -135,6 +151,7 @@ function Funil() {
               type="button"
               onClick={() => {
                 setListaId("todas");
+                setGrupo("todas");
                 setBusca("");
               }}
               className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"

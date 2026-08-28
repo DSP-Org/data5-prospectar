@@ -65,6 +65,7 @@ const filtrosSchema = z.object({
   porte: z.string().max(40).optional(),
   situacao: z.string().max(40).optional(),
   naturezaJuridica: z.string().max(120).optional(),
+  grupoNatureza: z.string().max(10).optional(),
   setor: z.string().max(80).optional(),
   comTelefone: z.boolean().optional(),
   comEmail: z.boolean().optional(),

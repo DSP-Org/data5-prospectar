@@ -1,5 +1,6 @@
 // Mescla resultados parciais de várias fontes numa única empresa.
 
+import { canonizarNatureza } from "../natureza-juridica";
 import type { MappedCompany } from "../company-mapper.server";
 import type { SourceId } from "./catalog";
 import type { Partial2 } from "./adapters.server";
@@ -96,6 +97,8 @@ export function mesclar(cnpj: string, entradas: EntradaFonte[]): EmpresaMesclada
   for (const { fonte, dados } of validas) {
     raw[fonte] = (dados as { raw?: unknown }).raw ?? dados;
   }
+
+  out["natureza_juridica"] = canonizarNatureza(out["natureza_juridica"] as string | null);
 
   out["raw"] = raw;
   out["synced_at"] = new Date().toISOString();
