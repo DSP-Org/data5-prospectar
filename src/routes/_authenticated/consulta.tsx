@@ -12,7 +12,7 @@ import {
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
 import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { buscarLocalFn } from "@/lib/busca-local.functions";
-import { sugerirFiltrosFn } from "@/lib/ia-filtros.functions";
+import { conversarFiltrosFn } from "@/lib/ia-filtros.functions";
 
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
@@ -717,6 +717,7 @@ function BuscaAvancadaCnpja({
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [pedidoIa, setPedidoIa] = useState("");
+  const [conversa, setConversa] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
