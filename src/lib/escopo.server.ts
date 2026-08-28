@@ -60,6 +60,7 @@ export async function obterEscopo(userId: string, unidadeSolicitada?: string | n
 
 /** Lista de unidades para filtrar, ou null quando o usuário vê tudo (master). */
 export function unidadesFiltro(escopo: Escopo): string[] | null {
+  if (escopo.restrito) return escopo.unitIds.length ? escopo.unitIds : null;
   if (escopo.master) return null;
   return escopo.unitIds.length ? escopo.unitIds : ["00000000-0000-0000-0000-000000000000"];
 }
