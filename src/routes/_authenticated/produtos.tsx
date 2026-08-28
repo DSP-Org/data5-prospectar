@@ -127,10 +127,11 @@ function ProdutosPage() {
                   toast.error("Informe o nome do produto ou serviço.");
                   return;
                 }
-                if (!unidadeFormulario && unidades.length > 1) {
-                  toast.error("Selecione a unidade de negócio.");
+                if (!unidadeFormulario) {
+                  toast.error("Escolha a unidade no seletor do topo antes de cadastrar.");
                   return;
                 }
+
                 criar.mutate();
               }}
             >
@@ -177,7 +178,16 @@ function ProdutosPage() {
               <p className="mt-3 text-sm text-muted-foreground">
                 Cadastre uma unidade em Administração → Unidades antes de criar ofertas.
               </p>
-            ) : null}
+            ) : unidadeFormulario ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                A oferta será vinculada à unidade {nomeUnidade(unidadeFormulario)}.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Escolha uma unidade no seletor do topo para cadastrar ofertas.
+              </p>
+            )}
+
           </CardContent>
         </Card>
       ) : null}
