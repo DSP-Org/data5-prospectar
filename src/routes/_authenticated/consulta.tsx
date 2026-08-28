@@ -749,6 +749,77 @@ function BuscaAvancadaCnpja({
     return Number.isFinite(n) && v.trim() !== "" ? n : null;
   };
 
+  const sugerir = useServerFn(sugerirFiltrosFn);
+
+  const ia = useMutation({
+    mutationFn: async (pedido: string) => {
+      const s = await sugerir({ data: { pedido } });
+
+      const uf = (s.uf ?? "").toUpperCase().slice(0, 2);
+      let municipiosIds: string[] = [];
+      if (uf && (s.municipios?.length ?? 0) > 0) {
+        const lista = await listarMunicipios(uf);
+        municipiosIds = (s.municipios ?? [])
+          .map((nome) => {
+            const alvo = normalizar(nome);
+            return lista.find((m) => normalizar(m.nome) === alvo)?.id
+              ?? lista.find((m) => normalizar(m.nome).includes(alvo))?.id
+              ?? "";
+          })
+          .filter(Boolean);
+      }
+
+      let cnaesIds: string[] = [];
+      if ((s.cnaeTermos?.length ?? 0) > 0) {
+        const lista = cnaes.data ?? (await listarCnaes());
+        for (const termo of s.cnaeTermos ?? []) {
+          const codigo = termo.replace(/\D/g, "");
+          if (codigo.length >= 5) {
+            const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 5);
+            cnaesIds.push(...exato.map((c) => c.id));
+            continue;
+          }
+          const alvo = normalizar(termo);
+          cnaesIds.push(
+            ...lista
+              .filter((c) => normalizar(c.descricao).includes(alvo))
+              .slice(0, 5)
+              .map((c) => c.id),
+          );
+        }
+        cnaesIds = [...new Set(cnaesIds)].slice(0, 15);
+      }
+
+      return { s, uf, municipiosIds, cnaesIds };
+    },
+    onSuccess: ({ s, uf, municipiosIds, cnaesIds }) => {
+      setF((atual) => ({
+        ...atual,
+        nome: s.nome ?? atual.nome,
+        nomeFantasia: s.nomeFantasia ?? atual.nomeFantasia,
+        uf: uf || atual.uf,
+        municipiosIbge: municipiosIds.length > 0 ? municipiosIds : uf ? [] : atual.municipiosIbge,
+        bairro: s.bairro ?? atual.bairro,
+        cnaesPrincipais: cnaesIds.length > 0 ? cnaesIds : atual.cnaesPrincipais,
+        porteIds: (s.porteIds?.length ?? 0) > 0 ? (s.porteIds as string[]) : atual.porteIds,
+        situacaoIds: (s.situacaoIds?.length ?? 0) > 0 ? (s.situacaoIds as string[]) : atual.situacaoIds,
+        capitalMin: s.capitalMin != null ? String(s.capitalMin) : atual.capitalMin,
+        capitalMax: s.capitalMax != null ? String(s.capitalMax) : atual.capitalMax,
+        aberturaDe: s.aberturaDe ?? atual.aberturaDe,
+        aberturaAte: s.aberturaAte ?? atual.aberturaAte,
+        matrizFilial: s.matrizFilial ?? atual.matrizFilial,
+        simples: s.simples ?? atual.simples,
+        mei: s.mei ?? atual.mei,
+        temTelefone: s.temTelefone ?? atual.temTelefone,
+        temEmail: s.temEmail ?? atual.temEmail,
+        ddd: s.ddd ?? atual.ddd,
+        limite: s.limite != null ? String(s.limite) : atual.limite,
+      }));
+      toast.success(s.explicacao || "Filtros preenchidos pela IA. Revise antes de buscar.");
+    },
+    onError: (e: Error) => toast.error(e.message || "A IA não conseguiu preencher os filtros."),
+  });
+
   const mut = useMutation({
     mutationFn: (proximo: string | null) =>
       buscar({
