@@ -664,10 +664,10 @@ const SITUACOES = [
 type FiltrosCnpja = {
   nome: string;
   uf: string;
-  municipioIbge: string;
+  municipiosIbge: string[];
   bairro: string;
   cep: string;
-  cnaePrincipal: string;
+  cnaesPrincipais: string[];
   cnaeQualquer: string;
   porteIds: string[];
   situacaoIds: string[];
@@ -682,10 +682,10 @@ type FiltrosCnpja = {
 const FILTROS_INICIAIS: FiltrosCnpja = {
   nome: "",
   uf: "",
-  municipioIbge: "",
+  municipiosIbge: [],
   bairro: "",
   cep: "",
-  cnaePrincipal: "",
+  cnaesPrincipais: [],
   cnaeQualquer: "",
   porteIds: [],
   situacaoIds: ["2"],
