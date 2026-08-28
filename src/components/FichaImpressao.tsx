@@ -112,7 +112,14 @@ export function FichaImpressao({
             label="CNAE principal"
             valor={[e.cnae_codigo, e.cnae_descricao].filter(Boolean).join(" — ")}
           />
-          <Linha label="Setores" valor={(e.setores ?? []).join(", ")} />
+          <Linha
+            label="Setores"
+            valor={(() => {
+              const st = e.setores ?? [];
+              const base = st.slice(0, 4).join(", ");
+              return st.length > 4 ? `${base} (+${st.length - 4})` : base;
+            })()}
+          />
           <Linha label="Regime tributário" valor={regime.join(" · ")} />
         </div>
         <div className="ficha-endereco">
