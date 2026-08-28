@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { AlertCircle, ExternalLink, Loader2, Search } from "lucide-react";
+import { AlertCircle, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
 
@@ -12,6 +12,7 @@ import {
 import { fichaCnpjaAbertaFn } from "@/lib/cnpja-open.functions";
 import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { buscarLocalFn } from "@/lib/busca-local.functions";
+import { sugerirFiltrosFn } from "@/lib/ia-filtros.functions";
 
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
@@ -702,6 +703,9 @@ const FILTROS_INICIAIS: FiltrosCnpja = {
   limite: "20",
 };
 
+const normalizar = (v: string) =>
+  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 function BuscaAvancadaCnpja({
   listId,
   nomeInicial,
@@ -712,6 +716,7 @@ function BuscaAvancadaCnpja({
   const [f, setF] = useState<FiltrosCnpja>(FILTROS_INICIAIS);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [pedidoIa, setPedidoIa] = useState("");
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
@@ -747,6 +752,77 @@ function BuscaAvancadaCnpja({
     const n = Number(v.replace(/[^\d.,-]/g, "").replace(",", "."));
     return Number.isFinite(n) && v.trim() !== "" ? n : null;
   };
+
+  const sugerir = useServerFn(sugerirFiltrosFn);
+
+  const ia = useMutation({
+    mutationFn: async (pedido: string) => {
+      const s = await sugerir({ data: { pedido } });
+
+      const uf = (s.uf ?? "").toUpperCase().slice(0, 2);
+      let municipiosIds: string[] = [];
+      if (uf && (s.municipios?.length ?? 0) > 0) {
+        const lista = await listarMunicipios(uf);
+        municipiosIds = (s.municipios ?? [])
+          .map((nome) => {
+            const alvo = normalizar(nome);
+            return lista.find((m) => normalizar(m.nome) === alvo)?.id
+              ?? lista.find((m) => normalizar(m.nome).includes(alvo))?.id
+              ?? "";
+          })
+          .filter(Boolean);
+      }
+
+      let cnaesIds: string[] = [];
+      if ((s.cnaeTermos?.length ?? 0) > 0) {
+        const lista = cnaes.data ?? (await listarCnaes());
+        for (const termo of s.cnaeTermos ?? []) {
+          const codigo = termo.replace(/\D/g, "");
+          if (codigo.length >= 5) {
+            const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 5);
+            cnaesIds.push(...exato.map((c) => c.id));
+            continue;
+          }
+          const alvo = normalizar(termo);
+          cnaesIds.push(
+            ...lista
+              .filter((c) => normalizar(c.descricao).includes(alvo))
+              .slice(0, 5)
+              .map((c) => c.id),
+          );
+        }
+        cnaesIds = [...new Set(cnaesIds)].slice(0, 15);
+      }
+
+      return { s, uf, municipiosIds, cnaesIds };
+    },
+    onSuccess: ({ s, uf, municipiosIds, cnaesIds }) => {
+      setF((atual) => ({
+        ...atual,
+        nome: s.nome ?? atual.nome,
+        nomeFantasia: s.nomeFantasia ?? atual.nomeFantasia,
+        uf: uf || atual.uf,
+        municipiosIbge: municipiosIds.length > 0 ? municipiosIds : uf ? [] : atual.municipiosIbge,
+        bairro: s.bairro ?? atual.bairro,
+        cnaesPrincipais: cnaesIds.length > 0 ? cnaesIds : atual.cnaesPrincipais,
+        porteIds: (s.porteIds?.length ?? 0) > 0 ? (s.porteIds as string[]) : atual.porteIds,
+        situacaoIds: (s.situacaoIds?.length ?? 0) > 0 ? (s.situacaoIds as string[]) : atual.situacaoIds,
+        capitalMin: s.capitalMin != null ? String(s.capitalMin) : atual.capitalMin,
+        capitalMax: s.capitalMax != null ? String(s.capitalMax) : atual.capitalMax,
+        aberturaDe: s.aberturaDe ?? atual.aberturaDe,
+        aberturaAte: s.aberturaAte ?? atual.aberturaAte,
+        matrizFilial: s.matrizFilial ?? atual.matrizFilial,
+        simples: s.simples ?? atual.simples,
+        mei: s.mei ?? atual.mei,
+        temTelefone: s.temTelefone ?? atual.temTelefone,
+        temEmail: s.temEmail ?? atual.temEmail,
+        ddd: s.ddd ?? atual.ddd,
+        limite: s.limite != null ? String(s.limite) : atual.limite,
+      }));
+      toast.success(s.explicacao || "Filtros preenchidos pela IA. Revise antes de buscar.");
+    },
+    onError: (e: Error) => toast.error(e.message || "A IA não conseguiu preencher os filtros."),
+  });
 
   const mut = useMutation({
     mutationFn: (proximo: string | null) =>
@@ -815,6 +891,37 @@ function BuscaAvancadaCnpja({
         Busca por filtros na base completa do CNPJá usando sua chave paga. Consome créditos do seu
         plano. Estados, municípios e atividades econômicas vêm das listas oficiais do IBGE.
       </p>
+
+      <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Assistente de IA — descreva o que procura
+        </div>
+        <Textarea
+          value={pedidoIa}
+          onChange={(e) => setPedidoIa(e.target.value)}
+          rows={2}
+          placeholder="Ex.: transportadoras ativas em Salvador e Feira de Santana, capital acima de 100 mil, abertas depois de 2018, só matriz"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => ia.mutate(pedidoIa.trim())}
+            disabled={ia.isPending || pedidoIa.trim().length < 3}
+          >
+            {ia.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Preencher filtros com IA
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            A IA só preenche os campos abaixo — nada é consultado até você clicar em buscar.
+          </span>
+        </div>
+      </div>
 
       <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
