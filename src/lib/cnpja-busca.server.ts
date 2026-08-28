@@ -18,6 +18,25 @@ export type FiltroCnpjaBusca = {
   capitalMax?: number | null | undefined;
   aberturaDe?: string | null | undefined;
   aberturaAte?: string | null | undefined;
+  nomeFantasia?: string | null | undefined;
+  excluirNomes?: string | null | undefined;
+  logradouro?: string | null | undefined;
+  cepDe?: string | null | undefined;
+  cepAte?: string | null | undefined;
+  cnaeSecundario?: string | null | undefined;
+  cnaeExcluir?: string | null | undefined;
+  motivoIds?: string | null | undefined;
+  situacaoDesde?: string | null | undefined;
+  situacaoAte?: string | null | undefined;
+  matrizFilial?: string | null | undefined;
+  simples?: string | null | undefined;
+  mei?: string | null | undefined;
+  temTelefone?: string | null | undefined;
+  telefoneTipo?: string | null | undefined;
+  ddd?: string | null | undefined;
+  temEmail?: string | null | undefined;
+  emailDominio?: string | null | undefined;
+  emailTipo?: string | null | undefined;
   somenteMatriz?: boolean | null | undefined;
   limite?: number | null | undefined;
   cursor?: string | null | undefined;
@@ -105,7 +124,32 @@ export async function buscarEmpresasCnpja(f: FiltroCnpjaBusca): Promise<Resultad
   if (typeof f.capitalMax === "number") p.set("company.equity.lte", String(f.capitalMax));
   if (f.aberturaDe) p.set("founded.gte", f.aberturaDe);
   if (f.aberturaAte) p.set("founded.lte", f.aberturaAte);
-  if (f.somenteMatriz) p.set("head.eq", "true");
+  if (f.nomeFantasia?.trim()) p.set("alias.in", f.nomeFantasia.trim());
+  if (f.excluirNomes?.trim()) p.set("names.nin", f.excluirNomes.trim());
+  if (f.logradouro?.trim()) p.set("address.street.in", f.logradouro.trim().toUpperCase());
+  if (f.cepDe?.trim()) p.set("address.zip.gte", f.cepDe.replace(/\D/g, ""));
+  if (f.cepAte?.trim()) p.set("address.zip.lte", f.cepAte.replace(/\D/g, ""));
+  add("sideActivities.id.in", lista(f.cnaeSecundario).map((v) => v.replace(/\D/g, "")));
+  add("activities.id.nin", lista(f.cnaeExcluir).map((v) => v.replace(/\D/g, "")));
+  add("reason.id.in", lista(f.motivoIds));
+  if (f.situacaoDesde) p.set("statusDate.gte", f.situacaoDesde);
+  if (f.situacaoAte) p.set("statusDate.lte", f.situacaoAte);
+
+  const bool = (v?: string | null) => (v === "sim" ? "true" : v === "nao" ? "false" : null);
+  const matriz = f.matrizFilial ? bool(f.matrizFilial === "matriz" ? "sim" : f.matrizFilial === "filial" ? "nao" : null) : f.somenteMatriz ? "true" : null;
+  if (matriz) p.set("head.eq", matriz);
+  const simples = bool(f.simples);
+  if (simples) p.set("company.simples.optant.eq", simples);
+  const mei = bool(f.mei);
+  if (mei) p.set("company.simei.optant.eq", mei);
+  const tel = bool(f.temTelefone);
+  if (tel) p.set("phones.ex", tel);
+  add("phones.type.in", lista(f.telefoneTipo));
+  add("phones.area.in", lista(f.ddd).map((v) => v.replace(/\D/g, "")));
+  const mail = bool(f.temEmail);
+  if (mail) p.set("emails.ex", mail);
+  add("emails.domain.in", lista(f.emailDominio));
+  add("emails.ownership.in", lista(f.emailTipo));
 
   const resp = await fetch(`https://api.cnpja.com/office?${p.toString()}`, {
     headers: { Authorization: key, Accept: "application/json" },

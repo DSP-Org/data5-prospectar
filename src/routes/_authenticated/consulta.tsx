@@ -678,6 +678,24 @@ type FiltrosCnpja = {
   aberturaDe: string;
   aberturaAte: string;
   somenteMatriz: boolean;
+  nomeFantasia: string;
+  excluirNomes: string;
+  logradouro: string;
+  cepDe: string;
+  cepAte: string;
+  cnaeSecundario: string;
+  cnaeExcluir: string;
+  situacaoDesde: string;
+  situacaoAte: string;
+  matrizFilial: string;
+  simples: string;
+  mei: string;
+  temTelefone: string;
+  telefoneTipo: string;
+  ddd: string;
+  temEmail: string;
+  emailDominio: string;
+  emailTipo: string;
   limite: string;
 };
 
@@ -696,6 +714,24 @@ const FILTROS_INICIAIS: FiltrosCnpja = {
   aberturaDe: "",
   aberturaAte: "",
   somenteMatriz: true,
+  nomeFantasia: "",
+  excluirNomes: "",
+  logradouro: "",
+  cepDe: "",
+  cepAte: "",
+  cnaeSecundario: "",
+  cnaeExcluir: "",
+  situacaoDesde: "",
+  situacaoAte: "",
+  matrizFilial: "matriz",
+  simples: "",
+  mei: "",
+  temTelefone: "",
+  telefoneTipo: "",
+  ddd: "",
+  temEmail: "",
+  emailDominio: "",
+  emailTipo: "",
   limite: "20",
 };
 
@@ -762,7 +798,25 @@ function BuscaAvancadaCnpja({
           capitalMax: num(f.capitalMax),
           aberturaDe: f.aberturaDe || null,
           aberturaAte: f.aberturaAte || null,
-          somenteMatriz: f.somenteMatriz,
+          nomeFantasia: f.nomeFantasia || null,
+          excluirNomes: f.excluirNomes || null,
+          logradouro: f.logradouro || null,
+          cepDe: f.cepDe || null,
+          cepAte: f.cepAte || null,
+          cnaeSecundario: f.cnaeSecundario || null,
+          cnaeExcluir: f.cnaeExcluir || null,
+          situacaoDesde: f.situacaoDesde || null,
+          situacaoAte: f.situacaoAte || null,
+          matrizFilial: f.matrizFilial || null,
+          simples: f.simples || null,
+          mei: f.mei || null,
+          temTelefone: f.temTelefone || null,
+          telefoneTipo: f.telefoneTipo || null,
+          ddd: f.ddd || null,
+          temEmail: f.temEmail || null,
+          emailDominio: f.emailDominio || null,
+          emailTipo: f.emailTipo || null,
+          somenteMatriz: false,
           limite: Number(f.limite) || 20,
           cursor: proximo,
         },
@@ -914,13 +968,128 @@ function BuscaAvancadaCnpja({
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3">
-          <Checkbox
-            checked={f.somenteMatriz}
-            onCheckedChange={(v) => set("somenteMatriz", Boolean(v))}
-          />
-          Somente matriz
-        </label>
+        <div className="space-y-1">
+          <Label>Nome fantasia contém</Label>
+          <Input value={f.nomeFantasia} onChange={(e) => set("nomeFantasia", e.target.value)} placeholder="Ex.: farmácia" />
+        </div>
+        <div className="space-y-1">
+          <Label>Excluir nomes que contenham</Label>
+          <Input value={f.excluirNomes} onChange={(e) => set("excluirNomes", e.target.value)} placeholder="Ex.: condominio" />
+        </div>
+        <div className="space-y-1">
+          <Label>Logradouro</Label>
+          <Input value={f.logradouro} onChange={(e) => set("logradouro", e.target.value)} placeholder="AVENIDA PAULISTA" />
+        </div>
+        <div className="space-y-1">
+          <Label>CEP de</Label>
+          <Input value={f.cepDe} onChange={(e) => set("cepDe", e.target.value)} placeholder="01000000" />
+        </div>
+        <div className="space-y-1">
+          <Label>CEP até</Label>
+          <Input value={f.cepAte} onChange={(e) => set("cepAte", e.target.value)} placeholder="01999999" />
+        </div>
+        <div className="space-y-1">
+          <Label>CNAE secundário</Label>
+          <Input value={f.cnaeSecundario} onChange={(e) => set("cnaeSecundario", e.target.value)} placeholder="4712100" />
+        </div>
+        <div className="space-y-1">
+          <Label>Excluir CNAEs</Label>
+          <Input value={f.cnaeExcluir} onChange={(e) => set("cnaeExcluir", e.target.value)} placeholder="8888888" />
+        </div>
+        <div className="space-y-1">
+          <Label>Situação alterada de</Label>
+          <Input type="date" value={f.situacaoDesde} onChange={(e) => set("situacaoDesde", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>Situação alterada até</Label>
+          <Input type="date" value={f.situacaoAte} onChange={(e) => set("situacaoAte", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>Matriz / filial</Label>
+          <Select value={f.matrizFilial || "todos"} onValueChange={(v) => set("matrizFilial", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="matriz">Somente matriz</SelectItem>
+              <SelectItem value="filial">Somente filial</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Simples Nacional</Label>
+          <Select value={f.simples || "todos"} onValueChange={(v) => set("simples", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Tanto faz</SelectItem>
+              <SelectItem value="sim">Optante</SelectItem>
+              <SelectItem value="nao">Não optante</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>MEI</Label>
+          <Select value={f.mei || "todos"} onValueChange={(v) => set("mei", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Tanto faz</SelectItem>
+              <SelectItem value="sim">Somente MEI</SelectItem>
+              <SelectItem value="nao">Excluir MEI</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Possui telefone</Label>
+          <Select value={f.temTelefone || "todos"} onValueChange={(v) => set("temTelefone", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Tanto faz</SelectItem>
+              <SelectItem value="sim">Com telefone</SelectItem>
+              <SelectItem value="nao">Sem telefone</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Tipo de telefone</Label>
+          <Select value={f.telefoneTipo || "todos"} onValueChange={(v) => set("telefoneTipo", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="MOBILE">Celular</SelectItem>
+              <SelectItem value="LANDLINE">Fixo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>DDD</Label>
+          <Input value={f.ddd} onChange={(e) => set("ddd", e.target.value)} placeholder="11, 21" />
+        </div>
+        <div className="space-y-1">
+          <Label>Possui e-mail</Label>
+          <Select value={f.temEmail || "todos"} onValueChange={(v) => set("temEmail", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Tanto faz</SelectItem>
+              <SelectItem value="sim">Com e-mail</SelectItem>
+              <SelectItem value="nao">Sem e-mail</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Domínio do e-mail</Label>
+          <Input value={f.emailDominio} onChange={(e) => set("emailDominio", e.target.value)} placeholder="gmail.com" />
+        </div>
+        <div className="space-y-1">
+          <Label>Tipo de e-mail</Label>
+          <Select value={f.emailTipo || "todos"} onValueChange={(v) => set("emailTipo", v === "todos" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="CORPORATE">Corporativo</SelectItem>
+              <SelectItem value="ACCOUNTING">Contabilidade</SelectItem>
+              <SelectItem value="PERSONAL">Pessoal</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
