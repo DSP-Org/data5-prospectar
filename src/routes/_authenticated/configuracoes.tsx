@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FontesDados } from "@/components/FontesDados";
+import { meFn } from "@/lib/auth.functions";
 
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
@@ -44,9 +45,12 @@ export const Route = createFileRoute("/_authenticated/configuracoes")({
 
 function Configuracoes() {
   const qc = useQueryClient();
+  const { data: me, isLoading: carregandoMe } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
+  const master = me?.master ?? false;
   const status = useQuery({
     queryKey: ["settings", "api-key"],
     queryFn: () => obterStatusChaveApiFn(),
+    enabled: master,
   });
 
   const [key, setKey] = useState("");
@@ -98,6 +102,14 @@ function Configuracoes() {
 
   const configured = status.data?.configured ?? false;
   const source = status.data?.source ?? "none";
+
+  if (!carregandoMe && !master) {
+    return (
+      <div className="rounded-md border p-8 text-center text-sm text-muted-foreground">
+        Apenas o usuário master pode acessar as configurações do sistema.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
