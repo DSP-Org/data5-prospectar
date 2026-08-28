@@ -235,17 +235,24 @@ function mesclarTodos(
  */
 export async function buscarMultiFonte(
   cnpjs: string[],
-  opts?: { forcar?: boolean | undefined; modo?: ModoConsulta | undefined },
+  opts?: {
+    forcar?: boolean | undefined;
+    modo?: ModoConsulta | undefined;
+    /** Busca máxima: ignora cache, consulta online e liga todos os módulos da CNPJá. */
+    completo?: boolean | undefined;
+  },
 ): Promise<ResultadoMultiFonte> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
   const ativas = prioridade.filter((id) => ativa(id, s, Boolean(chaveDaFonte(id, s))));
   const { modo: modoSalvo, ttlDias } = economiaDe(s);
-  const modo = opts?.modo ?? modoSalvo;
+  const buscaTotal = opts?.completo === true;
+  const modo = buscaTotal ? "completo" : (opts?.modo ?? modoSalvo);
+  const forcar = opts?.forcar === true || buscaTotal;
 
   const empresas = new Map<string, EmpresaMesclada>();
   const doCache: string[] = [];
-  if (!opts?.forcar) {
+  if (!forcar) {
     const cache = await lerCache(cnpjs, ttlDias);
     for (const [cnpj, empresa] of cache) {
       empresas.set(cnpj, empresa);
@@ -262,8 +269,13 @@ export async function buscarMultiFonte(
 
   const fetchOpts: FetchOpts = {
     maxAgeDias: ttlDias > 0 ? ttlDias : 45,
-    economico: modo === "economico" && !opts?.forcar,
+    economico: modo === "economico" && !forcar,
+    online: buscaTotal,
+    modulos: buscaTotal
+      ? { simples: true, registrations: true, suframa: true, geocoding: true, links: true }
+      : modulosCnpjaDe(s),
   };
+
 
   if (modo === "completo") {
     await rodarFontes(ativas, pendentes, s, resultados, falhas, fetchOpts);
