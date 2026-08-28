@@ -717,6 +717,18 @@ function BuscaAvancadaCnpja({
   const buscar = useServerFn(buscarCnpjaFn);
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
 
+  const municipios = useQuery({
+    queryKey: ["ibge-municipios", f.uf],
+    queryFn: () => listarMunicipios(f.uf),
+    enabled: f.uf !== "",
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+  const cnaes = useQuery({
+    queryKey: ["ibge-cnaes"],
+    queryFn: listarCnaes,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+
   const set = <K extends keyof FiltrosCnpja>(k: K, v: FiltrosCnpja[K]) =>
     setF((atual) => ({ ...atual, [k]: v }));
 
