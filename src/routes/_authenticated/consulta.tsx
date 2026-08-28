@@ -142,7 +142,7 @@ function Consulta() {
                 </label>
                 <Button
                   disabled={cnpjUnicoLimpo.length === 0 || carregando}
-                  onClick={() => mutCnpjs.mutate([cnpjUnicoLimpo])}
+                  onClick={() => mutCnpjs.mutate({ cnpjs: [cnpjUnicoLimpo], completo: buscaTotal })}
                 >
                   {mutCnpjs.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -174,7 +174,7 @@ function Consulta() {
                 </p>
                 <Button
                   disabled={cnpjs.length === 0 || carregando}
-                  onClick={() => mutCnpjs.mutate(cnpjs)}
+                  onClick={() => mutCnpjs.mutate({ cnpjs, completo: false })}
                 >
                   {mutCnpjs.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
