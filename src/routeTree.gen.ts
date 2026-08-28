@@ -19,6 +19,7 @@ import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authen
 import { Route as AuthenticatedConsultaRouteImport } from './routes/_authenticated/consulta'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
 import { Route as AuthenticatedFunilRouteImport } from './routes/_authenticated/funil'
+import { Route as AuthenticatedImportacoesRouteImport } from './routes/_authenticated/importacoes'
 import { Route as AuthenticatedListasRouteImport } from './routes/_authenticated/listas'
 import { Route as AuthenticatedPermissoesRouteImport } from './routes/_authenticated/permissoes'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
@@ -80,6 +81,12 @@ const AuthenticatedFunilRoute = AuthenticatedFunilRouteImport.update({
   path: '/funil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImportacoesRoute =
+  AuthenticatedImportacoesRouteImport.update({
+    id: '/importacoes',
+    path: '/importacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedListasRoute = AuthenticatedListasRouteImport.update({
   id: '/listas',
   path: '/listas',
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/consulta': typeof AuthenticatedConsultaRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/funil': typeof AuthenticatedFunilRoute
+  '/importacoes': typeof AuthenticatedImportacoesRoute
   '/listas': typeof AuthenticatedListasRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
   '/produtos': typeof AuthenticatedProdutosRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/consulta': typeof AuthenticatedConsultaRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/funil': typeof AuthenticatedFunilRoute
+  '/importacoes': typeof AuthenticatedImportacoesRoute
   '/listas': typeof AuthenticatedListasRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
   '/produtos': typeof AuthenticatedProdutosRoute
@@ -172,6 +181,7 @@ export interface FileRoutesById {
   '/_authenticated/consulta': typeof AuthenticatedConsultaRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
   '/_authenticated/funil': typeof AuthenticatedFunilRoute
+  '/_authenticated/importacoes': typeof AuthenticatedImportacoesRoute
   '/_authenticated/listas': typeof AuthenticatedListasRoute
   '/_authenticated/permissoes': typeof AuthenticatedPermissoesRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/consulta'
     | '/equipe'
     | '/funil'
+    | '/importacoes'
     | '/listas'
     | '/permissoes'
     | '/produtos'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/consulta'
     | '/equipe'
     | '/funil'
+    | '/importacoes'
     | '/listas'
     | '/permissoes'
     | '/produtos'
@@ -232,6 +244,7 @@ export interface FileRouteTypes {
     | '/_authenticated/consulta'
     | '/_authenticated/equipe'
     | '/_authenticated/funil'
+    | '/_authenticated/importacoes'
     | '/_authenticated/listas'
     | '/_authenticated/permissoes'
     | '/_authenticated/produtos'
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFunilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/importacoes': {
+      id: '/_authenticated/importacoes'
+      path: '/importacoes'
+      fullPath: '/importacoes'
+      preLoaderRoute: typeof AuthenticatedImportacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/listas': {
       id: '/_authenticated/listas'
       path: '/listas'
@@ -387,6 +407,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConsultaRoute: typeof AuthenticatedConsultaRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
   AuthenticatedFunilRoute: typeof AuthenticatedFunilRoute
+  AuthenticatedImportacoesRoute: typeof AuthenticatedImportacoesRoute
   AuthenticatedListasRoute: typeof AuthenticatedListasRoute
   AuthenticatedPermissoesRoute: typeof AuthenticatedPermissoesRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
@@ -406,6 +427,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConsultaRoute: AuthenticatedConsultaRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
   AuthenticatedFunilRoute: AuthenticatedFunilRoute,
+  AuthenticatedImportacoesRoute: AuthenticatedImportacoesRoute,
   AuthenticatedListasRoute: AuthenticatedListasRoute,
   AuthenticatedPermissoesRoute: AuthenticatedPermissoesRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
