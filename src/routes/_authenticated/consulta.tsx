@@ -749,10 +749,10 @@ function BuscaAvancadaCnpja({
         data: {
           nome: f.nome || null,
           uf: f.uf || null,
-          municipioIbge: f.municipioIbge || null,
+          municipioIbge: f.municipiosIbge.join(",") || null,
           bairro: f.bairro || null,
           cep: f.cep || null,
-          cnaePrincipal: f.cnaePrincipal || null,
+          cnaePrincipal: f.cnaesPrincipais.join(",") || null,
           cnaeQualquer: f.cnaeQualquer || null,
           porteIds: f.porteIds.join(",") || null,
           situacaoIds: f.situacaoIds.join(",") || null,
