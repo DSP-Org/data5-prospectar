@@ -196,7 +196,7 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const filtros = { busca, status, uf, listId: lista };
+  const filtros = { busca, status, uf, listId: lista, grupoNatureza: grupo };
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
