@@ -28,6 +28,17 @@ Transformar a aba gratuita em uma busca por nome de verdade, sem consumir crédi
 - `src/routes/_authenticated/consulta.tsx`: campo único com detecção CNPJ/nome, lista de resultados locais, ação de abrir ficha e ação de escalar para a aba de busca avançada com o termo preenchido.
 - Nenhuma alteração no fluxo de créditos: a camada local é 100% banco de dados; a chamada paga continua exclusiva da Busca avançada.
 
+## Isso consome crédito?
+
+Filtrar enquanto digita **não** custa nada nesta proposta, porque a digitação consulta apenas o banco de dados local do sistema.
+
+Regras que garantem isso:
+
+- A busca ao digitar (com pequeno atraso de ~400ms) roda só contra a tabela local de empresas.
+- A API paga do CNPJá nunca é chamada automaticamente — só ao clicar em "Procurar nas fontes pagas" ou ao usar a aba Busca avançada.
+- Na Busca avançada, cada página de resultados custa crédito, então ela continua com botão "Buscar" manual, sem disparo por digitação.
+
 ## Limitação a registrar
 
 Não existe API pública gratuita e confiável de busca de empresas por nome na Receita — as fontes abertas só respondem por CNPJ. Por isso a busca por nome fora da base local depende da API comercial do CNPJá que já está configurada.
+
