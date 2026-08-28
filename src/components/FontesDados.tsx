@@ -144,6 +144,33 @@ export function FontesDados() {
           </div>
         )}
 
+        {modulos && (
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium">Módulos adicionais da CNPJá</p>
+            <p className="text-xs text-muted-foreground">
+              Cada módulo ligado traz mais dados na consulta, porém consome créditos extras do plano
+              da CNPJá. Deixe desligado o que não for usar.
+            </p>
+            <div className="mt-3 space-y-3">
+              {MODULOS_CNPJA_META.map((m) => (
+                <div key={m.id} className="flex items-start justify-between gap-4">
+                  <div className="max-w-md">
+                    <p className="text-sm">{m.label}</p>
+                    <p className="text-xs text-muted-foreground">{m.descricao}</p>
+                  </div>
+                  <Switch
+                    checked={modulos[m.id]}
+                    aria-label={`Ativar módulo ${m.label}`}
+                    onCheckedChange={(v) => mutModulos.mutate({ [m.id]: v })}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+
+
         {lista.map((f, idx) => (
           <div key={f.id} className="rounded-lg border border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
