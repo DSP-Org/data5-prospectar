@@ -753,12 +753,18 @@ function BuscaAvancadaCnpja({
     return Number.isFinite(n) && v.trim() !== "" ? n : null;
   };
 
-  const sugerir = useServerFn(sugerirFiltrosFn);
+  const conversar = useServerFn(conversarFiltrosFn);
 
   const ia = useMutation({
     mutationFn: async (pedido: string) => {
-      const s = await sugerir({ data: { pedido } });
+      const historico = [...conversa, { role: "user" as const, content: pedido }];
+      const r = await conversar({ data: { mensagens: historico } });
 
+      if (!r.aplicar || !r.filtros) {
+        return { r, historico, uf: "", municipiosIds: [] as string[], cnaesIds: [] as string[] };
+      }
+
+      const s = r.filtros;
       const uf = (s.uf ?? "").toUpperCase().slice(0, 2);
       let municipiosIds: string[] = [];
       if (uf && (s.municipios?.length ?? 0) > 0) {
@@ -807,7 +813,6 @@ function BuscaAvancadaCnpja({
 
           const melhor = Math.max(...pontuados.map((x) => x.acertos), 0);
           if (melhor === 0) continue;
-          // exige ao menos metade das palavras do termo (ou o melhor disponível)
           const minimo = Math.max(1, Math.min(melhor, Math.ceil(palavras.length / 2)));
 
           cnaesIds.push(
@@ -821,10 +826,16 @@ function BuscaAvancadaCnpja({
         cnaesIds = [...new Set(cnaesIds)].slice(0, 20);
       }
 
-
-      return { s, uf, municipiosIds, cnaesIds };
+      return { r, historico, uf, municipiosIds, cnaesIds };
     },
-    onSuccess: ({ s, uf, municipiosIds, cnaesIds }) => {
+    onSuccess: ({ r, historico, uf, municipiosIds, cnaesIds }) => {
+      const s = r.filtros;
+      const fala = r.mensagem || (r.aplicar ? s?.explicacao ?? "Filtros preenchidos." : "…");
+      setConversa([...historico, { role: "assistant" as const, content: fala }]);
+      setPedidoIa("");
+
+      if (!r.aplicar || !s) return;
+
       setF((atual) => ({
         ...atual,
         nome: s.nome ?? atual.nome,
@@ -849,8 +860,9 @@ function BuscaAvancadaCnpja({
       }));
       toast.success(s.explicacao || "Filtros preenchidos pela IA. Revise antes de buscar.");
     },
-    onError: (e: Error) => toast.error(e.message || "A IA não conseguiu preencher os filtros."),
+    onError: (e: Error) => toast.error(e.message || "A IA não conseguiu responder."),
   });
+
 
   const mut = useMutation({
     mutationFn: (proximo: string | null) =>
