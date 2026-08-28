@@ -790,7 +790,7 @@ function BuscaAvancadaCnpja({
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
         Busca por filtros na base completa do CNPJá usando sua chave paga. Consome créditos do seu
-        plano. Municípios usam o código IBGE (ex.: 3550308 = São Paulo).
+        plano. Estados, municípios e atividades econômicas vêm das listas oficiais do IBGE.
       </p>
 
       <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -799,15 +799,25 @@ function BuscaAvancadaCnpja({
           <Input value={f.nome} onChange={(e) => set("nome", e.target.value)} placeholder="Ex.: transportes" />
         </div>
         <div className="space-y-1">
-          <Label>UF (separe por vírgula)</Label>
-          <Input value={f.uf} onChange={(e) => set("uf", e.target.value)} placeholder="SP, MG" />
+          <Label>Estado (UF)</Label>
+          <Combobox
+            opcoes={UFS.map((u) => ({ value: u, label: u }))}
+            valor={f.uf}
+            onChange={(v) => setF((atual) => ({ ...atual, uf: v, municipiosIbge: [] }))}
+            placeholder="Todos os estados"
+            buscaPlaceholder="Buscar UF…"
+          />
         </div>
         <div className="space-y-1">
-          <Label>Município (código IBGE)</Label>
-          <Input
-            value={f.municipioIbge}
-            onChange={(e) => set("municipioIbge", e.target.value)}
-            placeholder="3550308"
+          <Label>Municípios</Label>
+          <ComboboxMulti
+            opcoes={(municipios.data ?? []).map((m) => ({ value: m.id, label: m.nome }))}
+            valores={f.municipiosIbge}
+            onChange={(v) => set("municipiosIbge", v)}
+            disabled={!f.uf}
+            loading={municipios.isLoading}
+            placeholder={f.uf ? "Todos os municípios" : "Escolha a UF primeiro"}
+            buscaPlaceholder="Buscar município…"
           />
         </div>
         <div className="space-y-1">
@@ -819,11 +829,17 @@ function BuscaAvancadaCnpja({
           <Input value={f.cep} onChange={(e) => set("cep", e.target.value)} placeholder="01310000" />
         </div>
         <div className="space-y-1">
-          <Label>CNAE principal</Label>
-          <Input
-            value={f.cnaePrincipal}
-            onChange={(e) => set("cnaePrincipal", e.target.value)}
-            placeholder="6201501"
+          <Label>Atividade econômica (CNAE principal)</Label>
+          <ComboboxMulti
+            opcoes={(cnaes.data ?? []).map((c) => ({
+              value: c.id,
+              label: `${c.id} — ${c.descricao}`,
+            }))}
+            valores={f.cnaesPrincipais}
+            onChange={(v) => set("cnaesPrincipais", v)}
+            loading={cnaes.isLoading}
+            placeholder="Todas as atividades"
+            buscaPlaceholder="Buscar atividade ou código…"
           />
         </div>
         <div className="space-y-1">
