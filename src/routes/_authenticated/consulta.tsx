@@ -599,67 +599,215 @@ function Combo({
   );
 }
 
-function JanelaCnpja() {
-  const [carregou, setCarregou] = useState(false);
-  const [bloqueado, setBloqueado] = useState(false);
+const BLOCOS = [
+  { id: "cadastro", label: "Cadastro e endereço" },
+  { id: "contatos", label: "Contatos" },
+  { id: "atividades", label: "Atividades (CNAE)" },
+  { id: "socios", label: "Quadro societário" },
+  { id: "tributario", label: "Tributário" },
+] as const;
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setCarregou((ok) => {
-        if (!ok) setBloqueado(true);
-        return ok;
-      });
-    }, 6000);
-    return () => clearTimeout(t);
-  }, []);
+type BlocoId = (typeof BLOCOS)[number]["id"];
+
+function JanelaCnpja() {
+  const [cnpj, setCnpj] = useState("");
+  const [visiveis, setVisiveis] = useState<BlocoId[]>(BLOCOS.map((b) => b.id));
+  const consultar = useServerFn(fichaCnpjaAbertaFn);
+
+  const busca = useMutation({
+    mutationFn: (valor: string) => consultar({ data: { cnpj: valor } }),
+    onError: (e: Error) => toast.error(e.message || "Não foi possível consultar."),
+  });
+
+  const ficha = busca.data;
+  const mostrar = (id: BlocoId) => visiveis.includes(id);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          Consulta pública do CNPJá aberta dentro do Prospectar360. Os resultados aqui não são
-          salvos na base — use a aba “Por CNPJ” para gravar.
-        </p>
-        <a
-          href="https://cnpja.com/office"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex items-center gap-1 text-xs text-accent underline underline-offset-4"
-        >
-          Abrir em nova aba <ExternalLink className="h-3 w-3" />
-        </a>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-[220px] flex-1 space-y-1">
+          <Label htmlFor="cnpja-cnpj">CNPJ</Label>
+          <Input
+            id="cnpja-cnpj"
+            value={cnpj}
+            onChange={(e) => setCnpj(e.target.value)}
+            placeholder="00.000.000/0000-00"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && cnpj.trim()) busca.mutate(cnpj);
+            }}
+          />
+        </div>
+        <Button onClick={() => busca.mutate(cnpj)} disabled={!cnpj.trim() || busca.isPending}>
+          {busca.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4" />
+          )}
+          Consultar
+        </Button>
       </div>
 
-      <div className="relative overflow-hidden rounded-md border bg-background">
-        {!carregou && !bloqueado && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
-        {bloqueado ? (
-          <div className="flex h-[70vh] flex-col items-center justify-center gap-3 p-6 text-center">
-            <AlertCircle className="h-6 w-6 text-destructive" />
-            <p className="max-w-md text-sm text-muted-foreground">
-              O CNPJá não permitiu a exibição dentro do aplicativo. Abra a consulta em uma nova
-              aba.
-            </p>
-            <Button asChild variant="outline">
-              <a href="https://cnpja.com/office" target="_blank" rel="noreferrer noopener">
-                <ExternalLink className="h-4 w-4" /> Abrir consulta CNPJá
-              </a>
-            </Button>
-          </div>
-        ) : (
-          <iframe
-            src="https://cnpja.com/office"
-            title="Consulta CNPJá"
-            onLoad={() => setCarregou(true)}
-            className="h-[70vh] w-full"
-            referrerPolicy="no-referrer"
-            sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
-          />
-        )}
+      <p className="text-xs text-muted-foreground">
+        Consulta pública e gratuita do CNPJá, sem consumo de créditos. Os dados não são salvos na
+        base — use a aba “Por CNPJ” para gravar e enriquecer com as demais fontes.
+      </p>
+
+      <div className="flex flex-wrap gap-4 rounded-md border bg-muted/30 p-3">
+        {BLOCOS.map((b) => (
+          <label key={b.id} className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={mostrar(b.id)}
+              onCheckedChange={(v) =>
+                setVisiveis((atual) =>
+                  v ? [...new Set([...atual, b.id])] : atual.filter((i) => i !== b.id),
+                )
+              }
+            />
+            {b.label}
+          </label>
+        ))}
       </div>
+
+      {busca.isError && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/40 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {(busca.error as Error).message}
+        </div>
+      )}
+
+      {ficha && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">{ficha.razaoSocial}</h2>
+            <p className="text-sm text-muted-foreground">
+              {formatCnpj(ficha.cnpj)} · {ficha.matriz ? "Matriz" : "Filial"}
+              {ficha.nomeFantasia ? ` · ${ficha.nomeFantasia}` : ""}
+            </p>
+          </div>
+
+          {mostrar("cadastro") && (
+            <BlocoFicha titulo="Cadastro e endereço">
+              <Campo rotulo="Situação" valor={ficha.situacao} />
+              <Campo rotulo="Data da situação" valor={ficha.dataSituacao} />
+              <Campo rotulo="Motivo" valor={ficha.motivoSituacao} />
+              <Campo rotulo="Abertura" valor={ficha.dataAbertura} />
+              <Campo rotulo="Natureza jurídica" valor={ficha.naturezaJuridica} />
+              <Campo rotulo="Porte" valor={ficha.porte} />
+              <Campo
+                rotulo="Capital social"
+                valor={
+                  ficha.capitalSocial != null
+                    ? ficha.capitalSocial.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })
+                    : null
+                }
+              />
+              <Campo rotulo="Endereço" valor={ficha.endereco} />
+              <Campo
+                rotulo="Município / UF"
+                valor={[ficha.municipio, ficha.uf].filter(Boolean).join(" / ") || null}
+              />
+              <Campo rotulo="CEP" valor={ficha.cep} />
+            </BlocoFicha>
+          )}
+
+          {mostrar("contatos") && (
+            <BlocoFicha titulo="Contatos">
+              <Campo rotulo="Telefones" valor={ficha.telefones.join(" · ") || null} />
+              <Campo rotulo="E-mails" valor={ficha.emails.join(" · ") || null} />
+            </BlocoFicha>
+          )}
+
+          {mostrar("atividades") && (
+            <BlocoFicha titulo="Atividades (CNAE)">
+              <Campo
+                rotulo="Principal"
+                valor={
+                  ficha.atividadePrincipal
+                    ? `${ficha.atividadePrincipal.codigo} — ${ficha.atividadePrincipal.descricao}`
+                    : null
+                }
+              />
+              {ficha.atividadesSecundarias.length > 0 && (
+                <div className="col-span-full space-y-1">
+                  <p className="text-xs uppercase text-muted-foreground">Secundárias</p>
+                  <ul className="space-y-1 text-sm">
+                    {ficha.atividadesSecundarias.map((a) => (
+                      <li key={a.codigo}>
+                        {a.codigo} — {a.descricao}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </BlocoFicha>
+          )}
+
+          {mostrar("socios") && ficha.socios.length > 0 && (
+            <BlocoFicha titulo="Quadro societário">
+              <ul className="col-span-full space-y-2 text-sm">
+                {ficha.socios.map((s) => (
+                  <li key={`${s.nome}-${s.desde ?? ""}`}>
+                    <span className="font-medium">{s.nome}</span>
+                    <span className="text-muted-foreground">
+                      {[s.qualificacao, s.desde ? `desde ${s.desde}` : null, s.faixaEtaria]
+                        .filter(Boolean)
+                        .map((t) => ` · ${t}`)
+                        .join("")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </BlocoFicha>
+          )}
+
+          {mostrar("tributario") && (
+            <BlocoFicha titulo="Tributário">
+              <Campo rotulo="Simples Nacional" valor={ficha.simples} />
+              <Campo rotulo="MEI" valor={ficha.mei} />
+              <Campo
+                rotulo="Atualizado em"
+                valor={
+                  ficha.atualizadoEm ? new Date(ficha.atualizadoEm).toLocaleString("pt-BR") : null
+                }
+              />
+            </BlocoFicha>
+          )}
+
+          <a
+            href={`https://cnpja.com/office/${ficha.cnpj}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 text-xs text-accent underline underline-offset-4"
+          >
+            Ver no CNPJá <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      )}
     </div>
   );
 }
+
+function BlocoFicha({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{titulo}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">{children}</CardContent>
+    </Card>
+  );
+}
+
+function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+  if (!valor) return null;
+  return (
+    <div className="space-y-0.5">
+      <p className="text-xs uppercase text-muted-foreground">{rotulo}</p>
+      <p className="text-sm">{valor}</p>
+    </div>
+  );
+}
+
