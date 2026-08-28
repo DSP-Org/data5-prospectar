@@ -177,6 +177,7 @@ function csv(rows: Company[], visiveis: string[]) {
   const cols: Array<[string, (c: Company) => string]> = [
     ["CNPJ", (c) => c.cnpj],
     ["Razão social", (c) => c.razao_social],
+    ["Cliente potencial", (c) => (c.prospectar ? "Sim" : "Não")],
     ...COLUNAS.filter((c) => visiveis.includes(c.key)).flatMap((c) => c.csv),
   ];
   const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
@@ -193,6 +194,7 @@ function Empresas() {
   const { lista: listaInicial } = Route.useSearch();
   const [lista, setLista] = useState(listaInicial ?? "todas");
   const [grupo, setGrupo] = useState("todas");
+  const [potencial, setPotencial] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
   const [colunas, setColunas] = useState<string[]>(
@@ -200,7 +202,14 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const filtros = { busca, status, uf, listId: lista, grupoNatureza: grupo };
+  const filtros = {
+    busca,
+    status,
+    uf,
+    listId: lista,
+    grupoNatureza: grupo,
+    ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
+  };
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => listarListasFn() });
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
