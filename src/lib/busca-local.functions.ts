@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { exigirAcesso } from "./autorizacao";
 
 const schema = z.object({
   termo: z.string().trim().max(120),
@@ -9,7 +9,7 @@ const schema = z.object({
 });
 
 export const buscarLocalFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/consulta", "/empresas")])
   .inputValidator((d: unknown) => schema.parse(d))
   .handler(async ({ data }) => {
     const { buscarEmpresasLocal } = await import("./busca-local.server");

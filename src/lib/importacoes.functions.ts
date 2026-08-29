@@ -1,15 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-async function escopoDe(userId: string, unitId?: string | null) {
-  const { obterEscopo } = await import("./escopo.server");
-  return obterEscopo(userId, unitId ?? null);
-}
+import { comUnidadeAtiva } from "./escopo";
+import { exigirAcesso } from "./autorizacao";
 
 export const criarImportacaoFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes", "/empresas")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -23,7 +19,7 @@ export const criarImportacaoFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { criarImportacao } = await import("./importacoes.server");
     return criarImportacao({
-      escopo: await escopoDe(context.userId, data.unitId),
+      escopo: comUnidadeAtiva(context.escopo, data.unitId),
       arquivo: data.arquivo ?? "",
       cnpjs: data.cnpjs,
       listId: data.listId ?? null,
@@ -32,56 +28,56 @@ export const criarImportacaoFn = createServerFn({ method: "POST" })
   });
 
 export const processarLoteFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes", "/empresas")])
   .inputValidator((d: unknown) =>
     z.object({ jobId: z.string().uuid(), tamanho: z.number().int().min(1).max(30).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { processarLote } = await import("./importacoes.server");
     return processarLote({
-      escopo: await escopoDe(context.userId),
+      escopo: context.escopo,
       jobId: data.jobId,
       tamanho: data.tamanho,
     });
   });
 
 export const statusImportacaoFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes", "/empresas")])
   .inputValidator((d: unknown) => z.object({ jobId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { statusImportacao } = await import("./importacoes.server");
-    return statusImportacao(data.jobId, await escopoDe(context.userId));
+    return statusImportacao(data.jobId, context.escopo);
   });
 
 export const listarImportacoesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes")])
   .handler(async ({ context }) => {
     const { listarImportacoes } = await import("./importacoes.server");
-    return listarImportacoes(await escopoDe(context.userId));
+    return listarImportacoes(context.escopo);
   });
 
 export const itensImportacaoFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes")])
   .inputValidator((d: unknown) =>
     z.object({ jobId: z.string().uuid(), status: z.string().max(20).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { itensImportacao } = await import("./importacoes.server");
-    return itensImportacao(data.jobId, await escopoDe(context.userId), data.status);
+    return itensImportacao(data.jobId, context.escopo, data.status);
   });
 
 export const reprocessarFalhasFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes")])
   .inputValidator((d: unknown) => z.object({ jobId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { reprocessarFalhas } = await import("./importacoes.server");
-    return reprocessarFalhas(data.jobId, await escopoDe(context.userId));
+    return reprocessarFalhas(data.jobId, context.escopo);
   });
 
 export const excluirImportacaoFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/importacoes")])
   .inputValidator((d: unknown) => z.object({ jobId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { excluirImportacao } = await import("./importacoes.server");
-    return excluirImportacao(data.jobId, await escopoDe(context.userId));
+    return excluirImportacao(data.jobId, context.escopo);
   });

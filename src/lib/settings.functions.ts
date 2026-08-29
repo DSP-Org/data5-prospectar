@@ -1,27 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-async function exigirMasterDe(userId: string) {
-  const { obterEscopo, exigirMaster } = await import("./escopo.server");
-  const escopo = await obterEscopo(userId);
-  exigirMaster(escopo);
-  return escopo;
-}
+import { exigirMaster } from "./escopo";
+import { exigirAcesso } from "./autorizacao";
 
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const obterStatusChaveApiFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .handler(async ({ context }) => {
-    await exigirMasterDe(context.userId);
-  const { obterStatusChaveApi } = await import("./repo.server");
-  return obterStatusChaveApi();
-});
+    exigirMaster(context.escopo);
+    const { obterStatusChaveApi } = await import("./repo.server");
+    return obterStatusChaveApi();
+  });
 
 export const salvarChaveApiFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -34,13 +28,13 @@ export const salvarChaveApiFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { salvarChaveApi } = await import("./repo.server");
     return salvarChaveApi(data.key);
   });
 
 export const testarChaveApiFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -53,15 +47,15 @@ export const testarChaveApiFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { testarChaveApi } = await import("./repo.server");
     return testarChaveApi(data.key);
   });
 
 export const migrarChaveDoAmbienteFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .handler(async ({ context }) => {
-    await exigirMasterDe(context.userId);
-  const { migrarChaveDoAmbiente } = await import("./repo.server");
-  return migrarChaveDoAmbiente();
-});
+    exigirMaster(context.escopo);
+    const { migrarChaveDoAmbiente } = await import("./repo.server");
+    return migrarChaveDoAmbiente();
+  });

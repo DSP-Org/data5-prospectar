@@ -1,22 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { comUnidadeAtiva, restringirUnidade } from "./escopo";
+import { exigirAcesso } from "./autorizacao";
 
 const unidadeInput = z.object({ unidade: z.string().uuid().optional() });
 
 export const listarEquipesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/equipe")])
   .inputValidator((d: unknown) => unidadeInput.parse(d ?? {}))
   .handler(async ({ data, context }) => {
-    const { obterEscopo, restringirUnidade } = await import("./escopo.server");
     const { listarEquipes } = await import("./equipes.server");
-    const escopo = restringirUnidade(await obterEscopo(context.userId, data.unidade ?? null), data.unidade ?? null);
+    const escopo = restringirUnidade(comUnidadeAtiva(context.escopo, data.unidade ?? null), data.unidade ?? null);
     return listarEquipes(escopo);
   });
 
 export const criarEquipeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/equipe")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -28,9 +28,8 @@ export const criarEquipeFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { criarEquipe } = await import("./equipes.server");
-    const escopo = await obterEscopo(context.userId, data.unidade ?? null);
+    const escopo = comUnidadeAtiva(context.escopo, data.unidade ?? null);
     return criarEquipe(escopo, {
       nome: data.nome,
       descricao: data.descricao,
@@ -40,7 +39,7 @@ export const criarEquipeFn = createServerFn({ method: "POST" })
   });
 
 export const atualizarEquipeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/equipe")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -53,38 +52,34 @@ export const atualizarEquipeFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { atualizarEquipe } = await import("./equipes.server");
-    return atualizarEquipe(await obterEscopo(context.userId), data);
+    return atualizarEquipe(context.escopo, data);
   });
 
 export const excluirEquipeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/equipe")])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { excluirEquipe } = await import("./equipes.server");
-    return excluirEquipe(await obterEscopo(context.userId), data.id);
+    return excluirEquipe(context.escopo, data.id);
   });
 
 export const definirMembrosFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/equipe")])
   .inputValidator((d: unknown) =>
     z.object({ id: z.string().uuid(), usuarios: z.array(z.string().uuid()).max(200) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { definirMembros } = await import("./equipes.server");
-    return definirMembros(await obterEscopo(context.userId), data.id, data.usuarios);
+    return definirMembros(context.escopo, data.id, data.usuarios);
   });
 
 export const definirProdutosEquipeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/equipe")])
   .inputValidator((d: unknown) =>
     z.object({ id: z.string().uuid(), produtos: z.array(z.string().uuid()).max(200) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { definirProdutos } = await import("./equipes.server");
-    return definirProdutos(await obterEscopo(context.userId), data.id, data.produtos);
+    return definirProdutos(context.escopo, data.id, data.produtos);
   });

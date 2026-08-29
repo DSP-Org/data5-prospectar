@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { exigirAcesso } from "./autorizacao";
 
 const texto = z.string().trim().max(200).optional().nullable();
 
@@ -46,7 +46,7 @@ const schema = z.object({
 });
 
 export const buscarCnpjaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/consulta")])
   .inputValidator((d: unknown) => schema.parse(d))
   .handler(async ({ data }) => {
     const { buscarEmpresasCnpja } = await import("./cnpja-busca.server");

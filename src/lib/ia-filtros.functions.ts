@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { exigirAcesso } from "./autorizacao";
 
 const mensagem = z.object({
   role: z.enum(["user", "assistant"]),
@@ -68,7 +68,7 @@ Regras dos filtros:
 Considere toda a conversa anterior ao montar os filtros. Campos não citados ficam null ou lista vazia.`;
 
 export const conversarFiltrosFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/consulta")])
   .inputValidator((d: unknown) => entrada.parse(d))
   .handler(async ({ data }): Promise<RespostaIaFiltros> => {
     const apiKey = process.env["LOVABLE_API_KEY"];

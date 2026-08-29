@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+
+import { ROTAS, labelDaRota } from "@/lib/permissoes";
 import {
   BarChart3,
   Building,
@@ -10,6 +12,7 @@ import {
   LayoutDashboard,
   ListTodo,
   LogOut,
+  ShieldAlert,
   Package,
   Search,
   Settings2,
@@ -91,8 +94,42 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+type Me = { master: boolean; rotas: string[] };
+
+/**
+ * A página que o usuário abre precisa estar entre as liberadas para ele. Sem
+ * isso, digitar a URL na barra de endereços abre a tela e ela só quebra quando
+ * o servidor recusa a chamada. Sub-rotas herdam a página mais específica
+ * (/empresas/00.000.000-0001 pertence a /empresas).
+ */
+function podeVerPagina(me: Me, pathname: string): boolean {
+  if (me.master) return true;
+  const pagina = ROTAS.filter((r) => pathname === r || (r !== "/" && pathname.startsWith(r + "/"))).sort(
+    (a, b) => b.length - a.length,
+  )[0];
+  if (!pagina) return true; // rota fora do catálogo (ex.: /auth) segue como está
+  return me.rotas.includes(pagina);
+}
+
+function SemPermissao({ pathname }: { pathname: string }) {
+  return (
+    <div className="mx-auto max-w-md rounded-md border border-border bg-card p-6 text-center">
+      <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
+      <h1 className="mt-3 text-lg font-semibold">Sem acesso a esta página</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Você não tem permissão para {labelDaRota(pathname)}. Fale com o administrador se precisar
+        deste acesso.
+      </p>
+      <Button asChild variant="outline" className="mt-4">
+        <Link to="/">Voltar ao painel</Link>
+      </Button>
+    </div>
+  );
+}
+
 function AppShellInterno({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const { unidade, setUnidade } = useUnidadeAtiva();
@@ -218,7 +255,9 @@ function AppShellInterno({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+          {me && !podeVerPagina(me, pathname) ? <SemPermissao pathname={pathname} /> : children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -1,21 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { exigirAcesso } from "./autorizacao";
 
 export const listarPermissoesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .handler(async ({ context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { listarMatriz, listarPermissoesUsuarios } = await import("./permissoes.server");
-    const escopo = await obterEscopo(context.userId);
+    const escopo = context.escopo;
     if (!escopo.master) throw new Error("Apenas o master pode gerenciar permissões.");
     const [matriz, usuarios] = await Promise.all([listarMatriz(), listarPermissoesUsuarios()]);
     return { matriz, usuarios };
   });
 
 export const definirPermissaoPapelFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -26,13 +25,12 @@ export const definirPermissaoPapelFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { definirPermissaoPapel } = await import("./permissoes.server");
-    return definirPermissaoPapel(await obterEscopo(context.userId), data);
+    return definirPermissaoPapel(context.escopo, data);
   });
 
 export const definirPermissaoUsuarioFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -43,7 +41,6 @@ export const definirPermissaoUsuarioFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { definirPermissaoUsuario } = await import("./permissoes.server");
-    return definirPermissaoUsuario(await obterEscopo(context.userId), data);
+    return definirPermissaoUsuario(context.escopo, data);
   });

@@ -1,17 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { apenasAutenticado, exigirAcesso } from "./autorizacao";
 
 const papelSchema = z.enum(["master", "admin_unidade", "gestor", "usuario"]);
 
 /** Perfil, papel e unidades do usuário logado. */
 export const meFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([apenasAutenticado])
   .handler(async ({ context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { listarUnidades } = await import("./admin.server");
-    const escopo = await obterEscopo(context.userId);
+    const escopo = context.escopo;
     const unidades = await listarUnidades(escopo);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: perfil } = await supabaseAdmin
@@ -31,15 +30,14 @@ export const meFn = createServerFn({ method: "GET" })
   });
 
 export const listarUnidadesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/unidades", "/produtos", "/permissoes", "/equipe")])
   .handler(async ({ context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { listarUnidades } = await import("./admin.server");
-    return listarUnidades(await obterEscopo(context.userId));
+    return listarUnidades(context.escopo);
   });
 
 export const criarUnidadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/unidades")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -51,13 +49,12 @@ export const criarUnidadeFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { criarUnidade } = await import("./admin.server");
-    return criarUnidade(await obterEscopo(context.userId), data);
+    return criarUnidade(context.escopo, data);
   });
 
 export const atualizarUnidadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/unidades")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -71,30 +68,27 @@ export const atualizarUnidadeFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { atualizarUnidade } = await import("./admin.server");
-    return atualizarUnidade(await obterEscopo(context.userId), data);
+    return atualizarUnidade(context.escopo, data);
   });
 
 export const excluirUnidadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/unidades")])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { excluirUnidade } = await import("./admin.server");
-    return excluirUnidade(await obterEscopo(context.userId), data.id);
+    return excluirUnidade(context.escopo, data.id);
   });
 
 export const listarUsuariosFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .handler(async ({ context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { listarUsuarios } = await import("./admin.server");
-    return listarUsuarios(await obterEscopo(context.userId));
+    return listarUsuarios(context.escopo);
   });
 
 export const criarUsuarioFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -107,13 +101,12 @@ export const criarUsuarioFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { criarUsuario } = await import("./admin.server");
-    return criarUsuario(await obterEscopo(context.userId), data);
+    return criarUsuario(context.escopo, data);
   });
 
 export const atualizarUsuarioFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -127,16 +120,14 @@ export const atualizarUsuarioFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { atualizarUsuario } = await import("./admin.server");
-    return atualizarUsuario(await obterEscopo(context.userId), data);
+    return atualizarUsuario(context.escopo, data);
   });
 
 export const excluirUsuarioFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/permissoes")])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { obterEscopo } = await import("./escopo.server");
     const { excluirUsuario } = await import("./admin.server");
-    return excluirUsuario(await obterEscopo(context.userId), data.id);
+    return excluirUsuario(context.escopo, data.id);
   });

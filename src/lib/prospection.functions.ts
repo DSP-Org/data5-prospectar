@@ -1,17 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { restringirUnidade } from "./escopo";
+import { exigirAcesso } from "./autorizacao";
 
 const activityTypeSchema = z.enum(["ligacao", "email", "whatsapp", "reuniao", "tarefa", "nota"]);
 
-async function escopoDe(userId: string, unidade?: string | null) {
-  const { obterEscopo, restringirUnidade } = await import("./escopo.server");
-  return restringirUnidade(await obterEscopo(userId, unidade ?? null), unidade ?? null);
-}
-
 export const listarAtividadesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/atividades", "/empresas", "/funil")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -30,11 +26,11 @@ export const listarAtividadesFn = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { listarAtividades } = await import("./repo.server");
     const { unidade, ...filtros } = data;
-    return listarAtividades({ ...filtros, escopo: await escopoDe(context.userId, unidade) });
+    return listarAtividades({ ...filtros, escopo: restringirUnidade(context.escopo, unidade) });
   });
 
 export const criarAtividadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/atividades", "/empresas", "/funil")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -50,11 +46,11 @@ export const criarAtividadeFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { criarAtividade } = await import("./repo.server");
-    return criarAtividade(data, await escopoDe(context.userId));
+    return criarAtividade(data, context.escopo);
   });
 
 export const atualizarAtividadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/atividades", "/empresas", "/funil")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -69,27 +65,27 @@ export const atualizarAtividadeFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { atualizarAtividade } = await import("./repo.server");
-    return atualizarAtividade(data.id, data, await escopoDe(context.userId));
+    return atualizarAtividade(data.id, data, context.escopo);
   });
 
 export const excluirAtividadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/atividades", "/empresas", "/funil")])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { excluirAtividade } = await import("./repo.server");
-    return excluirAtividade(data.id, await escopoDe(context.userId));
+    return excluirAtividade(data.id, context.escopo);
   });
 
 export const funilDadosFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/funil")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { funilDados } = await import("./repo.server");
-    return funilDados(await escopoDe(context.userId, data.unidade));
+    return funilDados(restringirUnidade(context.escopo, data.unidade));
   });
 
 export const relatorioAtividadesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/relatorios")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -102,5 +98,5 @@ export const relatorioAtividadesFn = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { relatorioAtividades } = await import("./repo.server");
     const { unidade, ...filtros } = data;
-    return relatorioAtividades({ ...filtros, escopo: await escopoDe(context.userId, unidade) });
+    return relatorioAtividades({ ...filtros, escopo: restringirUnidade(context.escopo, unidade) });
   });

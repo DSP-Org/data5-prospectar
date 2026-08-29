@@ -1,27 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-async function exigirMasterDe(userId: string) {
-  const { obterEscopo, exigirMaster } = await import("./escopo.server");
-  const escopo = await obterEscopo(userId);
-  exigirMaster(escopo);
-  return escopo;
-}
+import { exigirMaster } from "./escopo";
+import { exigirAcesso } from "./autorizacao";
 
 const idSchema = z.enum(["econodata", "brasilapi", "cnpja", "speedio"]);
 
 export const listarFontesFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .handler(async ({ context }) => {
-    await exigirMasterDe(context.userId);
-  const { listarFontes } = await import("./sources/registry.server");
-  return listarFontes();
-});
+    exigirMaster(context.escopo);
+    const { listarFontes } = await import("./sources/registry.server");
+    return listarFontes();
+  });
 
 export const salvarFonteFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -32,33 +26,33 @@ export const salvarFonteFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { salvarFonte } = await import("./sources/registry.server");
     return salvarFonte(data);
   });
 
 export const testarFonteFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) =>
     z.object({ id: idSchema, key: z.string().max(500).nullable().optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { testarFonte } = await import("./sources/registry.server");
     return testarFonte(data.id, data.key ?? null);
   });
 
 export const salvarPrioridadeFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) => z.object({ ordem: z.array(idSchema).min(1).max(10) }).parse(d))
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { salvarPrioridade } = await import("./sources/registry.server");
     return salvarPrioridade(data.ordem);
   });
 
 export const salvarEconomiaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -68,13 +62,13 @@ export const salvarEconomiaFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { salvarEconomia } = await import("./sources/registry.server");
     return salvarEconomia(data);
   });
 
 export const salvarModulosCnpjaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/configuracoes")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -87,8 +81,7 @@ export const salvarModulosCnpjaFn = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await exigirMasterDe(context.userId);
+    exigirMaster(context.escopo);
     const { salvarModulosCnpja } = await import("./sources/registry.server");
     return salvarModulosCnpja(data);
   });
-

@@ -1,30 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { comUnidadeAtiva, restringirUnidade } from "./escopo";
+import { exigirAcesso } from "./autorizacao";
 
 const statusSchema = z.enum(["novo", "em_contato", "qualificado", "cliente", "descartado"]);
 
-async function escopoDe(userId: string, unitId?: string | null) {
-  const { obterEscopo } = await import("./escopo.server");
-  return obterEscopo(userId, unitId ?? null);
-}
-
-/** Escopo restrito a uma unidade escolhida no seletor global. */
-async function escopoNaUnidade(userId: string, unitId?: string | null) {
-  const { restringirUnidade } = await import("./escopo.server");
-  return restringirUnidade(await escopoDe(userId, unitId), unitId ?? null);
-}
-
 export const testarConexaoFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/")])
   .handler(async () => {
     const { testarConexao } = await import("./repo.server");
     return testarConexao();
   });
 
 export const consultarCnpjsFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/consulta", "/empresas")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -40,11 +30,11 @@ export const consultarCnpjsFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { consultarCnpjs } = await import("./repo.server");
-    return consultarCnpjs({ ...data, escopo: await escopoDe(context.userId, data.unitId) });
+    return consultarCnpjs({ ...data, escopo: comUnidadeAtiva(context.escopo, data.unitId) });
   });
 
 export const consultarChaveFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/consulta")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -59,7 +49,7 @@ export const consultarChaveFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { consultarChave } = await import("./repo.server");
-    return consultarChave({ ...data, escopo: await escopoDe(context.userId, data.unitId) });
+    return consultarChave({ ...data, escopo: comUnidadeAtiva(context.escopo, data.unitId) });
   });
 
 const filtrosSchema = z.object({
@@ -90,7 +80,7 @@ const filtrosSchema = z.object({
 });
 
 export const consultarChavesFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/consulta")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -102,18 +92,18 @@ export const consultarChavesFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { consultarChaves } = await import("./repo.server");
-    return consultarChaves({ ...data, escopo: await escopoDe(context.userId, data.unitId) });
+    return consultarChaves({ ...data, escopo: comUnidadeAtiva(context.escopo, data.unitId) });
   });
 
 export const opcoesFiltroFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas")])
   .handler(async ({ context }) => {
     const { opcoesFiltro } = await import("./repo.server");
-    return opcoesFiltro(await escopoDe(context.userId));
+    return opcoesFiltro(context.escopo);
   });
 
 export const listarEmpresasFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
   .inputValidator((d: unknown) =>
     filtrosSchema
       .extend({
@@ -124,19 +114,19 @@ export const listarEmpresasFn = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const { listarEmpresas } = await import("./repo.server");
-    return listarEmpresas({ ...data, escopo: await escopoDe(context.userId) });
+    return listarEmpresas({ ...data, escopo: context.escopo });
   });
 
 export const obterEmpresaFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
   .inputValidator((d: unknown) => z.object({ cnpj: z.string().min(14).max(20) }).parse(d))
   .handler(async ({ data, context }) => {
     const { obterEmpresa } = await import("./repo.server");
-    return obterEmpresa(data.cnpj, await escopoDe(context.userId));
+    return obterEmpresa(data.cnpj, context.escopo);
   });
 
 export const atualizarEmpresaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas", "/funil")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -152,19 +142,19 @@ export const atualizarEmpresaFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { atualizarEmpresa } = await import("./repo.server");
-    return atualizarEmpresa({ ...data, escopo: await escopoDe(context.userId) });
+    return atualizarEmpresa({ ...data, escopo: context.escopo });
   });
 
 export const excluirEmpresaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas")])
   .inputValidator((d: unknown) => z.object({ cnpj: z.string().min(14).max(20) }).parse(d))
   .handler(async ({ data, context }) => {
     const { excluirEmpresa } = await import("./repo.server");
-    return excluirEmpresa(data.cnpj, await escopoDe(context.userId));
+    return excluirEmpresa(data.cnpj, context.escopo);
   });
 
 export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas", "/listas")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -175,11 +165,11 @@ export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { vincularEmpresasLista } = await import("./repo.server");
-    return vincularEmpresasLista(data.cnpjs, data.listId, await escopoDe(context.userId));
+    return vincularEmpresasLista(data.cnpjs, data.listId, context.escopo);
   });
 
 export const marcarProspectarFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -190,19 +180,19 @@ export const marcarProspectarFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { marcarProspectar } = await import("./repo.server");
-    return marcarProspectar(data.cnpjs, data.valor, await escopoDe(context.userId));
+    return marcarProspectar(data.cnpjs, data.valor, context.escopo);
   });
 
 export const listarListasFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas", "/listas", "/clientes-potenciais", "/consulta", "/funil", "/importacoes")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { listarListas } = await import("./repo.server");
-    return listarListas(await escopoNaUnidade(context.userId, data.unidade));
+    return listarListas(restringirUnidade(context.escopo, data.unidade));
   });
 
 export const criarListaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/listas")])
   .inputValidator((d: unknown) =>
     z
       .object({
@@ -214,37 +204,37 @@ export const criarListaFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { criarLista } = await import("./repo.server");
-    const escopo = await escopoDe(context.userId, data.unitId);
+    const escopo = comUnidadeAtiva(context.escopo, data.unitId);
     return criarLista(data.name, data.color ?? "slate", escopo, data.unitId ?? null);
   });
 
 export const excluirListaFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/listas")])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { excluirLista } = await import("./repo.server");
-    return excluirLista(data.id, await escopoDe(context.userId));
+    return excluirLista(data.id, context.escopo);
   });
 
 export const obterPainelFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/", "/relatorios")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { obterPainel } = await import("./repo.server");
-    return obterPainel(await escopoNaUnidade(context.userId, data.unidade));
+    return obterPainel(restringirUnidade(context.escopo, data.unidade));
   });
 
 export const exportarEmpresasFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/empresas")])
   .inputValidator((d: unknown) => filtrosSchema.parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { exportarEmpresas } = await import("./repo.server");
-    return exportarEmpresas({ ...data, escopo: await escopoDe(context.userId) });
+    return exportarEmpresas({ ...data, escopo: context.escopo });
   });
 
 export const contarSemListaFn = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([exigirAcesso("/listas")])
   .handler(async ({ context }) => {
     const { contarSemLista } = await import("./repo.server");
-    return contarSemLista(await escopoDe(context.userId));
+    return contarSemLista(context.escopo);
   });
