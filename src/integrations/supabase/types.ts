@@ -45,10 +45,6 @@ export type Database = {
           contatos: Json
           created_at: string
           data_abertura: string | null
-          simples_optante: boolean | null
-          simples_desde: string | null
-          mei_optante: boolean | null
-          mei_desde: string | null
           decisores: Json
           email_receita: string | null
           emails: string[]
@@ -95,10 +91,6 @@ export type Database = {
           contatos?: Json
           created_at?: string
           data_abertura?: string | null
-          simples_optante?: boolean | null
-          simples_desde?: string | null
-          mei_optante?: boolean | null
-          mei_desde?: string | null
           decisores?: Json
           email_receita?: string | null
           emails?: string[]
@@ -145,10 +137,6 @@ export type Database = {
           contatos?: Json
           created_at?: string
           data_abertura?: string | null
-          simples_optante?: boolean | null
-          simples_desde?: string | null
-          mei_optante?: boolean | null
-          mei_desde?: string | null
           decisores?: Json
           email_receita?: string | null
           emails?: string[]
