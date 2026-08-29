@@ -63,6 +63,8 @@ export type Database = {
           nome_fantasia: string | null
           notas: string
           numero: string | null
+          owner_desde: string | null
+          owner_id: string | null
           porte_estimado: string | null
           product_id: string | null
           prospectar: boolean
@@ -113,6 +115,8 @@ export type Database = {
           nome_fantasia?: string | null
           notas?: string
           numero?: string | null
+          owner_desde?: string | null
+          owner_id?: string | null
           porte_estimado?: string | null
           product_id?: string | null
           prospectar?: boolean
@@ -163,6 +167,8 @@ export type Database = {
           nome_fantasia?: string | null
           notas?: string
           numero?: string | null
+          owner_desde?: string | null
+          owner_id?: string | null
           porte_estimado?: string | null
           product_id?: string | null
           prospectar?: boolean
