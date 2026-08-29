@@ -532,6 +532,36 @@ export type Database = {
         }
         Relationships: []
       }
+      supressoes: {
+        Row: {
+          canal: string
+          created_at: string
+          criado_por: string | null
+          id: string
+          motivo: string
+          origem: string
+          valor: string
+        }
+        Insert: {
+          canal: string
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          motivo?: string
+          origem?: string
+          valor: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          motivo?: string
+          origem?: string
+          valor?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string
