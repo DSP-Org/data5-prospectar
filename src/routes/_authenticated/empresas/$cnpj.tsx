@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  Ban,
   CheckCircle2,
   Crown,
   ExternalLink,
@@ -18,15 +19,21 @@ import {
   Smartphone,
   Sparkles,
   Trash2,
+  UserCheck,
+  UserMinus,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  assumirLeadsFn,
   atualizarEmpresaFn,
   consultarCnpjsFn,
   excluirEmpresaFn,
+  liberarLeadsFn,
   obterEmpresaFn,
 } from "@/lib/econodata.functions";
+import { meFn } from "@/lib/auth.functions";
+import { contextoEmpresaFn, registrarSupressaoFn } from "@/lib/supressoes.functions";
 import {
   criarAtividadeFn,
   listarAtividadesFn,
@@ -96,6 +103,39 @@ function Campo({ label, valor }: { label: string; valor?: string | null }) {
 
 function txt(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+/** Registra o pedido de "não me contate mais" de um contato específico. */
+function BotaoOptOut({
+  bloqueado,
+  onRegistrar,
+  pendente,
+}: {
+  bloqueado: boolean;
+  onRegistrar: (motivo: string) => void;
+  pendente: boolean;
+}) {
+  if (bloqueado)
+    return (
+      <Badge variant="outline" className="gap-1 border-destructive text-destructive">
+        <Ban className="h-3 w-3" /> Opt-out
+      </Badge>
+    );
+  return (
+    <button
+      type="button"
+      disabled={pendente}
+      title="Registrar pedido de não contato"
+      onClick={() => {
+        const motivo = window.prompt("Motivo do opt-out (ex.: pedido do titular por telefone)");
+        if (motivo === null) return;
+        onRegistrar(motivo);
+      }}
+      className="text-xs text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+    >
+      opt-out
+    </button>
+  );
 }
 
 function emailsDe(c: Contato): string[] {
@@ -184,6 +224,51 @@ function Detalhe() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+
+  const ctx = useQuery({
+    queryKey: ["empresa-contexto", cnpj],
+    queryFn: () => contextoEmpresaFn({ data: { cnpj } }),
+  });
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
+  const meuLead = Boolean(e?.owner_id && e.owner_id === me?.userId);
+
+  const assumir = useServerFn(assumirLeadsFn);
+  const liberar = useServerFn(liberarLeadsFn);
+  const suprimir = useServerFn(registrarSupressaoFn);
+
+  function recarregarFicha() {
+    void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
+    void qc.invalidateQueries({ queryKey: ["empresa-contexto", cnpj] });
+  }
+
+  const mutAssumir = useMutation({
+    mutationFn: () => assumir({ data: { cnpjs: [cnpj] } }),
+    onSuccess: (r) => {
+      if (r.assumidos === 0) toast.error("Outro vendedor assumiu esta empresa primeiro.");
+      else toast.success("Lead assumido.");
+      recarregarFicha();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const mutLiberar = useMutation({
+    mutationFn: () => liberar({ data: { cnpjs: [cnpj] } }),
+    onSuccess: () => {
+      toast.success("Lead devolvido para a base.");
+      recarregarFicha();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const mutSuprimir = useMutation({
+    mutationFn: (input: { canal: "email" | "telefone" | "empresa"; valor: string; motivo: string }) =>
+      suprimir({ data: input }),
+    onSuccess: () => {
+      toast.success("Opt-out registrado. Este contato não será mais abordado nem exportado.");
+      recarregarFicha();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const mutSync = useMutation({
     mutationFn: (completo: boolean) =>
@@ -288,6 +373,23 @@ function Detalhe() {
           </div>
           <p className="mt-1 font-mono text-sm text-muted-foreground">{formatCnpj(e.cnpj)}</p>
           {e.nome_fantasia && <p className="text-sm text-muted-foreground">{e.nome_fantasia}</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {e.owner_id ? (
+              <Badge variant="outline" className="border-chart-3 text-chart-3">
+                <UserCheck className="mr-1 h-3 w-3" />
+                {meuLead ? "Seu lead" : `Carteira de ${ctx.data?.donoNome ?? "outro vendedor"}`}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">
+                Sem dono
+              </Badge>
+            )}
+            {ctx.data?.empresaBloqueada && (
+              <Badge variant="outline" className="border-destructive text-destructive">
+                <Ban className="mr-1 h-3 w-3" /> Opt-out registrado
+              </Badge>
+            )}
+          </div>
           {(e.fontes?.length ?? 0) > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1">
               <span className="text-xs text-muted-foreground">Fontes:</span>
@@ -301,6 +403,35 @@ function Detalhe() {
 
         </div>
         <div className="flex flex-wrap gap-2">
+          {!e.owner_id && (
+            <Button
+              variant="secondary"
+              onClick={() => mutAssumir.mutate()}
+              disabled={mutAssumir.isPending}
+            >
+              <UserCheck className="h-4 w-4" /> Assumir lead
+            </Button>
+          )}
+          {meuLead && (
+            <Button variant="ghost" onClick={() => mutLiberar.mutate()} disabled={mutLiberar.isPending}>
+              <UserMinus className="h-4 w-4" /> Liberar
+            </Button>
+          )}
+          {!ctx.data?.empresaBloqueada && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const motivo = window.prompt(
+                  "Registrar opt-out desta empresa. Qual o motivo? (ex.: pedido do titular por telefone)",
+                );
+                if (motivo === null) return;
+                mutSuprimir.mutate({ canal: "empresa", valor: e.cnpj, motivo });
+              }}
+              disabled={mutSuprimir.isPending}
+            >
+              <Ban className="h-4 w-4" /> Não contatar
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => mutSync.mutate(false)}
@@ -407,25 +538,34 @@ function Detalhe() {
                   {e.telefones.length === 0 && <p className="text-sm">—</p>}
                   {e.telefones.map((t) => {
                     const whatsapp = possuiWhatsapp(t);
+                    const bloqueado = (ctx.data?.telefonesBloqueados ?? []).includes(t);
                     return (
-                      <a
-                        key={t}
-                        href={`tel:${t}`}
-                        className="flex items-center gap-2 py-0.5 text-sm hover:text-accent"
-                      >
+                      <div key={t} className="flex flex-wrap items-center gap-2 py-0.5 text-sm">
                         {whatsapp ? (
                           <Smartphone className="h-3.5 w-3.5 shrink-0 text-green-600" />
                         ) : (
                           <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         )}
-                        <span>{t}</span>
+                        <a
+                          href={`tel:${t}`}
+                          className={bloqueado ? "text-muted-foreground line-through" : "hover:text-accent"}
+                        >
+                          {t}
+                        </a>
                         <Badge
                           variant="outline"
                           className={whatsapp ? "border-green-600 text-green-700" : "text-muted-foreground"}
                         >
                           {whatsapp ? "WhatsApp" : TIPO_TELEFONE_LABEL[classificarTelefone(t)]}
                         </Badge>
-                      </a>
+                        <BotaoOptOut
+                          bloqueado={bloqueado}
+                          onRegistrar={(motivo) =>
+                            mutSuprimir.mutate({ canal: "telefone", valor: t, motivo })
+                          }
+                          pendente={mutSuprimir.isPending}
+                        />
+                      </div>
                     );
                   })}
                 </div>
@@ -434,9 +574,17 @@ function Detalhe() {
                   {e.emails.length === 0 && <p className="text-sm">—</p>}
                   {e.emails.map((m) => {
                     const contabil = isEmailContabil(m);
+                    const bloqueado = (ctx.data?.emailsBloqueados ?? []).includes(m);
                     return (
                       <div key={m} className="flex flex-wrap items-center gap-2 py-0.5">
-                        <a href={`mailto:${m}`} className="break-all text-sm hover:text-accent">
+                        <a
+                          href={`mailto:${m}`}
+                          className={
+                            bloqueado
+                              ? "break-all text-sm text-muted-foreground line-through"
+                              : "break-all text-sm hover:text-accent"
+                          }
+                        >
                           {m}
                         </a>
                         {contabil && (
@@ -445,6 +593,11 @@ function Detalhe() {
                             E-mail Contábil
                           </Badge>
                         )}
+                        <BotaoOptOut
+                          bloqueado={bloqueado}
+                          onRegistrar={(motivo) => mutSuprimir.mutate({ canal: "email", valor: m, motivo })}
+                          pendente={mutSuprimir.isPending}
+                        />
                       </div>
                     );
                   })}

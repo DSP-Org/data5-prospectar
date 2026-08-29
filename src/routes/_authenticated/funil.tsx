@@ -7,7 +7,8 @@ import { useMemo, useState } from "react";
 import { formatCnpj, ACTIVITY_LABEL, STATUS_LABEL, STATUSES, type Status } from "@/lib/types";
 import { funilDadosFn } from "@/lib/prospection.functions";
 import { GRUPOS_NATUREZA, grupoDaNatureza } from "@/lib/natureza-juridica";
-import { atualizarEmpresaFn } from "@/lib/econodata.functions";
+import { assumirLeadsFn, atualizarEmpresaFn } from "@/lib/econodata.functions";
+import { meFn } from "@/lib/auth.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Filter, Loader2, Phone, X } from "lucide-react";
+import { Filter, Loader2, Phone, UserCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/funil")({
@@ -51,6 +52,18 @@ function Funil() {
   });
   const listas = useListas();
   const atualizar = useServerFn(atualizarEmpresaFn);
+  const assumir = useServerFn(assumirLeadsFn);
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
+
+  const mutAssumir = useMutation({
+    mutationFn: (cnpj: string) => assumir({ data: { cnpjs: [cnpj] } }),
+    onSuccess: (r) => {
+      if (r.assumidos === 0) toast.error("Outro vendedor assumiu esta empresa primeiro.");
+      else toast.success("Lead assumido.");
+      void qc.invalidateQueries({ queryKey: ["funil"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const [listaId, setListaId] = useState<string>("todas");
   const [grupo, setGrupo] = useState<string>("todas");
@@ -209,6 +222,23 @@ function Funil() {
                             {ACTIVITY_LABEL[last.tipo]} · {formatDataHora(last.created_at)}
                           </div>
                         )}
+                        <div className="flex items-center justify-between gap-2">
+                          {e.owner_id ? (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <UserCheck className="h-3 w-3" />
+                              {e.owner_id === me?.userId ? "Seu lead" : "Outro vendedor"}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={mutAssumir.isPending}
+                              onClick={() => mutAssumir.mutate(e.cnpj)}
+                              className="flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                            >
+                              <UserCheck className="h-3 w-3" /> Assumir lead
+                            </button>
+                          )}
+                        </div>
                         <Select
                           value={e.status}
                           onValueChange={(v) => mutStatus.mutate({ cnpj: e.cnpj, status: v as Status })}

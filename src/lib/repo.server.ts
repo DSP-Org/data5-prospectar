@@ -400,6 +400,26 @@ function chave(cnpj: string) {
   return formatCnpjApi(cnpj) ?? cnpj;
 }
 
+/**
+ * Informação que a ficha precisa mas não mora na tabela: nome do dono e o que
+ * está sob opt-out. Fica separado de `obterEmpresa` para não inchar o tipo
+ * Company com campos que só existem em uma tela.
+ */
+export async function contextoEmpresa(cnpj: string, escopo: Escopo) {
+  const empresa = await obterEmpresa(cnpj, escopo);
+  const { carregarBloqueios, emailBloqueado, empresaBloqueada, telefoneBloqueado } = await import(
+    "./supressoes.server"
+  );
+  const bloqueios = await carregarBloqueios();
+  const donos = empresa ? await nomesDosDonos([empresa]) : {};
+  return {
+    donoNome: empresa?.owner_id ? (donos[empresa.owner_id] ?? "Outro vendedor") : null,
+    empresaBloqueada: empresaBloqueada(bloqueios, cnpj),
+    emailsBloqueados: (empresa?.emails ?? []).filter((m) => emailBloqueado(bloqueios, m)),
+    telefonesBloqueados: (empresa?.telefones ?? []).filter((t) => telefoneBloqueado(bloqueios, t)),
+  };
+}
+
 export async function obterEmpresa(cnpj: string, _escopo: Escopo) {
   const q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
   const { data, error } = await q.maybeSingle();
@@ -654,7 +674,23 @@ export async function exportarEmpresas(input: {
     out.push(...empresas);
     if (empresas.length < 100) break;
   }
-  return out;
+
+  // Quem pediu para não ser contatado não sai em lista de prospecção.
+  const { carregarBloqueios, emailBloqueado, empresaBloqueada, telefoneBloqueado } = await import(
+    "./supressoes.server"
+  );
+  const bloqueios = await carregarBloqueios();
+  return out
+    .filter((e) => !empresaBloqueada(bloqueios, e.cnpj))
+    .map((e) => ({
+      ...e,
+      emails: e.emails.filter((m) => !emailBloqueado(bloqueios, m)),
+      telefones: e.telefones.filter((t) => !telefoneBloqueado(bloqueios, t)),
+      melhor_telefone:
+        e.melhor_telefone && telefoneBloqueado(bloqueios, e.melhor_telefone) ? null : e.melhor_telefone,
+      email_receita:
+        e.email_receita && emailBloqueado(bloqueios, e.email_receita) ? null : e.email_receita,
+    }));
 }
 
 /** Consulta em lote por chaves misturadas (site, e-mail ou CNPJ). */
@@ -827,6 +863,14 @@ export async function criarAtividade(input: ActivityInput, escopo: Escopo) {
   const empresa = await obterEmpresa(input.company_cnpj, escopo);
   if (!empresa) throw new Error("Empresa não encontrada nas suas unidades.");
   await exigirEdicao(escopo, input.company_cnpj);
+
+  // Registrar um contato numa empresa que pediu opt-out é justamente o que a
+  // lista de supressão existe para impedir. Anotação interna segue permitida.
+  if (input.tipo !== "nota") {
+    const { carregarBloqueios, empresaBloqueada } = await import("./supressoes.server");
+    if (empresaBloqueada(await carregarBloqueios(), input.company_cnpj))
+      throw new Error("Esta empresa pediu para não ser contatada (opt-out registrado).");
+  }
   const payload: Row = {
     unit_id: (empresa as unknown as { unit_id: string | null }).unit_id ?? escopo.unidadeAtiva,
     company_cnpj: chave(input.company_cnpj),
