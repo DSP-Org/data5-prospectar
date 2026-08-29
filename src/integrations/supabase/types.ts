@@ -55,6 +55,8 @@ export type Database = {
           link_detalhe: string | null
           list_id: string | null
           logradouro: string | null
+          mei_desde: string | null
+          mei_optante: boolean | null
           melhor_site: string | null
           melhor_telefone: string | null
           natureza_juridica: string | null
@@ -68,6 +70,8 @@ export type Database = {
           raw: Json
           razao_social: string
           setores: string[]
+          simples_desde: string | null
+          simples_optante: boolean | null
           sites: string[]
           situacao: string | null
           status: string
@@ -101,6 +105,8 @@ export type Database = {
           link_detalhe?: string | null
           list_id?: string | null
           logradouro?: string | null
+          mei_desde?: string | null
+          mei_optante?: boolean | null
           melhor_site?: string | null
           melhor_telefone?: string | null
           natureza_juridica?: string | null
@@ -114,6 +120,8 @@ export type Database = {
           raw?: Json
           razao_social?: string
           setores?: string[]
+          simples_desde?: string | null
+          simples_optante?: boolean | null
           sites?: string[]
           situacao?: string | null
           status?: string
@@ -147,6 +155,8 @@ export type Database = {
           link_detalhe?: string | null
           list_id?: string | null
           logradouro?: string | null
+          mei_desde?: string | null
+          mei_optante?: boolean | null
           melhor_site?: string | null
           melhor_telefone?: string | null
           natureza_juridica?: string | null
@@ -160,6 +170,8 @@ export type Database = {
           raw?: Json
           razao_social?: string
           setores?: string[]
+          simples_desde?: string | null
+          simples_optante?: boolean | null
           sites?: string[]
           situacao?: string | null
           status?: string
