@@ -13,13 +13,14 @@
 ## EGC Project Memory
 
 **Active decisions:**
-- Permissao continua por PAGINA, nao por acao: quem acessa a pagina pode tudo dentro dela. Decisao do usuario em 29/08/2026, explicitamente 'por enquanto'
-- A matriz de papeis segue como esta (admin_unidade, gestor e usuario com as mesmas paginas, exceto /unidades que so os dois primeiros tem). Proposta de diferenciacao apresentada e NAO aplicada
+- Fase 2.1 concluida (commit 0ab8084): registrarContato exige agendar a proxima acao OU encerrar com motivo (ganhou/perdeu/sem_fit); encerrar atualiza o status da empresa
+- A proxima acao e gravada como atividade pendente (scheduled_at preenchido, completed_at nulo), nao como coluna na empresa
+- Atrasado e medido pelo FIM do dia agendado, nao pela hora
+- A fila (listarPendencias) usa embedding do PostgREST via FK prospection_activities.company_cnpj -> companies.cnpj para trazer nome e dono da empresa
 
 **Next session:**
-- Fase 2.1 - proxima acao obrigatoria ao registrar contato, com fila de vence hoje / atrasado
 - Fase 2.2 - botao de WhatsApp e e-mail que ja registra a atividade
 - Fase 2.3 - mover o loop de importacao do navegador para o servidor
-- Quando o time crescer: diferenciar gestor/admin_unidade/usuario e avaliar permissao por acao (ver x editar)
+- Mostrar contador de pendencias atrasadas no painel e no menu
 - Fase 3 - oportunidade com produto e valor, conversao por etapa
 <!-- egc:end -->
