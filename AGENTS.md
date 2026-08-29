@@ -13,13 +13,14 @@
 ## EGC Project Memory
 
 **Active decisions:**
-- Fase 1.1 concluida (commit 6bf8ee2): middleware exigirAcesso em src/lib/autorizacao.ts protege as 67 server functions por pagina, monta o escopo uma vez e entrega em context.escopo
-- Parte pura do escopo movida para src/lib/escopo.ts (client-safe); escopo.server.ts reexporta e mantem apenas obterEscopo
-- Cada funcao aceita o conjunto de paginas que legitimamente a usa (ex.: listarEmpresasFn vale para /empresas, /clientes-potenciais e /funil)
-- AppShell passou a exibir 'sem acesso' quando a URL nao esta nas rotas do usuario; sub-rotas herdam a pagina mais especifica
+- Fase 1.2 concluida (commit 78ee5f9 + migration 20260829181737): companies ganhou owner_id e owner_desde
+- Modelo de carteira escolhido pelo usuario: o VENDEDOR PEGA o lead (self-service), e a base fica visivel a todos mas so o dono edita
+- A trava de concorrencia do assumir e a propria condicao do update (owner_id is null), nao uma leitura previa
+- gerenciaCarteira(escopo) em src/lib/escopo.ts define quem passa por cima: master, admin_unidade e gestor
 
 **Next session:**
-- Fase 1.2 - owner_id em companies, distribuicao de carteira e tela meus leads (decisao pendente: manual x automatica, e se lead sem dono fica visivel a todos)
 - Fase 1.3 - lista de supressao/opt-out e registro de origem do dado (LGPD)
-- Revisar se papel usuario deveria mesmo poder criar/excluir unidades (matriz atual permite /unidades para o papel usuario)
+- Mostrar dono e botao assumir/liberar tambem na ficha da empresa (/empresas/$cnpj) e no funil
+- Revisar se papel usuario deveria poder criar/excluir unidades (matriz atual da /unidades ao papel usuario)
+- Fase 2 - cadencia com proxima acao, registro de contato em 1 clique, importacao server-side
 <!-- egc:end -->
