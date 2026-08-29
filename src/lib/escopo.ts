@@ -52,3 +52,11 @@ export function unidadeDeGravacao(escopo: Escopo, unitId?: string | null): strin
 export function exigirMaster(escopo: Escopo) {
   if (!escopo.master) throw new Error("Apenas o usuário master pode executar esta ação.");
 }
+
+/**
+ * Quem pode mexer na carteira alheia: transferir um lead, liberar o lead de
+ * outro vendedor e editar empresa de terceiro. O prospector cuida da própria.
+ */
+export function gerenciaCarteira(escopo: Escopo): boolean {
+  return escopo.master || escopo.papeis.some((p) => p === "admin_unidade" || p === "gestor");
+}

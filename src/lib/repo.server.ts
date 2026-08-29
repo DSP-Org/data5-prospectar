@@ -7,7 +7,7 @@ import {
   validarToken,
 } from "./econodata.server";
 import { buscarMultiFonte } from "./sources/registry.server";
-import { type Escopo, unidadeDeGravacao, unidadesFiltro } from "./escopo.server";
+import { type Escopo, gerenciaCarteira, unidadeDeGravacao, unidadesFiltro } from "./escopo.server";
 import { isAdministrador, normalizarSocio } from "./types";
 import type { ActivityType, Company, CompanyList, Json, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
 
@@ -314,6 +314,8 @@ export async function listarEmpresas(input: {
   simples?: string | undefined;
   mei?: string | undefined;
   prospectar?: boolean | undefined;
+  /** Carteira: "meus", "sem_dono" ou "outros". */
+  dono?: string | undefined;
   page?: number | undefined;
   perPage?: number | undefined;
 }) {
@@ -362,18 +364,36 @@ export async function listarEmpresas(input: {
     q = q.eq("simples_optante", input.simples === "sim");
   if (input.mei === "sim" || input.mei === "nao") q = q.eq("mei_optante", input.mei === "sim");
   if (typeof input.prospectar === "boolean") q = q.eq("prospectar", input.prospectar);
+  if (input.dono === "meus") q = q.eq("owner_id", input.escopo.userId);
+  else if (input.dono === "sem_dono") q = q.is("owner_id", null);
+  else if (input.dono === "outros")
+    q = q.not("owner_id", "is", null).neq("owner_id", input.escopo.userId);
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
     .range((page - 1) * perPage, page * perPage - 1);
   if (error) throw new Error(error.message);
 
+  const empresas = (data ?? []).map((r) => asCompany(r as Row));
   return {
-    empresas: (data ?? []).map((r) => asCompany(r as Row)),
+    empresas,
+    donos: await nomesDosDonos(empresas),
     total: count ?? 0,
     page,
     perPage,
   };
+}
+
+/** Nome de cada vendedor dono das empresas da página, para exibir na lista. */
+async function nomesDosDonos(empresas: Company[]): Promise<Record<string, string>> {
+  const ids = [...new Set(empresas.map((e) => e.owner_id).filter((id): id is string => Boolean(id)))];
+  if (ids.length === 0) return {};
+  const { data } = await supabaseAdmin.from("profiles").select("id, nome, email").in("id", ids);
+  const out: Record<string, string> = {};
+  for (const p of (data ?? []) as Array<{ id: string; nome: string | null; email: string | null }>) {
+    out[p.id] = p.nome?.trim() || p.email || "Vendedor";
+  }
+  return out;
 }
 
 function chave(cnpj: string) {
@@ -388,6 +408,36 @@ export async function obterEmpresa(cnpj: string, _escopo: Escopo) {
 }
 
 
+/**
+ * A base é visível a todos, mas quem edita é o dono do lead. Empresa sem dono
+ * segue livre; gestor, administrador de unidade e master passam por cima.
+ */
+export async function exigirEdicao(escopo: Escopo, cnpj: string) {
+  if (gerenciaCarteira(escopo)) return;
+  const { data } = await supabaseAdmin
+    .from("companies")
+    .select("owner_id")
+    .eq("cnpj", chave(cnpj))
+    .maybeSingle();
+  const dono = (data as { owner_id: string | null } | null)?.owner_id ?? null;
+  if (!dono || dono === escopo.userId) return;
+
+  const { data: perfil } = await supabaseAdmin
+    .from("profiles")
+    .select("nome, email")
+    .eq("id", dono)
+    .maybeSingle();
+  const nome = (perfil as { nome?: string | null; email?: string | null } | null);
+  const quem = nome?.nome?.trim() || nome?.email || "outro vendedor";
+  throw new Error(`Esta empresa está na carteira de ${quem}. Peça a liberação para editar.`);
+}
+
+/** Restringe uma alteração em lote ao que o usuário pode mexer (dele ou sem dono). */
+function apenasEditaveis<T extends { or: (f: string) => T }>(q: T, escopo: Escopo): T {
+  if (gerenciaCarteira(escopo)) return q;
+  return q.or(`owner_id.is.null,owner_id.eq.${escopo.userId}`);
+}
+
 export async function atualizarEmpresa(input: {
   escopo: Escopo;
   cnpj: string;
@@ -398,6 +448,7 @@ export async function atualizarEmpresa(input: {
   tags?: string[] | undefined;
   prospectar?: boolean | undefined;
 }) {
+  await exigirEdicao(input.escopo, input.cnpj);
   const patch: Row = {};
   if (input.status) patch["status"] = input.status;
   if (input.notas !== undefined) patch["notas"] = input.notas;
@@ -412,27 +463,79 @@ export async function atualizarEmpresa(input: {
 }
 
 /** Marca/desmarca empresas como "prospectar" (clientes potenciais). */
-export async function marcarProspectar(cnpjs: string[], valor: boolean, _escopo: Escopo) {
+export async function marcarProspectar(cnpjs: string[], valor: boolean, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
-  if (chaves.length === 0) return { ok: true, total: 0 };
-  const { error } = await supabaseAdmin
-    .from("companies")
-    .update({ prospectar: valor } as never)
-    .in("cnpj", chaves);
+  if (chaves.length === 0) return { ok: true, total: 0, semPermissao: 0 };
+  const q = supabaseAdmin.from("companies").update({ prospectar: valor } as never).in("cnpj", chaves);
+  const { data, error } = await apenasEditaveis(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
-  return { ok: true, total: chaves.length };
+  const total = (data ?? []).length;
+  return { ok: true, total, semPermissao: chaves.length - total };
 }
 
-export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, _escopo: Escopo) {
+export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
-  if (chaves.length === 0) return { ok: true, total: 0 };
+  if (chaves.length === 0) return { ok: true, total: 0, semPermissao: 0 };
   const q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
-  const { error } = await q;
+  const { data, error } = await apenasEditaveis(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
-  return { ok: true, total: chaves.length };
+  const total = (data ?? []).length;
+  return { ok: true, total, semPermissao: chaves.length - total };
 }
 
-export async function excluirEmpresa(cnpj: string, _escopo: Escopo) {
+/**
+ * O vendedor assume o lead. A trava é a própria condição do update
+ * (`owner_id is null`): dois vendedores clicando ao mesmo tempo, só um leva.
+ */
+export async function assumirLeads(cnpjs: string[], escopo: Escopo) {
+  const chaves = cnpjs.map((c) => chave(c));
+  if (chaves.length === 0) return { assumidos: 0, jaComDono: 0 };
+  const { data, error } = await supabaseAdmin
+    .from("companies")
+    .update({ owner_id: escopo.userId, owner_desde: new Date().toISOString() } as never)
+    .in("cnpj", chaves)
+    .is("owner_id", null)
+    .select("cnpj");
+  if (error) throw new Error(error.message);
+  const assumidos = (data ?? []).length;
+  return { assumidos, jaComDono: chaves.length - assumidos };
+}
+
+/** Devolve o lead para a base. O vendedor solta o que é dele; gestor solta qualquer um. */
+export async function liberarLeads(cnpjs: string[], escopo: Escopo) {
+  const chaves = cnpjs.map((c) => chave(c));
+  if (chaves.length === 0) return { liberados: 0, semPermissao: 0 };
+  let q = supabaseAdmin
+    .from("companies")
+    .update({ owner_id: null, owner_desde: null } as never)
+    .in("cnpj", chaves);
+  if (!gerenciaCarteira(escopo)) q = q.eq("owner_id", escopo.userId);
+  const { data, error } = await q.select("cnpj");
+  if (error) throw new Error(error.message);
+  const liberados = (data ?? []).length;
+  return { liberados, semPermissao: chaves.length - liberados };
+}
+
+/** Transferência de carteira: só quem gerencia equipe. */
+export async function definirDono(cnpjs: string[], ownerId: string | null, escopo: Escopo) {
+  if (!gerenciaCarteira(escopo))
+    throw new Error("Apenas gestor, administrador de unidade ou master pode transferir carteira.");
+  const chaves = cnpjs.map((c) => chave(c));
+  if (chaves.length === 0) return { total: 0 };
+  const { data, error } = await supabaseAdmin
+    .from("companies")
+    .update({
+      owner_id: ownerId,
+      owner_desde: ownerId ? new Date().toISOString() : null,
+    } as never)
+    .in("cnpj", chaves)
+    .select("cnpj");
+  if (error) throw new Error(error.message);
+  return { total: (data ?? []).length };
+}
+
+export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
+  await exigirEdicao(escopo, cnpj);
   const q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
   const { error } = await q;
   if (error) throw new Error(error.message);
@@ -723,6 +826,7 @@ export async function listarAtividades(input: {
 export async function criarAtividade(input: ActivityInput, escopo: Escopo) {
   const empresa = await obterEmpresa(input.company_cnpj, escopo);
   if (!empresa) throw new Error("Empresa não encontrada nas suas unidades.");
+  await exigirEdicao(escopo, input.company_cnpj);
   const payload: Row = {
     unit_id: (empresa as unknown as { unit_id: string | null }).unit_id ?? escopo.unidadeAtiva,
     company_cnpj: chave(input.company_cnpj),

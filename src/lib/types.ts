@@ -66,6 +66,9 @@ export type Company = {
 
   status: Status;
   prospectar: boolean;
+  /** Vendedor que assumiu o lead; nulo quando ainda não tem dono. */
+  owner_id: string | null;
+  owner_desde: string | null;
   notas: string;
   tags: string[];
   list_id: string | null;

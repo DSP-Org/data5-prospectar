@@ -77,7 +77,10 @@ const filtrosSchema = z.object({
   simples: z.enum(["sim", "nao"]).optional(),
   mei: z.enum(["sim", "nao"]).optional(),
   prospectar: z.boolean().optional(),
+  dono: z.enum(["meus", "sem_dono", "outros"]).optional(),
 });
+
+const cnpjsSchema = z.array(z.string().min(14).max(20)).min(1).max(500);
 
 export const consultarChavesFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/consulta")])
@@ -166,6 +169,35 @@ export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { vincularEmpresasLista } = await import("./repo.server");
     return vincularEmpresasLista(data.cnpjs, data.listId, context.escopo);
+  });
+
+/** O vendedor assume o lead; quem já tem dono não é tocado. */
+export const assumirLeadsFn = createServerFn({ method: "POST" })
+  .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
+  .inputValidator((d: unknown) => z.object({ cnpjs: cnpjsSchema }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { assumirLeads } = await import("./repo.server");
+    return assumirLeads(data.cnpjs, context.escopo);
+  });
+
+/** Devolve o lead para a base. */
+export const liberarLeadsFn = createServerFn({ method: "POST" })
+  .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
+  .inputValidator((d: unknown) => z.object({ cnpjs: cnpjsSchema }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { liberarLeads } = await import("./repo.server");
+    return liberarLeads(data.cnpjs, context.escopo);
+  });
+
+/** Transferência de carteira entre vendedores (gestor para cima). */
+export const definirDonoFn = createServerFn({ method: "POST" })
+  .middleware([exigirAcesso("/empresas", "/equipe")])
+  .inputValidator((d: unknown) =>
+    z.object({ cnpjs: cnpjsSchema, ownerId: z.string().uuid().nullable() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { definirDono } = await import("./repo.server");
+    return definirDono(data.cnpjs, data.ownerId, context.escopo);
   });
 
 export const marcarProspectarFn = createServerFn({ method: "POST" })

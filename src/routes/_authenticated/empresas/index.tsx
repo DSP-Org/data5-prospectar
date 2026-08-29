@@ -11,17 +11,22 @@ import {
   Loader2,
   Smartphone,
   Star,
+  UserCheck,
+  UserMinus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
 
 import {
+  assumirLeadsFn,
   exportarEmpresasFn,
+  liberarLeadsFn,
   listarEmpresasFn,
   marcarProspectarFn,
   opcoesFiltroFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
+import { meFn } from "@/lib/auth.functions";
 import { cn } from "@/lib/utils";
 import {
   STATUS_LABEL,
@@ -108,12 +113,15 @@ function atividadeDe(c: Company): string {
   return [c.cnae_codigo, c.cnae_descricao].filter(Boolean).join(" - ");
 }
 
+/** Dados que as células precisam além da própria empresa. */
+type Contexto = { donos: Record<string, string>; meuId: string | null };
+
 type Coluna = {
   key: string;
   label: string;
   padrao: boolean;
-  cell: (c: Company) => React.ReactNode;
-  csv: Array<[string, (c: Company) => string]>;
+  cell: (c: Company, ctx: Contexto) => React.ReactNode;
+  csv: Array<[string, (c: Company, ctx: Contexto) => string]>;
   className?: string;
 };
 
@@ -226,10 +234,27 @@ const COLUNAS: Coluna[] = [
       ["Notas", (c) => c.notas],
     ],
   },
+  {
+    key: "dono",
+    label: "Dono",
+    padrao: true,
+    cell: (c, ctx) => {
+      if (!c.owner_id) return <span className="text-muted-foreground">Sem dono</span>;
+      if (c.owner_id === ctx.meuId)
+        return (
+          <Badge variant="outline" className="border-chart-3 text-chart-3">
+            <UserCheck className="mr-1 h-3 w-3" /> Você
+          </Badge>
+        );
+      return <span>{ctx.donos[c.owner_id] ?? "Outro vendedor"}</span>;
+    },
+    csv: [["Dono", (c, ctx) => (c.owner_id ? (ctx.donos[c.owner_id] ?? "Outro vendedor") : "")]],
+    className: "text-sm",
+  },
 ];
 
-function csv(rows: Company[], visiveis: string[]) {
-  const cols: Array<[string, (c: Company) => string]> = [
+function csv(rows: Company[], visiveis: string[], ctx: Contexto) {
+  const cols: Array<[string, (c: Company, ctx: Contexto) => string]> = [
     ["CNPJ", (c) => c.cnpj],
     ["Razão social", (c) => c.razao_social],
     ["Cliente potencial", (c) => (c.prospectar ? "Sim" : "Não")],
@@ -238,7 +263,7 @@ function csv(rows: Company[], visiveis: string[]) {
   const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
   return [
     cols.map(([h]) => esc(h)).join(";"),
-    ...rows.map((r) => cols.map(([, f]) => esc(f(r))).join(";")),
+    ...rows.map((r) => cols.map(([, f]) => esc(f(r, ctx))).join(";")),
   ].join("\n");
 }
 
@@ -322,6 +347,7 @@ function Empresas() {
   const [lista, setLista] = useState(listaInicial ?? "todas");
   const [grupo, setGrupo] = useState("todas");
   const [potencial, setPotencial] = useState("todas");
+  const [carteira, setCarteira] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
   const [colunas, setColunas] = useState<string[]>(
@@ -345,9 +371,11 @@ function Empresas() {
     listId: lista,
     grupoNatureza: grupo,
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
+    ...(carteira === "todas" ? {} : { dono: carteira as "meus" | "sem_dono" | "outros" }),
     ...filtrosAvancados(av),
   };
   const listas = useListas();
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const opcoes = useQuery({
     queryKey: ["opcoes-filtro"],
     queryFn: () => opcoesFiltroFn(),
@@ -379,6 +407,33 @@ function Empresas() {
     onError: (e) => toast.error((e as Error).message),
   });
 
+  const assumir = useServerFn(assumirLeadsFn);
+  const liberar = useServerFn(liberarLeadsFn);
+
+  const mutAssumir = useMutation({
+    mutationFn: (cnpjs: string[]) => assumir({ data: { cnpjs } }),
+    onSuccess: (r) => {
+      if (r.assumidos === 0) toast.error("Nenhum lead assumido: todos já tinham dono.");
+      else if (r.jaComDono > 0)
+        toast.success(`${r.assumidos} lead(s) assumido(s). ${r.jaComDono} já tinha(m) dono.`);
+      else toast.success(`${r.assumidos} lead(s) assumido(s).`);
+      setSelecionados([]);
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const mutLiberar = useMutation({
+    mutationFn: (cnpjs: string[]) => liberar({ data: { cnpjs } }),
+    onSuccess: (r) => {
+      if (r.liberados === 0) toast.error("Nada liberado: estes leads não são seus.");
+      else toast.success(`${r.liberados} lead(s) devolvido(s) para a base.`);
+      setSelecionados([]);
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
   const mutProspectar = useMutation({
     mutationFn: ({ cnpjs, valor }: { cnpjs: string[]; valor: boolean }) =>
       marcar({ data: { cnpjs, valor } }),
@@ -396,12 +451,13 @@ function Empresas() {
 
   const total = empresas.data?.total ?? 0;
   const paginas = Math.max(1, Math.ceil(total / 25));
+  const ctx: Contexto = { donos: empresas.data?.donos ?? {}, meuId: me?.userId ?? null };
 
   async function baixarCsv() {
     setExportando(true);
     try {
       const rows = await exportar({ data: filtros });
-      const blob = new Blob(["\ufeff" + csv(rows as Company[], colunas)], {
+      const blob = new Blob(["\ufeff" + csv(rows as Company[], colunas, ctx)], {
         type: "text/csv;charset=utf-8",
       });
       const url = URL.createObjectURL(blob);
@@ -563,6 +619,23 @@ function Empresas() {
               <SelectItem value="todas">Todas as empresas</SelectItem>
               <SelectItem value="sim">Somente clientes potenciais</SelectItem>
               <SelectItem value="nao">Sem marcação de prospectar</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={carteira}
+            onValueChange={(v) => {
+              setCarteira(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Carteira" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Toda a base</SelectItem>
+              <SelectItem value="meus">Meus leads</SelectItem>
+              <SelectItem value="sem_dono">Sem dono</SelectItem>
+              <SelectItem value="outros">De outros vendedores</SelectItem>
             </SelectContent>
           </Select>
 
@@ -790,6 +863,22 @@ function Empresas() {
             {mutVincular.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             <Button
               size="sm"
+              variant="secondary"
+              disabled={mutAssumir.isPending}
+              onClick={() => mutAssumir.mutate(selecionados)}
+            >
+              <UserCheck className="h-4 w-4" /> Assumir
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={mutLiberar.isPending}
+              onClick={() => mutLiberar.mutate(selecionados)}
+            >
+              <UserMinus className="h-4 w-4" /> Liberar
+            </Button>
+            <Button
+              size="sm"
               disabled={mutProspectar.isPending}
               onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: true })}
             >
@@ -891,7 +980,7 @@ function Empresas() {
                   </TableCell>
                   {visiveis.map((col) => (
                     <TableCell key={col.key} className={col.className ?? ""}>
-                      {col.cell(e)}
+                      {col.cell(e, ctx)}
                     </TableCell>
                   ))}
                 </TableRow>

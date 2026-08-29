@@ -7,6 +7,7 @@ import type { Escopo, Papel } from "./escopo";
 export {
   comUnidadeAtiva,
   exigirMaster,
+  gerenciaCarteira,
   restringirUnidade,
   unidadeDeGravacao,
   unidadesFiltro,
