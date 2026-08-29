@@ -49,6 +49,43 @@ export const criarAtividadeFn = createServerFn({ method: "POST" })
     return criarAtividade(data, context.escopo);
   });
 
+/** Registra o contato e, no mesmo passo, a próxima ação ou o encerramento. */
+export const registrarContatoFn = createServerFn({ method: "POST" })
+  .middleware([exigirAcesso("/atividades", "/empresas", "/funil")])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        company_cnpj: z.string().min(14).max(20),
+        tipo: activityTypeSchema,
+        observacao: z.string().max(3000).optional(),
+        responsavel: z.string().max(80).optional(),
+        product_id: z.string().uuid().nullable().optional(),
+        proxima: z
+          .object({ tipo: activityTypeSchema, quando: z.string().min(10).max(25) })
+          .nullable()
+          .optional(),
+        encerrar: z.enum(["ganhou", "perdeu", "sem_fit"]).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { registrarContato } = await import("./repo.server");
+    return registrarContato(data, context.escopo);
+  });
+
+/** Fila de trabalho: atrasadas, para hoje e próximas. */
+export const pendenciasFn = createServerFn({ method: "GET" })
+  .middleware([exigirAcesso("/atividades", "/empresas", "/funil", "/")])
+  .inputValidator((d: unknown) =>
+    z
+      .object({ unidade: z.string().uuid().optional(), apenasMinhas: z.boolean().optional() })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { listarPendencias } = await import("./repo.server");
+    return listarPendencias(restringirUnidade(context.escopo, data.unidade), data.apenasMinhas ?? false);
+  });
+
 export const atualizarAtividadeFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/atividades", "/empresas", "/funil")])
   .inputValidator((d: unknown) =>

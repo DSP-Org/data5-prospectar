@@ -886,6 +886,126 @@ export async function criarAtividade(input: ActivityInput, escopo: Escopo) {
   return asActivity(data as Row);
 }
 
+export const MOTIVOS_ENCERRAMENTO = ["ganhou", "perdeu", "sem_fit"] as const;
+export type MotivoEncerramento = (typeof MOTIVOS_ENCERRAMENTO)[number];
+
+const ENCERRAMENTO: Record<MotivoEncerramento, { status: Status; texto: string }> = {
+  ganhou: { status: "cliente", texto: "Encerrado: virou cliente." },
+  perdeu: { status: "descartado", texto: "Encerrado: perdemos a oportunidade." },
+  sem_fit: { status: "descartado", texto: "Encerrado: empresa não tem perfil." },
+};
+
+/**
+ * Registra o que aconteceu e obriga a definir o que vem depois: ou fica uma
+ * próxima ação agendada, ou a prospecção é encerrada com um motivo. Sem isso o
+ * lead some da vista — que é a maior fonte de perda em prospecção ativa.
+ */
+export async function registrarContato(
+  input: ActivityInput & {
+    proxima?: { tipo: ActivityType; quando: string } | null | undefined;
+    encerrar?: MotivoEncerramento | null | undefined;
+  },
+  escopo: Escopo,
+) {
+  if (!input.proxima && !input.encerrar)
+    throw new Error("Defina a próxima ação ou encerre a prospecção desta empresa.");
+  if (input.proxima && input.encerrar)
+    throw new Error("Escolha uma coisa só: agendar a próxima ação ou encerrar.");
+
+  const contato = await criarAtividade(
+    { ...input, completed_at: input.completed_at ?? new Date().toISOString() },
+    escopo,
+  );
+
+  if (input.proxima) {
+    const proxima = await criarAtividade(
+      {
+        company_cnpj: input.company_cnpj,
+        tipo: input.proxima.tipo,
+        observacao: "",
+        responsavel: input.responsavel ?? null,
+        scheduled_at: input.proxima.quando,
+        completed_at: null,
+        product_id: input.product_id ?? null,
+      },
+      escopo,
+    );
+    return { contato, proxima, encerrado: null };
+  }
+
+  const { status, texto } = ENCERRAMENTO[input.encerrar as MotivoEncerramento];
+  await atualizarEmpresa({ escopo, cnpj: input.company_cnpj, status });
+  await criarAtividade(
+    {
+      company_cnpj: input.company_cnpj,
+      tipo: "nota",
+      observacao: texto,
+      responsavel: input.responsavel ?? null,
+      completed_at: new Date().toISOString(),
+    },
+    escopo,
+  );
+  return { contato, proxima: null, encerrado: input.encerrar };
+}
+
+export type Pendencia = ProspectionActivity & {
+  empresa: string;
+  cnpj: string;
+  meu: boolean;
+};
+
+/**
+ * Fila de trabalho: o que já venceu, o que é para hoje e o que vem a seguir.
+ * Atrasado é medido pelo fim do dia agendado, não pela hora — quem marcou para
+ * hoje de manhã não deve aparecer como atrasado à tarde.
+ */
+export async function listarPendencias(escopo: Escopo, apenasMinhas = false) {
+  let q = supabaseAdmin
+    .from("prospection_activities")
+    .select("*, companies(razao_social, nome_fantasia, owner_id)")
+    .is("completed_at", null)
+    .not("scheduled_at", "is", null)
+    .order("scheduled_at", { ascending: true })
+    .limit(300);
+  const unidades = unidadesFiltro(escopo);
+  if (unidades) q = q.in("unit_id", unidades);
+
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+
+  const hojeFim = new Date();
+  hojeFim.setHours(23, 59, 59, 999);
+  const amanhaFim = new Date(hojeFim);
+  amanhaFim.setDate(amanhaFim.getDate() + 1);
+
+  const atrasadas: Pendencia[] = [];
+  const hoje: Pendencia[] = [];
+  const proximas: Pendencia[] = [];
+
+  for (const row of (data ?? []) as Row[]) {
+    const empresa = (row["companies"] ?? {}) as {
+      razao_social?: string;
+      nome_fantasia?: string | null;
+      owner_id?: string | null;
+    };
+    const meu = empresa.owner_id === escopo.userId;
+    if (apenasMinhas && !meu) continue;
+
+    const item: Pendencia = {
+      ...asActivity(row),
+      empresa: empresa.nome_fantasia?.trim() || empresa.razao_social || "Empresa",
+      cnpj: String(row["company_cnpj"] ?? ""),
+      meu,
+    };
+    const quando = new Date(item.scheduled_at as string);
+    if (quando < hojeFim && quando.toDateString() !== hojeFim.toDateString()) atrasadas.push(item);
+    else if (quando <= hojeFim) hoje.push(item);
+    else proximas.push(item);
+  }
+
+  return { atrasadas, hoje, proximas: proximas.slice(0, 50) };
+}
+
 export async function atualizarAtividade(
   id: string,
   patch: Partial<Omit<ActivityInput, "company_cnpj" | "tipo">>,

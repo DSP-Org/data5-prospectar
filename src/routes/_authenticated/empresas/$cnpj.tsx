@@ -35,9 +35,9 @@ import {
 import { meFn } from "@/lib/auth.functions";
 import { contextoEmpresaFn, registrarSupressaoFn } from "@/lib/supressoes.functions";
 import {
-  criarAtividadeFn,
   listarAtividadesFn,
   atualizarAtividadeFn,
+  registrarContatoFn,
 } from "@/lib/prospection.functions";
 import {
   STATUS_LABEL,
@@ -70,6 +70,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type MotivoFim = "ganhou" | "perdeu" | "sem_fit";
 
 export const Route = createFileRoute("/_authenticated/empresas/$cnpj")({
   head: () => ({
@@ -164,6 +165,9 @@ function Detalhe() {
   const [obsAtividade, setObsAtividade] = useState("");
   const [respAtividade, setRespAtividade] = useState("");
   const [agendadaAtividade, setAgendadaAtividade] = useState("");
+  const [proximaTipo, setProximaTipo] = useState<ActivityType>("ligacao");
+  const [encerrando, setEncerrando] = useState(false);
+  const [motivoFim, setMotivoFim] = useState<MotivoFim>("ganhou");
   const e = empresa.data;
 
   useEffect(() => {
@@ -188,24 +192,36 @@ function Detalhe() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const criarAtividade = useServerFn(criarAtividadeFn);
+  const registrarContato = useServerFn(registrarContatoFn);
   const mutAtividade = useMutation({
     mutationFn: () =>
-      criarAtividade({
+      registrarContato({
         data: {
           company_cnpj: cnpj,
           tipo: tipoAtividade,
           observacao: obsAtividade,
-          responsavel: respAtividade || null,
-          scheduled_at: agendadaAtividade ? new Date(agendadaAtividade).toISOString() : null,
+          responsavel: respAtividade || undefined,
+          ...(encerrando
+            ? { encerrar: motivoFim }
+            : {
+                proxima: {
+                  tipo: proximaTipo,
+                  quando: new Date(agendadaAtividade).toISOString(),
+                },
+              }),
         },
       }),
-    onSuccess: () => {
-      toast.success("Atividade registrada.");
+    onSuccess: (r) => {
+      toast.success(
+        r.encerrado ? "Contato registrado e prospecção encerrada." : "Contato registrado e próxima ação agendada.",
+      );
       setObsAtividade("");
       setRespAtividade("");
       setAgendadaAtividade("");
+      setEncerrando(false);
       void qc.invalidateQueries({ queryKey: ["atividades", cnpj] });
+      void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
+      void qc.invalidateQueries({ queryKey: ["pendencias"] });
       void qc.invalidateQueries({ queryKey: ["funil"] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -886,22 +902,73 @@ function Detalhe() {
                   placeholder="Nome do responsável"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="agendada">Agendada para</Label>
-                <input
-                  id="agendada"
-                  type="datetime-local"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={agendadaAtividade}
-                  onChange={(ev) => setAgendadaAtividade(ev.target.value)}
-                />
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm font-medium">E depois?</Label>
+                  <button
+                    type="button"
+                    onClick={() => setEncerrando((v) => !v)}
+                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    {encerrando ? "voltar a agendar" : "encerrar prospecção"}
+                  </button>
+                </div>
+
+                {encerrando ? (
+                  <Select value={motivoFim} onValueChange={(v) => setMotivoFim(v as MotivoFim)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Motivo do encerramento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ganhou">Ganhou — virou cliente</SelectItem>
+                      <SelectItem value="perdeu">Perdeu a oportunidade</SelectItem>
+                      <SelectItem value="sem_fit">Sem perfil para nossos produtos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Select
+                      value={proximaTipo}
+                      onValueChange={(v) => setProximaTipo(v as ActivityType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACTIVITY_TYPES.filter((t) => t !== "nota").map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {ACTIVITY_LABEL[t]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="datetime-local"
+                      aria-label="Quando fazer a próxima ação"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={agendadaAtividade}
+                      onChange={(ev) => setAgendadaAtividade(ev.target.value)}
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {encerrando
+                    ? "A empresa sai do fluxo e o status é atualizado."
+                    : "Todo contato precisa de um próximo passo — é o que evita o lead esquecido."}
+                </p>
               </div>
+
               <Button
                 size="sm"
                 onClick={() => mutAtividade.mutate()}
-                disabled={mutAtividade.isPending || !obsAtividade.trim()}
+                disabled={
+                  mutAtividade.isPending ||
+                  !obsAtividade.trim() ||
+                  (!encerrando && !agendadaAtividade)
+                }
               >
-                <Plus className="h-4 w-4" /> Registrar atividade
+                <Plus className="h-4 w-4" />
+                {encerrando ? "Registrar e encerrar" : "Registrar e agendar"}
               </Button>
 
               {atividades.isLoading ? (
