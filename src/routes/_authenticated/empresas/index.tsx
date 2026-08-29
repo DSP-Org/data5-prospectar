@@ -2,7 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertTriangle, Columns3, Download, Loader2, Smartphone, Star } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Columns3,
+  Download,
+  FilterX,
+  Loader2,
+  Smartphone,
+  Star,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
 
@@ -10,6 +19,7 @@ import {
   exportarEmpresasFn,
   listarEmpresasFn,
   marcarProspectarFn,
+  opcoesFiltroFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
 import { cn } from "@/lib/utils";
@@ -28,6 +38,12 @@ import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -226,6 +242,78 @@ function csv(rows: Company[], visiveis: string[]) {
   ].join("\n");
 }
 
+type Avancados = {
+  cidade: string;
+  bairro: string;
+  cnae: string;
+  porte: string;
+  situacao: string;
+  setor: string;
+  capitalMin: string;
+  capitalMax: string;
+  aberturaDe: string;
+  aberturaAte: string;
+  simples: string;
+  mei: string;
+  comTelefone: boolean;
+  comEmail: boolean;
+  comSite: boolean;
+  comDecisor: boolean;
+};
+
+const AVANCADOS_VAZIOS: Avancados = {
+  cidade: "",
+  bairro: "",
+  cnae: "",
+  porte: "todos",
+  situacao: "todas",
+  setor: "todos",
+  capitalMin: "",
+  capitalMax: "",
+  aberturaDe: "",
+  aberturaAte: "",
+  simples: "todos",
+  mei: "todos",
+  comTelefone: false,
+  comEmail: false,
+  comSite: false,
+  comDecisor: false,
+};
+
+function filtrosAvancadosAtivos(a: Avancados): boolean {
+  return (Object.keys(AVANCADOS_VAZIOS) as Array<keyof Avancados>).some(
+    (k) => a[k] !== AVANCADOS_VAZIOS[k],
+  );
+}
+
+/** Converte o estado da tela no payload esperado pelo backend, omitindo o que não foi preenchido. */
+function filtrosAvancados(a: Avancados) {
+  const numero = (v: string) => {
+    const n = Number(v.replace(",", "."));
+    return v.trim() !== "" && Number.isFinite(n) ? n : undefined;
+  };
+  const capitalMin = numero(a.capitalMin);
+  const capitalMax = numero(a.capitalMax);
+  return {
+    ...(a.cidade.trim() ? { cidade: a.cidade.trim() } : {}),
+    ...(a.bairro.trim() ? { bairro: a.bairro.trim() } : {}),
+    ...(a.cnae.trim() ? { cnae: a.cnae.trim() } : {}),
+    ...(a.porte !== "todos" ? { porte: a.porte } : {}),
+    ...(a.situacao !== "todas" ? { situacao: a.situacao } : {}),
+    ...(a.setor !== "todos" ? { setor: a.setor } : {}),
+    ...(capitalMin != null ? { capitalMin } : {}),
+    ...(capitalMax != null ? { capitalMax } : {}),
+    ...(a.aberturaDe ? { aberturaDe: a.aberturaDe } : {}),
+    ...(a.aberturaAte ? { aberturaAte: a.aberturaAte } : {}),
+    ...(a.simples === "sim" || a.simples === "nao" ? { simples: a.simples } : {}),
+    ...(a.mei === "sim" || a.mei === "nao" ? { mei: a.mei } : {}),
+    ...(a.comTelefone ? { comTelefone: true } : {}),
+    ...(a.comEmail ? { comEmail: true } : {}),
+    ...(a.comSite ? { comSite: true } : {}),
+    ...(a.comDecisor ? { comDecisor: true } : {}),
+  };
+}
+
 function Empresas() {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState("todos");
@@ -241,6 +329,15 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
+  const [avancadosAbertos, setAvancadosAbertos] = useState(false);
+  const [av, setAv] = useState({ ...AVANCADOS_VAZIOS });
+  // Toda mudança de filtro volta para a primeira página.
+  const setAvancado = <K extends keyof Avancados>(campo: K, valor: Avancados[K]) => {
+    setAv((s) => ({ ...s, [campo]: valor }));
+    setPage(1);
+  };
+  const avancadosAtivos = filtrosAvancadosAtivos(av);
+
   const filtros = {
     busca,
     status,
@@ -248,8 +345,14 @@ function Empresas() {
     listId: lista,
     grupoNatureza: grupo,
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
+    ...filtrosAvancados(av),
   };
   const listas = useListas();
+  const opcoes = useQuery({
+    queryKey: ["opcoes-filtro"],
+    queryFn: () => opcoesFiltroFn(),
+    staleTime: 5 * 60 * 1000,
+  });
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
     queryFn: () => listarEmpresasFn({ data: { ...filtros, page, perPage: 25 } }),
@@ -462,6 +565,203 @@ function Empresas() {
               <SelectItem value="nao">Sem marcação de prospectar</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="md:col-span-4">
+            <Collapsible open={avancadosAbertos} onOpenChange={setAvancadosAbertos}>
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex-1 justify-between">
+                    Filtros avançados (situação, cidade, CNAE, porte, capital, contato…)
+                    {avancadosAtivos && (
+                      <Badge variant="secondary" className="ml-2">
+                        ativos
+                      </Badge>
+                    )}
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        avancadosAbertos && "rotate-180",
+                      )}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                {avancadosAtivos && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAv({ ...AVANCADOS_VAZIOS });
+                      setPage(1);
+                    }}
+                  >
+                    <FilterX className="h-4 w-4" /> Limpar
+                  </Button>
+                )}
+              </div>
+              <CollapsibleContent>
+                <div className="mt-2 grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-1">
+                    <Label>Situação cadastral</Label>
+                    <Select
+                      value={av.situacao}
+                      onValueChange={(v) => setAvancado("situacao", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Situação" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas as situações</SelectItem>
+                        {(opcoes.data?.situacoes ?? []).map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Cidade</Label>
+                    <Input
+                      value={av.cidade}
+                      onChange={(e) => setAvancado("cidade", e.target.value)}
+                      placeholder="Ex.: Salvador"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Bairro</Label>
+                    <Input
+                      value={av.bairro}
+                      onChange={(e) => setAvancado("bairro", e.target.value)}
+                      placeholder="Ex.: Pituba"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>CNAE principal (código ou descrição)</Label>
+                    <Input
+                      value={av.cnae}
+                      onChange={(e) => setAvancado("cnae", e.target.value)}
+                      placeholder="Ex.: 4712 ou mercearia"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Porte</Label>
+                    <Select value={av.porte} onValueChange={(v) => setAvancado("porte", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Porte" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os portes</SelectItem>
+                        {(opcoes.data?.portes ?? []).map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {p}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Setor</Label>
+                    <Select value={av.setor} onValueChange={(v) => setAvancado("setor", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Setor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os setores</SelectItem>
+                        {(opcoes.data?.setores ?? []).map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Capital social mínimo</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={av.capitalMin}
+                      onChange={(e) => setAvancado("capitalMin", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Capital social máximo</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={av.capitalMax}
+                      onChange={(e) => setAvancado("capitalMax", e.target.value)}
+                      placeholder="Sem limite"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Aberta a partir de</Label>
+                    <Input
+                      type="date"
+                      value={av.aberturaDe}
+                      onChange={(e) => setAvancado("aberturaDe", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Aberta até</Label>
+                    <Input
+                      type="date"
+                      value={av.aberturaAte}
+                      onChange={(e) => setAvancado("aberturaAte", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Simples Nacional</Label>
+                    <Select value={av.simples} onValueChange={(v) => setAvancado("simples", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Simples Nacional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Tanto faz</SelectItem>
+                        <SelectItem value="sim">Somente optantes</SelectItem>
+                        <SelectItem value="nao">Excluir optantes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>MEI</Label>
+                    <Select value={av.mei} onValueChange={(v) => setAvancado("mei", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="MEI" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Tanto faz</SelectItem>
+                        <SelectItem value="sim">Somente MEI</SelectItem>
+                        <SelectItem value="nao">Excluir MEI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Somente empresas com</Label>
+                    <div className="flex flex-wrap gap-4">
+                      {(
+                        [
+                          ["comTelefone", "Telefone"],
+                          ["comEmail", "E-mail"],
+                          ["comSite", "Site"],
+                          ["comDecisor", "Decisor"],
+                        ] as Array<[keyof Avancados, string]>
+                      ).map(([campo, rotulo]) => (
+                        <label key={campo} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={av[campo] as boolean}
+                            onCheckedChange={(v) => setAvancado(campo, Boolean(v) as never)}
+                          />
+                          {rotulo}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </CardContent>
       </Card>
 

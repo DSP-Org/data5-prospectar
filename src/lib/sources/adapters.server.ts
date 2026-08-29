@@ -3,9 +3,20 @@
 
 import { mapCompany, type MappedCompany } from "../company-mapper.server";
 import { buscarPorCnpjs, formatCnpjApi, validarToken, EconodataError } from "../econodata.server";
+import { normalizarSocio } from "../types";
 import type { ModulosCnpja, SourceId } from "./catalog";
 
-export type Partial2 = Partial<MappedCompany> & { extras?: Record<string, unknown> };
+/** Regime tributário: só a CNPJá devolve, mas vira coluna própria em `companies`. */
+export type CamposTributarios = {
+  simples_optante: boolean | null;
+  simples_desde: string | null;
+  mei_optante: boolean | null;
+  mei_desde: string | null;
+};
+
+export type Partial2 = Partial<MappedCompany & CamposTributarios> & {
+  extras?: Record<string, unknown>;
+};
 export type LoteResultado = Map<string, Partial2>;
 
 export type TesteResultado = { ok: boolean; mensagem: string };
@@ -177,11 +188,7 @@ function mapBrasilApi(r: BrasilApiResp, cnpjFormatado: string): Partial2 {
     telefones,
     email_receita: emails[0] ?? null,
     emails,
-    contatos: (r.qsa ?? []).map((s) => ({
-      nome: (s["nome_socio"] as string) ?? null,
-      qualificacao: (s["qualificacao_socio"] as string) ?? null,
-      dataEntradaSociedade: (s["data_entrada_sociedade"] as string) ?? null,
-    })) as unknown as Record<string, unknown>[],
+    contatos: (r.qsa ?? []).map(normalizarSocio),
   };
 }
 
@@ -252,7 +259,7 @@ function mapCnpjWs(r: CnpjWsResp, cnpjFormatado: string): Partial2 {
     telefones,
     email_receita: emails[0] ?? null,
     emails,
-    contatos: (r.socios ?? []) as unknown as Record<string, unknown>[],
+    contatos: (r.socios ?? []).map(normalizarSocio),
   };
 }
 
@@ -454,13 +461,17 @@ function mapCnpja(r: CnpjaResp, cnpjFormatado: string): Partial2 {
     porte_estimado: r.company?.size?.text ?? null,
     capital_social: num(r.company?.equity),
     data_abertura: r.founded ? r.founded.slice(0, 10) : null,
+    simples_optante: r.company?.simples?.optant ?? null,
+    simples_desde: r.company?.simples?.since ?? null,
+    mei_optante: r.company?.simei?.optant ?? null,
+    mei_desde: r.company?.simei?.since ?? null,
     melhor_telefone: telefones[0] ?? null,
     telefones,
     email_receita: emails[0] ?? null,
     emails,
     melhor_site: sitesUnicos[0] ?? null,
     sites: sitesUnicos,
-    contatos: (r.company?.members ?? []) as unknown as Record<string, unknown>[],
+    contatos: (r.company?.members ?? []).map(normalizarSocio),
     extras: extrasCnpja(r),
   };
 }

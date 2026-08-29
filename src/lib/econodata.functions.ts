@@ -84,6 +84,8 @@ const filtrosSchema = z.object({
   capitalMax: z.number().nonnegative().optional(),
   aberturaDe: z.string().max(10).optional(),
   aberturaAte: z.string().max(10).optional(),
+  simples: z.enum(["sim", "nao"]).optional(),
+  mei: z.enum(["sim", "nao"]).optional(),
   prospectar: z.boolean().optional(),
 });
 

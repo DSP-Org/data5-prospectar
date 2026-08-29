@@ -48,6 +48,10 @@ export type Company = {
   qtd_funcionarios_estimada: string | null;
   capital_social: number | null;
   data_abertura: string | null;
+  simples_optante: boolean | null;
+  simples_desde: string | null;
+  mei_optante: boolean | null;
+  mei_desde: string | null;
   melhor_telefone: string | null;
   telefones: string[];
   melhor_site: string | null;
@@ -198,6 +202,47 @@ export type EmailClassificado = { email: string; is_contabil: boolean };
 
 export function classificarEmail(email: string): EmailClassificado {
   return { email, is_contabil: isEmailContabil(email) };
+}
+
+/** Lê um campo que pode vir como texto puro ou aninhado ({ descricao }, { text }, { name }). */
+function textoDe(valor: unknown): string | null {
+  if (typeof valor === "string") return valor.trim() || null;
+  if (valor && typeof valor === "object") {
+    const o = valor as Record<string, unknown>;
+    for (const chave of ["descricao", "text", "name", "nome"]) {
+      const v = o[chave];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Cada fonte devolve o sócio num formato diferente: a CNPJá aninha em
+ * `person`/`role`, o CNPJ.ws usa `qualificacao_socio` e a BrasilAPI usa
+ * `nome_socio`. Normaliza todos para o formato que a ficha e o
+ * `isAdministrador` esperam, preservando os campos originais.
+ */
+export function normalizarSocio(bruto: Record<string, unknown>): Record<string, unknown> {
+  const pessoa = (bruto["person"] ?? {}) as Record<string, unknown>;
+
+  const normalizado: Record<string, unknown> = {
+    nome: textoDe(bruto["nome"] ?? bruto["nome_socio"] ?? pessoa["name"]),
+    qualificacao: textoDe(
+      bruto["qualificacao"] ?? bruto["qualificacao_socio"] ?? bruto["role"] ?? bruto["cargo"],
+    ),
+    cpf: textoDe(bruto["cpf"] ?? bruto["cpf_cnpj_socio"] ?? bruto["cnpj_cpf_do_socio"] ?? pessoa["taxId"]),
+    dataEntradaSociedade: textoDe(
+      bruto["dataEntradaSociedade"] ?? bruto["data_entrada_sociedade"] ?? bruto["since"],
+    ),
+    faixaEtaria: textoDe(bruto["faixaEtaria"] ?? bruto["faixa_etaria"] ?? pessoa["age"]),
+  };
+
+  // Só sobrescreve o que realmente foi encontrado, para não apagar dados da fonte.
+  const encontrados = Object.fromEntries(
+    Object.entries(normalizado).filter(([, v]) => v != null),
+  );
+  return { ...bruto, ...encontrados };
 }
 
 const TERMOS_ADMINISTRADOR = [

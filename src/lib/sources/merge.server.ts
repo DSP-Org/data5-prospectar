@@ -4,7 +4,7 @@ import { canonizarNatureza } from "../natureza-juridica";
 import { isAdministrador, onlyDigits, type Json } from "../types";
 import type { MappedCompany } from "../company-mapper.server";
 import type { SourceId } from "./catalog";
-import type { Partial2 } from "./adapters.server";
+import type { CamposTributarios, Partial2 } from "./adapters.server";
 
 const ARRAY_FIELDS = [
   "setores",
@@ -36,6 +36,10 @@ const SCALAR_FIELDS = [
   "qtd_funcionarios_estimada",
   "capital_social",
   "data_abertura",
+  "simples_optante",
+  "simples_desde",
+  "mei_optante",
+  "mei_desde",
   "melhor_telefone",
   "melhor_site",
   "email_receita",
@@ -106,10 +110,11 @@ function melhorFonte(entradas: EntradaFonte[]): SourceId {
   return melhor.fonte;
 }
 
-export type EmpresaMesclada = MappedCompany & {
-  fonte_principal: string;
-  fontes: string[];
-};
+export type EmpresaMesclada = MappedCompany &
+  Partial<CamposTributarios> & {
+    fonte_principal: string;
+    fontes: string[];
+  };
 
 /**
  * @param entradas resultados por fonte já na ordem de prioridade (primeiro vence)

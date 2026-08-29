@@ -8,13 +8,30 @@ import {
 } from "./econodata.server";
 import { buscarMultiFonte } from "./sources/registry.server";
 import { type Escopo, unidadeDeGravacao, unidadesFiltro } from "./escopo.server";
-import type { ActivityType, Company, CompanyList, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
+import { isAdministrador, normalizarSocio } from "./types";
+import type { ActivityType, Company, CompanyList, Json, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
 
 
 type Row = Record<string, unknown>;
 
+/**
+ * Normaliza sócios na leitura: registros gravados antes da padronização das
+ * fontes guardam o formato cru da API (person/role), que a ficha não sabe ler.
+ */
+function pessoasDaLinha(valor: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(valor)) return [];
+  return valor.map((pessoa) => {
+    const p = normalizarSocio((pessoa ?? {}) as Record<string, unknown>);
+    return { ...p, is_administrador: isAdministrador(p as { qualificacao?: Json; cargo?: Json }) };
+  });
+}
+
 function asCompany(row: Row): Company {
-  return row as unknown as Company;
+  return {
+    ...row,
+    contatos: pessoasDaLinha(row["contatos"]),
+    decisores: pessoasDaLinha(row["decisores"]),
+  } as unknown as Company;
 }
 
 async function logQuery(entry: {
@@ -61,12 +78,39 @@ async function persistir(mapped: Persistivel[], listId: string | null, unitId: s
     const unit = unidadeAtual.get(cnpj) ?? unitId;
     return { ...(m as Record<string, unknown>), ...(listId ? { list_id: listId } : {}), unit_id: unit };
   });
-  const { data, error } = await supabaseAdmin
-    .from("companies")
-    .upsert(payload as never, { onConflict: "cnpj" })
-    .select("*");
+  const { data, error } = await gravarEmpresas(payload);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => asCompany(r as Row));
+}
+
+/** Colunas recentes que podem não existir se a migration ainda não foi aplicada. */
+const COLUNAS_OPCIONAIS = ["simples_optante", "simples_desde", "mei_optante", "mei_desde"];
+
+/**
+ * Grava as empresas e, se o banco ainda não tiver alguma coluna opcional
+ * (migration pendente), repete a gravação sem ela em vez de perder a consulta.
+ */
+async function gravarEmpresas(payload: Record<string, unknown>[]) {
+  const enviar = (linhas: Record<string, unknown>[]) =>
+    supabaseAdmin.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
+
+  // O PostgREST reporta uma coluna por vez, então tenta de novo a cada descarte.
+  let linhas = payload;
+  let resposta = await enviar(linhas);
+  for (let tentativa = 0; tentativa < COLUNAS_OPCIONAIS.length; tentativa += 1) {
+    const mensagem = resposta.error?.message;
+    if (!mensagem) break;
+    const ausente = COLUNAS_OPCIONAIS.find(
+      (c) => mensagem.includes(`'${c}'`) && linhas.some((l) => c in l),
+    );
+    if (!ausente) break;
+    console.warn(
+      `[companies] coluna "${ausente}" não existe no banco (migration pendente). Gravando sem ela.`,
+    );
+    linhas = linhas.map(({ [ausente]: _ignorado, ...resto }) => resto);
+    resposta = await enviar(linhas);
+  }
+  return resposta;
 }
 
 
@@ -267,6 +311,8 @@ export async function listarEmpresas(input: {
   capitalMax?: number | undefined;
   aberturaDe?: string | undefined;
   aberturaAte?: string | undefined;
+  simples?: string | undefined;
+  mei?: string | undefined;
   prospectar?: boolean | undefined;
   page?: number | undefined;
   perPage?: number | undefined;
@@ -312,6 +358,9 @@ export async function listarEmpresas(input: {
   if (typeof input.capitalMax === "number") q = q.lte("capital_social", input.capitalMax);
   if (input.aberturaDe) q = q.gte("data_abertura", input.aberturaDe);
   if (input.aberturaAte) q = q.lte("data_abertura", input.aberturaAte);
+  if (input.simples === "sim" || input.simples === "nao")
+    q = q.eq("simples_optante", input.simples === "sim");
+  if (input.mei === "sim" || input.mei === "nao") q = q.eq("mei_optante", input.mei === "sim");
   if (typeof input.prospectar === "boolean") q = q.eq("prospectar", input.prospectar);
 
   const { data, error, count } = await q

@@ -1,5 +1,5 @@
 import type { EconodataCompany, FaixaEconodata } from "./econodata.server";
-import { isAdministrador, onlyDigits, type Json } from "./types";
+import { isAdministrador, normalizarSocio, onlyDigits, type Json } from "./types";
 
 function faixaTexto(v: FaixaEconodata): string | null {
   if (v == null) return null;
@@ -37,7 +37,7 @@ function limparTelefones(list: unknown): string[] {
 function marcarAdministradores(lista: unknown): Record<string, unknown>[] {
   if (!Array.isArray(lista)) return [];
   return lista.map((pessoa) => {
-    const p = (pessoa ?? {}) as Record<string, unknown>;
+    const p = normalizarSocio((pessoa ?? {}) as Record<string, unknown>);
     return { ...p, is_administrador: isAdministrador(p as { qualificacao?: Json; cargo?: Json }) };
   });
 }
