@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,10 +77,11 @@ function Pagina() {
   const excluir = useServerFn(excluirImportacaoFn);
   const listar = useServerFn(listarImportacoesFn);
   const itens = useServerFn(itensImportacaoFn);
+  const { unidade } = useUnidadeAtiva();
 
   const jobs = useQuery({
-    queryKey: ["importacoes"],
-    queryFn: () => listar(undefined as never),
+    queryKey: ["importacoes", unidade],
+    queryFn: () => listar({ data: unidade ? { unidade } : {} }),
     refetchInterval: rodando ? 3000 : false,
   });
 

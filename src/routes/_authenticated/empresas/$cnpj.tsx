@@ -23,6 +23,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import {
   assumirLeadsFn,
@@ -172,10 +173,11 @@ function Detalhe() {
   const { cnpj } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { unidade } = useUnidadeAtiva();
 
   const empresa = useQuery({
-    queryKey: ["empresa", cnpj],
-    queryFn: () => obterEmpresaFn({ data: { cnpj } }),
+    queryKey: ["empresa", cnpj, unidade],
+    queryFn: () => obterEmpresaFn({ data: { cnpj, unidade: unidade ?? undefined } }),
   });
   const listas = useListas();
 
@@ -205,7 +207,7 @@ function Detalhe() {
 
   const mutSalvar = useMutation({
     mutationFn: (patch: { status?: Status; notas?: string; listId?: string | null }) =>
-      atualizar({ data: { cnpj, ...patch } }),
+      atualizar({ data: { cnpj, ...patch, unidade: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Empresa atualizada.");
       void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
@@ -295,7 +297,7 @@ function Detalhe() {
   }
 
   const mutAssumir = useMutation({
-    mutationFn: () => assumir({ data: { cnpjs: [cnpj] } }),
+    mutationFn: () => assumir({ data: { cnpjs: [cnpj], unidade: unidade ?? undefined } }),
     onSuccess: (r) => {
       if (r.assumidos === 0) toast.error("Outro vendedor assumiu esta empresa primeiro.");
       else toast.success("Lead assumido.");
@@ -305,7 +307,7 @@ function Detalhe() {
   });
 
   const mutLiberar = useMutation({
-    mutationFn: () => liberar({ data: { cnpjs: [cnpj] } }),
+    mutationFn: () => liberar({ data: { cnpjs: [cnpj], unidade: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Lead devolvido para a base.");
       recarregarFicha();
@@ -325,7 +327,7 @@ function Detalhe() {
 
   const mutSync = useMutation({
     mutationFn: (completo: boolean) =>
-      reconsultar({ data: { cnpjs: [cnpj], forcar: true, completo } }),
+      reconsultar({ data: { cnpjs: [cnpj], forcar: true, completo, unitId: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Dados atualizados nas fontes ativas.");
       void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
@@ -334,7 +336,7 @@ function Detalhe() {
   });
 
   const mutExcluir = useMutation({
-    mutationFn: () => excluir({ data: { cnpj } }),
+    mutationFn: () => excluir({ data: { cnpj, unidade: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Empresa removida da base.");
       void qc.invalidateQueries({ queryKey: ["empresas"] });
@@ -427,6 +429,11 @@ function Detalhe() {
           <p className="mt-1 font-mono text-sm text-muted-foreground">{formatCnpj(e.cnpj)}</p>
           {e.nome_fantasia && <p className="text-sm text-muted-foreground">{e.nome_fantasia}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            {me && me.unidades.length > 1 && (
+              <Badge variant="outline" className="border-primary text-primary">
+                Carteira: {me.unidades.find((u) => u.id === e.unit_id)?.nome ?? "unidade desconhecida"}
+              </Badge>
+            )}
             {e.owner_id ? (
               <Badge variant="outline" className="border-chart-3 text-chart-3">
                 <UserCheck className="mr-1 h-3 w-3" />

@@ -78,6 +78,7 @@ const filtrosSchema = z.object({
   mei: z.enum(["sim", "nao"]).optional(),
   prospectar: z.boolean().optional(),
   dono: z.enum(["meus", "sem_dono", "outros"]).optional(),
+  unidade: z.string().uuid().optional(),
 });
 
 const cnpjsSchema = z.array(z.string().min(14).max(20)).min(1).max(500);
@@ -100,9 +101,10 @@ export const consultarChavesFn = createServerFn({ method: "POST" })
 
 export const opcoesFiltroFn = createServerFn({ method: "GET" })
   .middleware([exigirAcesso("/empresas")])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { opcoesFiltro } = await import("./repo.server");
-    return opcoesFiltro(context.escopo);
+    return opcoesFiltro(restringirUnidade(context.escopo, data.unidade));
   });
 
 export const listarEmpresasFn = createServerFn({ method: "GET" })
@@ -117,15 +119,18 @@ export const listarEmpresasFn = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const { listarEmpresas } = await import("./repo.server");
-    return listarEmpresas({ ...data, escopo: context.escopo });
+    const { unidade, ...filtros } = data;
+    return listarEmpresas({ ...filtros, escopo: restringirUnidade(context.escopo, unidade) });
   });
 
 export const obterEmpresaFn = createServerFn({ method: "GET" })
   .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
-  .inputValidator((d: unknown) => z.object({ cnpj: z.string().min(14).max(20) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ cnpj: z.string().min(14).max(20), unidade: z.string().uuid().optional() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { obterEmpresa } = await import("./repo.server");
-    return obterEmpresa(data.cnpj, context.escopo);
+    return obterEmpresa(data.cnpj, restringirUnidade(context.escopo, data.unidade));
   });
 
 export const atualizarEmpresaFn = createServerFn({ method: "POST" })
@@ -140,20 +145,24 @@ export const atualizarEmpresaFn = createServerFn({ method: "POST" })
         productId: z.string().uuid().nullable().optional(),
         tags: z.array(z.string().max(40)).max(20).optional(),
         prospectar: z.boolean().optional(),
+        unidade: z.string().uuid().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { atualizarEmpresa } = await import("./repo.server");
-    return atualizarEmpresa({ ...data, escopo: context.escopo });
+    const { unidade, ...patch } = data;
+    return atualizarEmpresa({ ...patch, escopo: restringirUnidade(context.escopo, unidade) });
   });
 
 export const excluirEmpresaFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/empresas")])
-  .inputValidator((d: unknown) => z.object({ cnpj: z.string().min(14).max(20) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ cnpj: z.string().min(14).max(20), unidade: z.string().uuid().optional() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { excluirEmpresa } = await import("./repo.server");
-    return excluirEmpresa(data.cnpj, context.escopo);
+    return excluirEmpresa(data.cnpj, restringirUnidade(context.escopo, data.unidade));
   });
 
 export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
@@ -163,41 +172,48 @@ export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
       .object({
         cnpjs: z.array(z.string().min(14).max(20)).min(1).max(500),
         listId: z.string().uuid().nullable(),
+        unidade: z.string().uuid().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { vincularEmpresasLista } = await import("./repo.server");
-    return vincularEmpresasLista(data.cnpjs, data.listId, context.escopo);
+    return vincularEmpresasLista(data.cnpjs, data.listId, restringirUnidade(context.escopo, data.unidade));
   });
 
 /** O vendedor assume o lead; quem já tem dono não é tocado. */
 export const assumirLeadsFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
-  .inputValidator((d: unknown) => z.object({ cnpjs: cnpjsSchema }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ cnpjs: cnpjsSchema, unidade: z.string().uuid().optional() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { assumirLeads } = await import("./repo.server");
-    return assumirLeads(data.cnpjs, context.escopo);
+    return assumirLeads(data.cnpjs, restringirUnidade(context.escopo, data.unidade));
   });
 
 /** Devolve o lead para a base. */
 export const liberarLeadsFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
-  .inputValidator((d: unknown) => z.object({ cnpjs: cnpjsSchema }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ cnpjs: cnpjsSchema, unidade: z.string().uuid().optional() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { liberarLeads } = await import("./repo.server");
-    return liberarLeads(data.cnpjs, context.escopo);
+    return liberarLeads(data.cnpjs, restringirUnidade(context.escopo, data.unidade));
   });
 
 /** Transferência de carteira entre vendedores (gestor para cima). */
 export const definirDonoFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/empresas", "/equipe")])
   .inputValidator((d: unknown) =>
-    z.object({ cnpjs: cnpjsSchema, ownerId: z.string().uuid().nullable() }).parse(d),
+    z
+      .object({ cnpjs: cnpjsSchema, ownerId: z.string().uuid().nullable(), unidade: z.string().uuid().optional() })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { definirDono } = await import("./repo.server");
-    return definirDono(data.cnpjs, data.ownerId, context.escopo);
+    return definirDono(data.cnpjs, data.ownerId, restringirUnidade(context.escopo, data.unidade));
   });
 
 export const marcarProspectarFn = createServerFn({ method: "POST" })
@@ -207,12 +223,13 @@ export const marcarProspectarFn = createServerFn({ method: "POST" })
       .object({
         cnpjs: z.array(z.string().min(14).max(20)).min(1).max(500),
         valor: z.boolean(),
+        unidade: z.string().uuid().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { marcarProspectar } = await import("./repo.server");
-    return marcarProspectar(data.cnpjs, data.valor, context.escopo);
+    return marcarProspectar(data.cnpjs, data.valor, restringirUnidade(context.escopo, data.unidade));
   });
 
 export const listarListasFn = createServerFn({ method: "GET" })
@@ -242,10 +259,12 @@ export const criarListaFn = createServerFn({ method: "POST" })
 
 export const excluirListaFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/listas")])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), unidade: z.string().uuid().optional() }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const { excluirLista } = await import("./repo.server");
-    return excluirLista(data.id, context.escopo);
+    return excluirLista(data.id, restringirUnidade(context.escopo, data.unidade));
   });
 
 export const obterPainelFn = createServerFn({ method: "GET" })
@@ -261,12 +280,14 @@ export const exportarEmpresasFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => filtrosSchema.parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { exportarEmpresas } = await import("./repo.server");
-    return exportarEmpresas({ ...data, escopo: context.escopo });
+    const { unidade, ...filtros } = data;
+    return exportarEmpresas({ ...filtros, escopo: restringirUnidade(context.escopo, unidade) });
   });
 
 export const contarSemListaFn = createServerFn({ method: "GET" })
   .middleware([exigirAcesso("/listas")])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { contarSemLista } = await import("./repo.server");
-    return contarSemLista(context.escopo);
+    return contarSemLista(restringirUnidade(context.escopo, data.unidade));
   });

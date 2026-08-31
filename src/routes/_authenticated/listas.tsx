@@ -43,7 +43,10 @@ function Listas() {
   const [nome, setNome] = useState("");
   const { unidade } = useUnidadeAtiva();
   const listas = useListas();
-  const semLista = useQuery({ queryKey: ["sem-lista"], queryFn: () => contarSemListaFn() });
+  const semLista = useQuery({
+    queryKey: ["sem-lista", unidade],
+    queryFn: () => contarSemListaFn({ data: unidade ? { unidade } : {} }),
+  });
   const criar = useServerFn(criarListaFn);
   const excluir = useServerFn(excluirListaFn);
 
@@ -58,7 +61,7 @@ function Listas() {
   });
 
   const mutExcluir = useMutation({
-    mutationFn: (id: string) => excluir({ data: { id } }),
+    mutationFn: (id: string) => excluir({ data: { id, unidade: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Lista removida.");
       void qc.invalidateQueries({ queryKey: ["listas"] });

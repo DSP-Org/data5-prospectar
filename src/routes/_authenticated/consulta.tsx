@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, ChevronDown, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import {
   consultarCnpjsFn,
@@ -72,6 +73,7 @@ function Consulta() {
 
 
   const listas = useListas();
+  const { unidade } = useUnidadeAtiva();
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
 
 
@@ -79,7 +81,9 @@ function Consulta() {
 
   const mutCnpjs = useMutation({
     mutationFn: (p: { cnpjs: string[]; completo: boolean }) =>
-      consultarCnpjs({ data: { cnpjs: p.cnpjs, listId: alvoLista, completo: p.completo } }),
+      consultarCnpjs({
+        data: { cnpjs: p.cnpjs, listId: alvoLista, completo: p.completo, unitId: unidade ?? undefined },
+      }),
     onSuccess: (res) => {
       setItens(res.itens);
       const ok = res.itens.filter((i) => i.encontrada).length;
@@ -320,6 +324,7 @@ function JanelaCnpja({
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
   const buscarLocal = useServerFn(buscarLocalFn);
   const qc = useQueryClient();
+  const { unidade } = useUnidadeAtiva();
 
   const digitos = cnpj.replace(/\D/g, "");
   const ehCnpj = digitos.length === 14;
@@ -345,7 +350,9 @@ function JanelaCnpja({
 
   const salvar = useMutation({
     mutationFn: (valor: string) =>
-      consultarCnpjs({ data: { cnpjs: [valor.replace(/\D/g, "")], listId, completo: false } }),
+      consultarCnpjs({
+        data: { cnpjs: [valor.replace(/\D/g, "")], listId, completo: false, unitId: unidade ?? undefined },
+      }),
     onSuccess: () => {
       toast.success("Empresa salva na base.");
       void qc.invalidateQueries();
@@ -734,6 +741,7 @@ function BuscaAvancadaCnpja({
 
   const buscar = useServerFn(buscarCnpjaFn);
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
+  const { unidade } = useUnidadeAtiva();
 
   const municipios = useQuery({
     queryKey: ["ibge-municipios", f.uf],
@@ -921,7 +929,7 @@ function BuscaAvancadaCnpja({
 
   const salvar = useMutation({
     mutationFn: (cnpjs: string[]) =>
-      consultarCnpjs({ data: { cnpjs, listId, completo: false } }),
+      consultarCnpjs({ data: { cnpjs, listId, completo: false, unitId: unidade ?? undefined } }),
     onSuccess: (r) => {
       toast.success(`${r.itens?.length ?? 0} empresa(s) salva(s) na base.`);
       void qc.invalidateQueries();

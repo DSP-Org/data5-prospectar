@@ -56,7 +56,7 @@ function Funil() {
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
 
   const mutAssumir = useMutation({
-    mutationFn: (cnpj: string) => assumir({ data: { cnpjs: [cnpj] } }),
+    mutationFn: (cnpj: string) => assumir({ data: { cnpjs: [cnpj], unidade: unidade ?? undefined } }),
     onSuccess: (r) => {
       if (r.assumidos === 0) toast.error("Outro vendedor assumiu esta empresa primeiro.");
       else toast.success("Lead assumido.");
@@ -71,7 +71,7 @@ function Funil() {
 
   const mutStatus = useMutation({
     mutationFn: ({ cnpj, status }: { cnpj: string; status: Status }) =>
-      atualizar({ data: { cnpj, status } }),
+      atualizar({ data: { cnpj, status, unidade: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Status atualizado.");
       void qc.invalidateQueries({ queryKey: ["funil"] });
@@ -201,7 +201,7 @@ function Funil() {
                 {lista.map((e) => {
                   const last = ultimas[e.cnpj];
                   return (
-                    <Card key={e.cnpj} className="border-l-4" style={{ borderLeftColor: status === "cliente" ? "var(--color-chart-2)" : status === "descartado" ? "var(--color-muted-foreground)" : "var(--color-primary)" }}>
+                    <Card key={`${e.cnpj}:${e.unit_id}`} className="border-l-4" style={{ borderLeftColor: status === "cliente" ? "var(--color-chart-2)" : status === "descartado" ? "var(--color-muted-foreground)" : "var(--color-primary)" }}>
                       <CardContent className="space-y-3 p-3">
                         <div>
                           <Link

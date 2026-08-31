@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Download, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import { criarImportacaoFn } from "@/lib/importacoes.functions";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function ImportarEmpresas() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const listas = useListas();
+  const { unidade } = useUnidadeAtiva();
   const criarImportacao = useServerFn(criarImportacaoFn);
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -74,6 +76,7 @@ export function ImportarEmpresas() {
           arquivo,
           cnpjs,
           listId: lista === "nenhuma" ? null : lista,
+          unitId: unidade,
         },
       });
       qc.invalidateQueries({ queryKey: ["importacoes"] });

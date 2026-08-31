@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import {
   assumirLeadsFn,
@@ -371,6 +372,7 @@ function Empresas() {
   };
   const avancadosAtivos = filtrosAvancadosAtivos(av);
 
+  const { unidade } = useUnidadeAtiva();
   const filtros = {
     busca,
     status,
@@ -380,12 +382,13 @@ function Empresas() {
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
     ...(carteira === "todas" ? {} : { dono: carteira as "meus" | "sem_dono" | "outros" }),
     ...filtrosAvancados(av),
+    ...(unidade ? { unidade } : {}),
   };
   const listas = useListas();
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const opcoes = useQuery({
-    queryKey: ["opcoes-filtro"],
-    queryFn: () => opcoesFiltroFn(),
+    queryKey: ["opcoes-filtro", unidade],
+    queryFn: () => opcoesFiltroFn({ data: unidade ? { unidade } : {} }),
     staleTime: 5 * 60 * 1000,
   });
   const empresas = useQuery({
@@ -403,7 +406,8 @@ function Empresas() {
   const todosMarcados = linhas.length > 0 && linhas.every((e) => selecionados.includes(e.cnpj));
 
   const mutVincular = useMutation({
-    mutationFn: (listId: string | null) => vincular({ data: { cnpjs: selecionados, listId } }),
+    mutationFn: (listId: string | null) =>
+      vincular({ data: { cnpjs: selecionados, listId, unidade: unidade ?? undefined } }),
     onSuccess: (r) => {
       toast.success(`${r.total} empresa(s) atualizada(s).`);
       setSelecionados([]);
@@ -418,7 +422,7 @@ function Empresas() {
   const liberar = useServerFn(liberarLeadsFn);
 
   const mutAssumir = useMutation({
-    mutationFn: (cnpjs: string[]) => assumir({ data: { cnpjs } }),
+    mutationFn: (cnpjs: string[]) => assumir({ data: { cnpjs, unidade: unidade ?? undefined } }),
     onSuccess: (r) => {
       if (r.assumidos === 0) toast.error("Nenhum lead assumido: todos já tinham dono.");
       else if (r.jaComDono > 0)
@@ -431,7 +435,7 @@ function Empresas() {
   });
 
   const mutLiberar = useMutation({
-    mutationFn: (cnpjs: string[]) => liberar({ data: { cnpjs } }),
+    mutationFn: (cnpjs: string[]) => liberar({ data: { cnpjs, unidade: unidade ?? undefined } }),
     onSuccess: (r) => {
       if (r.liberados === 0) toast.error("Nada liberado: estes leads não são seus.");
       else toast.success(`${r.liberados} lead(s) devolvido(s) para a base.`);
@@ -443,7 +447,7 @@ function Empresas() {
 
   const mutProspectar = useMutation({
     mutationFn: ({ cnpjs, valor }: { cnpjs: string[]; valor: boolean }) =>
-      marcar({ data: { cnpjs, valor } }),
+      marcar({ data: { cnpjs, valor, unidade: unidade ?? undefined } }),
     onSuccess: (r, v) => {
       toast.success(
         v.valor
@@ -489,7 +493,7 @@ function Empresas() {
   const consultarCnpj = useServerFn(consultarCnpjsFn);
   const [cnpjTentado, setCnpjTentado] = useState<string | null>(null);
   const buscarPorCnpj = useMutation({
-    mutationFn: (cnpj: string) => consultarCnpj({ data: { cnpjs: [cnpj] } }),
+    mutationFn: (cnpj: string) => consultarCnpj({ data: { cnpjs: [cnpj], unitId: unidade ?? undefined } }),
     onSuccess: (r) => {
       const item = r.itens[0];
       if (item?.encontrada) {
@@ -531,7 +535,7 @@ function Empresas() {
   });
   const resultadoExterno = buscarPorNome.data?.itens ?? null;
   const salvarExterno = useMutation({
-    mutationFn: (cnpjs: string[]) => consultarCnpj({ data: { cnpjs } }),
+    mutationFn: (cnpjs: string[]) => consultarCnpj({ data: { cnpjs, unitId: unidade ?? undefined } }),
     onSuccess: (r) => {
       const salvas = r.itens.filter((i) => i.encontrada).length;
       toast.success(`${salvas} empresa(s) adicionada(s) à base.`);
@@ -1182,7 +1186,7 @@ function Empresas() {
                 </TableRow>
               )}
               {linhas.map((e) => (
-                <TableRow key={e.cnpj}>
+                <TableRow key={`${e.cnpj}:${e.unit_id}`}>
                   <TableCell>
                     <Checkbox
                       checked={selecionados.includes(e.cnpj)}

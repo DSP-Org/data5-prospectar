@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { comUnidadeAtiva } from "./escopo";
+import { comUnidadeAtiva, restringirUnidade } from "./escopo";
 import { exigirAcesso } from "./autorizacao";
 
 export const criarImportacaoFn = createServerFn({ method: "POST" })
@@ -51,9 +51,10 @@ export const statusImportacaoFn = createServerFn({ method: "GET" })
 
 export const listarImportacoesFn = createServerFn({ method: "GET" })
   .middleware([exigirAcesso("/importacoes")])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { listarImportacoes } = await import("./importacoes.server");
-    return listarImportacoes(context.escopo);
+    return listarImportacoes(restringirUnidade(context.escopo, data.unidade));
   });
 
 export const itensImportacaoFn = createServerFn({ method: "GET" })

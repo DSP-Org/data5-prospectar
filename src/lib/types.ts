@@ -64,6 +64,8 @@ export type Company = {
   fonte_principal: string | null;
   fontes: string[];
 
+  /** Unidade dona desta linha de carteira (independente do cadastro compartilhado). */
+  unit_id: string | null;
   status: Status;
   prospectar: boolean;
   /** Vendedor que assumiu o lead; nulo quando ainda não tem dono. */

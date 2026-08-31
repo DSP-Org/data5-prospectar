@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Loader2, Star, StarOff } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import {
   listarEmpresasFn,
@@ -63,7 +64,8 @@ function ClientesPotenciais() {
   const [lista, setLista] = useState("todas");
   const [page, setPage] = useState(1);
 
-  const filtros = { busca, status, listId: lista, prospectar: true };
+  const { unidade } = useUnidadeAtiva();
+  const filtros = { busca, status, listId: lista, prospectar: true, ...(unidade ? { unidade } : {}) };
   const listas = useListas();
   const empresas = useQuery({
     queryKey: ["clientes-potenciais", filtros, page],
@@ -73,7 +75,7 @@ function ClientesPotenciais() {
 
   const marcar = useServerFn(marcarProspectarFn);
   const desmarcar = useMutation({
-    mutationFn: (cnpj: string) => marcar({ data: { cnpjs: [cnpj], valor: false } }),
+    mutationFn: (cnpj: string) => marcar({ data: { cnpjs: [cnpj], valor: false, unidade: unidade ?? undefined } }),
     onSuccess: () => {
       toast.success("Empresa removida dos clientes potenciais.");
       void qc.invalidateQueries({ queryKey: ["clientes-potenciais"] });
@@ -181,7 +183,7 @@ function ClientesPotenciais() {
                 </TableRow>
               )}
               {linhas.map((e) => (
-                <TableRow key={e.cnpj}>
+                <TableRow key={`${e.cnpj}:${e.unit_id}`}>
                   <TableCell>
                     <Link
                       to="/empresas/$cnpj"

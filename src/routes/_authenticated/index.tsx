@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { Activity, Building2, CheckCircle2, Clock, Database, Search } from "lucide-react";
 
 import { obterPainelFn, testarConexaoFn } from "@/lib/econodata.functions";
@@ -7,8 +7,8 @@ import { STATUS_LABEL, formatCnpj, type Status } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
-const painelQuery = queryOptions({ queryKey: ["painel"], queryFn: () => obterPainelFn() });
 const conexaoQuery = queryOptions({ queryKey: ["conexao"], queryFn: () => testarConexaoFn() });
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -32,15 +32,20 @@ export const Route = createFileRoute("/_authenticated/")({
     links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/" }],
   }),
   loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(painelQuery);
     void context.queryClient.ensureQueryData(conexaoQuery);
   },
   component: Painel,
 });
 
 function Painel() {
-  const { data } = useSuspenseQuery(painelQuery);
+  const { unidade } = useUnidadeAtiva();
+  const { data } = useQuery({
+    queryKey: ["painel", unidade],
+    queryFn: () => obterPainelFn({ data: unidade ? { unidade } : {} }),
+  });
   const { data: conexao } = useSuspenseQuery(conexaoQuery);
+
+  if (!data) return null;
 
   const cards = [
     { label: "Empresas na base", valor: data.total, icon: Database },
@@ -112,7 +117,7 @@ function Painel() {
             )}
             {data.recentes.map((e) => (
               <Link
-                key={e.cnpj}
+                key={`${e.cnpj}:${e.unit_id}`}
                 to="/empresas/$cnpj"
                 params={{ cnpj: e.cnpj.replace(/\D/g, "") }}
                 className="flex items-center justify-between gap-4 rounded-sm border border-border px-4 py-3 transition-colors hover:border-accent"
