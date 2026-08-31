@@ -2,6 +2,12 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { exigirMaster, type Escopo, type Papel } from "./escopo.server";
 
+// Transicao: colunas comerciais sairam de `companies` para `carteira`; o codigo
+// que usa a nova estrutura chega na sequencia. Ate la, consultas a `companies`
+// usam um cliente sem tipagem gerada.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dbAny = supabaseAdmin as any;
+
 const PESO_PAPEL: Record<Papel, number> = { usuario: 0, gestor: 1, admin_unidade: 2, master: 3 };
 
 export type Unidade = {
@@ -34,7 +40,7 @@ export async function listarUnidades(escopo: Escopo): Promise<Unidade[]> {
   const visiveis = escopo.master ? todas : todas.filter((u) => escopo.unitIds.includes(u.id));
 
   const [{ data: empresas }, { data: vinculos }] = await Promise.all([
-    supabaseAdmin.from("companies").select("unit_id"),
+    dbAny.from("companies").select("unit_id"),
     supabaseAdmin.from("user_units").select("unit_id"),
   ]);
   const contarEmpresas: Record<string, number> = {};
@@ -97,7 +103,7 @@ export async function atualizarUnidade(
 
 export async function excluirUnidade(escopo: Escopo, id: string) {
   exigirMaster(escopo);
-  const { count } = await supabaseAdmin
+  const { count } = await dbAny
     .from("companies")
     .select("cnpj", { count: "exact", head: true })
     .eq("unit_id", id);
