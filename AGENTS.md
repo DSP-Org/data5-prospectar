@@ -13,10 +13,10 @@
 ## EGC Project Memory
 
 **Active decisions:**
-- Isolamento hoje e por unidade financeira (territorio exclusivo, ja implementado). Caminho futuro definido pelo usuario em 31/08/2026: se precisar isolar por grupo (holding com varias unidades), criar tabela grupos e adicionar units.grupo_id como FK -- substitui a nota anterior mais vaga de 'tabela clientes/contas acima de units'
+- Hierarquia de propriedade confirmada em 31/08/2026: Cliente (pagante) e dono de um Grupo financeiro, que contem Unidades (vinculadas ao grupo via futuro units.grupo_id). Usuario e um conceito INDEPENDENTE de Cliente/Grupo -- vincula-se a uma ou varias Unidades (user_units, ja implementado), nunca diretamente a Cliente ou Grupo
 
 **Next session:**
-- Se precisar isolar por grupo no futuro: criar tabela grupos + units.grupo_id, sem mexer no isolamento por unidade ja existente
+- Se precisar isolar por grupo/cliente no futuro: criar tabelas grupos e clientes (clientes dono de grupos, grupos contem units via grupo_id) -- escopo de autorizacao do usuario continua vindo so de user_units, sem mudanca
 - Fase 2.3 pendente - mover o loop de importacao do navegador para o servidor
 - Fase 3 pendente - oportunidade com produto e valor, conversao por etapa
 <!-- egc:end -->
