@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Building, Plus, Trash2 } from "lucide-react";
+import { Building, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { criarUnidadeFn, excluirUnidadeFn, listarUnidadesFn, meFn } from "@/lib/auth.functions";
+import { atualizarUnidadeFn, criarUnidadeFn, excluirUnidadeFn, listarUnidadesFn, meFn } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/_authenticated/unidades")({
   head: () => ({
@@ -50,6 +50,37 @@ function UnidadesPage() {
     onSuccess: () => {
       toast.success("Unidade excluída.");
       void qc.invalidateQueries({ queryKey: ["unidades"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const [editando, setEditando] = useState<string | null>(null);
+  const [edNome, setEdNome] = useState("");
+  const [edCidade, setEdCidade] = useState("");
+  const [edUf, setEdUf] = useState("");
+
+  function iniciarEdicao(u: { id: string; nome: string; cidade: string | null; uf: string | null }) {
+    setEditando(u.id);
+    setEdNome(u.nome);
+    setEdCidade(u.cidade ?? "");
+    setEdUf(u.uf ?? "");
+  }
+
+  const atualizar = useMutation({
+    mutationFn: (id: string) =>
+      atualizarUnidadeFn({
+        data: {
+          id,
+          nome: edNome.trim(),
+          cidade: edCidade.trim() || null,
+          uf: edUf.trim().toUpperCase() || null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Unidade atualizada.");
+      setEditando(null);
+      void qc.invalidateQueries({ queryKey: ["unidades"] });
+      void qc.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -126,34 +157,86 @@ function UnidadesPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                unidades.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">
-                      <span className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        {u.nome}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {[u.cidade, u.uf].filter(Boolean).join(" / ") || "—"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{u.total_empresas ?? 0}</TableCell>
-                    <TableCell className="text-right tabular-nums">{u.total_usuarios ?? 0}</TableCell>
-                    {me?.master ? (
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm(`Excluir a unidade "${u.nome}"?`)) excluir.mutate(u.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                unidades.map((u) =>
+                  editando === u.id ? (
+                    <TableRow key={u.id}>
+                      <TableCell>
+                        <Input
+                          value={edNome}
+                          onChange={(e) => setEdNome(e.target.value)}
+                          placeholder="Nome da unidade"
+                          autoFocus
+                        />
                       </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Input
+                            value={edCidade}
+                            onChange={(e) => setEdCidade(e.target.value)}
+                            placeholder="Cidade"
+                            className="w-32"
+                          />
+                          <Input
+                            value={edUf}
+                            onChange={(e) => setEdUf(e.target.value)}
+                            placeholder="UF"
+                            maxLength={2}
+                            className="w-16"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{u.total_empresas ?? 0}</TableCell>
+                      <TableCell className="text-right tabular-nums">{u.total_usuarios ?? 0}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!edNome.trim() || atualizar.isPending}
+                            onClick={() => atualizar.mutate(u.id)}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setEditando(null)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-muted-foreground" />
+                          {u.nome}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {[u.cidade, u.uf].filter(Boolean).join(" / ") || "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{u.total_empresas ?? 0}</TableCell>
+                      <TableCell className="text-right tabular-nums">{u.total_usuarios ?? 0}</TableCell>
+                      {me?.master ? (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => iniciarEdicao(u)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm(`Excluir a unidade "${u.nome}"?`)) excluir.mutate(u.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  ),
+                )
               )}
             </TableBody>
           </Table>

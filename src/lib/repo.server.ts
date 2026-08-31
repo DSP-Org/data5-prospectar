@@ -149,33 +149,43 @@ export async function consultarCnpjs(input: {
   }
 
   // Empresas que já estão na base não vão para as fontes (não gasta crédito).
-  // "Buscar tudo" / reconsulta forçada ignoram esse atalho.
-  let aConsultar = validos;
-  if (!input.forcar && !input.completo) {
-    const { data: jaNaBase } = await supabaseAdmin
-      .from("companies")
-      .select("*")
-      .in("cnpj", validos);
-    const existentes = ((jaNaBase ?? []) as Row[]).map(asCompany);
-    if (existentes.length) {
-      const idsExistentes = new Set(existentes.map((c) => c.cnpj));
-      aConsultar = validos.filter((c) => !idsExistentes.has(c));
-      // Se houver lista de destino, apenas vincula sem reconsultar as fontes.
-      if (input.listId && input.salvar !== false) {
-        await supabaseAdmin
-          .from("companies")
-          .update({ list_id: input.listId } as never)
-          .in("cnpj", Array.from(idsExistentes));
-      }
-      for (const c of existentes)
-        itens.push({
-          cnpj: c.cnpj,
-          encontrada: true,
-          company: input.listId ? { ...c, list_id: input.listId } : c,
-          salva: true,
-        });
+  // "Buscar tudo" / reconsulta forçada ignoram esse atalho — mas só para o que
+  // é território da própria unidade: uma empresa de outra unidade nunca é
+  // exibida nem reconsultada, forçar não muda de quem ela é.
+  const { data: jaNaBase } = await supabaseAdmin.from("companies").select("*").in("cnpj", validos);
+  const existentes = ((jaNaBase ?? []) as Row[]).map(asCompany);
+  const minhas = existentes.filter((c) =>
+    naUnidade(input.escopo, (c as unknown as Row)["unit_id"] as string | null),
+  );
+  const idsMinhas = new Set(minhas.map((c) => c.cnpj));
+  const deOutraUnidade = existentes.filter((c) => !idsMinhas.has(c.cnpj));
+
+  let aConsultar = validos.filter((c) => !deOutraUnidade.some((d) => d.cnpj === c));
+
+  if (!input.forcar && !input.completo && minhas.length) {
+    aConsultar = aConsultar.filter((c) => !idsMinhas.has(c));
+    // Se houver lista de destino, apenas vincula sem reconsultar as fontes.
+    if (input.listId && input.salvar !== false) {
+      await supabaseAdmin
+        .from("companies")
+        .update({ list_id: input.listId } as never)
+        .in("cnpj", Array.from(idsMinhas));
     }
+    for (const c of minhas)
+      itens.push({
+        cnpj: c.cnpj,
+        encontrada: true,
+        company: input.listId ? { ...c, list_id: input.listId } : c,
+        salva: true,
+      });
   }
+  for (const c of deOutraUnidade)
+    itens.push({
+      cnpj: c.cnpj,
+      encontrada: false,
+      erro: "Esta empresa já está na carteira de outra unidade de negócio.",
+      salva: false,
+    });
 
   if (aConsultar.length === 0) return { itens };
 
@@ -321,8 +331,9 @@ export async function listarEmpresas(input: {
 }) {
   const page = Math.max(1, input.page ?? 1);
   const perPage = Math.min(100, input.perPage ?? 25);
-  // A base de empresas pertence ao sistema: não é filtrada pela unidade ativa.
-  let q = supabaseAdmin.from("companies").select("*", { count: "exact" });
+  // Território exclusivo: cada unidade vê as empresas que já são dela, mais as
+  // que ainda não foram trabalhadas por nenhuma unidade do grupo.
+  let q = restringirPorUnidade(supabaseAdmin.from("companies").select("*", { count: "exact" }), input.escopo);
 
 
   if (input.busca?.trim()) {
@@ -401,6 +412,24 @@ function chave(cnpj: string) {
 }
 
 /**
+ * Território exclusivo: cada empresa pertence à unidade que a trouxe primeiro,
+ * ou está livre se ainda não foi trabalhada por nenhuma unidade do grupo.
+ * Master enxerga tudo.
+ */
+function restringirPorUnidade<T extends { or: (f: string) => T }>(q: T, escopo: Escopo): T {
+  const unidades = unidadesFiltro(escopo);
+  if (!unidades) return q;
+  return q.or(`unit_id.is.null,unit_id.in.(${unidades.join(",")})`);
+}
+
+/** Mesma regra que `restringirPorUnidade`, para quando a empresa já foi lida em memória. */
+function naUnidade(escopo: Escopo, unitId: string | null): boolean {
+  const unidades = unidadesFiltro(escopo);
+  if (!unidades) return true;
+  return unitId === null || unidades.includes(unitId);
+}
+
+/**
  * Informação que a ficha precisa mas não mora na tabela: nome do dono e o que
  * está sob opt-out. Fica separado de `obterEmpresa` para não inchar o tipo
  * Company com campos que só existem em uma tela.
@@ -420,11 +449,15 @@ export async function contextoEmpresa(cnpj: string, escopo: Escopo) {
   };
 }
 
-export async function obterEmpresa(cnpj: string, _escopo: Escopo) {
+export async function obterEmpresa(cnpj: string, escopo: Escopo) {
   const q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
   const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? asCompany(data as Row) : null;
+  if (!data) return null;
+  // Território exclusivo: empresa de outra unidade não existe para este usuário,
+  // nem por link direto — se existisse, digitar a URL bastaria para contornar.
+  if (!naUnidade(escopo, (data as Row)["unit_id"] as string | null)) return null;
+  return asCompany(data as Row);
 }
 
 
@@ -433,13 +466,20 @@ export async function obterEmpresa(cnpj: string, _escopo: Escopo) {
  * segue livre; gestor, administrador de unidade e master passam por cima.
  */
 export async function exigirEdicao(escopo: Escopo, cnpj: string) {
-  if (gerenciaCarteira(escopo)) return;
   const { data } = await supabaseAdmin
     .from("companies")
-    .select("owner_id")
+    .select("owner_id, unit_id")
     .eq("cnpj", chave(cnpj))
     .maybeSingle();
-  const dono = (data as { owner_id: string | null } | null)?.owner_id ?? null;
+  const linha = data as { owner_id: string | null; unit_id: string | null } | null;
+
+  // Território é mais forte que carteira: nem gestor passa por cima da unidade
+  // de outro time, só quem de fato pertence àquela unidade (ou o master).
+  if (linha && !naUnidade(escopo, linha.unit_id))
+    throw new Error("Esta empresa pertence a outra unidade de negócio.");
+
+  if (gerenciaCarteira(escopo)) return;
+  const dono = linha?.owner_id ?? null;
   if (!dono || dono === escopo.userId) return;
 
   const { data: perfil } = await supabaseAdmin
@@ -452,8 +492,13 @@ export async function exigirEdicao(escopo: Escopo, cnpj: string) {
   throw new Error(`Esta empresa está na carteira de ${quem}. Peça a liberação para editar.`);
 }
 
-/** Restringe uma alteração em lote ao que o usuário pode mexer (dele ou sem dono). */
+/**
+ * Restringe uma alteração em lote ao que o usuário pode mexer: primeiro o
+ * território (unidade), depois a carteira (dele ou sem dono — gestor passa
+ * por cima da carteira, mas não da unidade).
+ */
 function apenasEditaveis<T extends { or: (f: string) => T }>(q: T, escopo: Escopo): T {
+  q = restringirPorUnidade(q, escopo);
   if (gerenciaCarteira(escopo)) return q;
   return q.or(`owner_id.is.null,owner_id.eq.${escopo.userId}`);
 }
@@ -510,12 +555,12 @@ export async function vincularEmpresasLista(cnpjs: string[], listId: string | nu
 export async function assumirLeads(cnpjs: string[], escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { assumidos: 0, jaComDono: 0 };
-  const { data, error } = await supabaseAdmin
+  const q = supabaseAdmin
     .from("companies")
     .update({ owner_id: escopo.userId, owner_desde: new Date().toISOString() } as never)
     .in("cnpj", chaves)
-    .is("owner_id", null)
-    .select("cnpj");
+    .is("owner_id", null);
+  const { data, error } = await restringirPorUnidade(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
   const assumidos = (data ?? []).length;
   return { assumidos, jaComDono: chaves.length - assumidos };
@@ -529,6 +574,7 @@ export async function liberarLeads(cnpjs: string[], escopo: Escopo) {
     .from("companies")
     .update({ owner_id: null, owner_desde: null } as never)
     .in("cnpj", chaves);
+  q = restringirPorUnidade(q, escopo);
   if (!gerenciaCarteira(escopo)) q = q.eq("owner_id", escopo.userId);
   const { data, error } = await q.select("cnpj");
   if (error) throw new Error(error.message);
@@ -542,14 +588,14 @@ export async function definirDono(cnpjs: string[], ownerId: string | null, escop
     throw new Error("Apenas gestor, administrador de unidade ou master pode transferir carteira.");
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { total: 0 };
-  const { data, error } = await supabaseAdmin
+  const q = supabaseAdmin
     .from("companies")
     .update({
       owner_id: ownerId,
       owner_desde: ownerId ? new Date().toISOString() : null,
     } as never)
-    .in("cnpj", chaves)
-    .select("cnpj");
+    .in("cnpj", chaves);
+  const { data, error } = await restringirPorUnidade(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
   return { total: (data ?? []).length };
 }
@@ -731,8 +777,11 @@ export async function consultarChaves(input: {
 }
 
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
-export async function opcoesFiltro(_escopo: Escopo) {
-  const q = supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores");
+export async function opcoesFiltro(escopo: Escopo) {
+  const q = restringirPorUnidade(
+    supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores"),
+    escopo,
+  );
 
   const { data } = await q.limit(5000);
   const ufs = new Set<string>();
