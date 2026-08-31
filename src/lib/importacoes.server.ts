@@ -130,21 +130,22 @@ export async function processarLote(input: {
 
   await db().from("import_jobs").update({ status: "processando" }).eq("id", job.id);
 
-  // Se o CNPJ já está na base, pula a consulta e segue para o próximo.
+  // Se o CNPJ já está no cadastro compartilhado, pula a consulta e só garante o vínculo com esta unidade.
   const { data: jaExistem } = await db()
     .from("companies")
     .select("cnpj")
     .in("cnpj", pendentes.map((p) => p.cnpj));
   const existentes = new Set(((jaExistem ?? []) as { cnpj: string }[]).map((c) => c.cnpj));
   const pulados = pendentes.filter((p) => existentes.has(p.cnpj));
+  if (pulados.length && job.unit_id) {
+    const { vincularCarteira } = await import("./repo.server");
+    await vincularCarteira(pulados.map((p) => p.cnpj), job.unit_id, job.list_id);
+  }
   for (const item of pulados) {
     await db()
       .from("import_items")
       .update({ status: "concluido", erro: null })
       .eq("id", item.id);
-    if (job.list_id) {
-      await db().from("companies").update({ list_id: job.list_id }).eq("cnpj", item.cnpj);
-    }
   }
   pendentes = pendentes.filter((p) => !existentes.has(p.cnpj));
   if (pendentes.length === 0) {

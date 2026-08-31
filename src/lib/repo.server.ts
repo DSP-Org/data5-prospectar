@@ -11,13 +11,6 @@ import { type Escopo, gerenciaCarteira, unidadeDeGravacao, unidadesFiltro } from
 import { isAdministrador, normalizarSocio } from "./types";
 import type { ActivityType, Company, CompanyList, Json, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
 
-// Transicao: colunas comerciais sairam de `companies` para `carteira`; o codigo
-// que usa a nova estrutura chega na sequencia. Ate la, consultas a `companies`
-// usam um cliente sem tipagem gerada.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const dbAny = supabaseAdmin as any;
-
-
 type Row = Record<string, unknown>;
 
 /**
@@ -68,25 +61,66 @@ export async function testarConexao() {
 
 type Persistivel = ReturnType<typeof mapCompany> | Record<string, unknown>;
 
-async function persistir(mapped: Persistivel[], listId: string | null, unitId: string | null) {
-  if (mapped.length === 0) return [] as Company[];
-  // Mantém a unidade já existente da empresa; só define unidade para registros novos.
-  const cnpjs = mapped.map((m) => String((m as Record<string, unknown>)["cnpj"] ?? ""));
-  const { data: existentes } = await dbAny
-    .from("companies")
-    .select("cnpj, unit_id")
-    .in("cnpj", cnpjs);
-  const unidadeAtual = new Map<string, string | null>(
-    ((existentes ?? []) as Array<{ cnpj: string; unit_id: string | null }>).map((r) => [r.cnpj, r.unit_id]),
-  );
-  const payload = mapped.map((m) => {
-    const cnpj = String((m as Record<string, unknown>)["cnpj"] ?? "");
-    const unit = unidadeAtual.get(cnpj) ?? unitId;
-    return { ...(m as Record<string, unknown>), ...(listId ? { list_id: listId } : {}), unit_id: unit };
+/** Devolve uma empresa "neutra": cadastro real, comercial ainda sem vínculo. */
+function comCarteiraNeutra(row: Row, unitId: string | null = null): Company {
+  return asCompany({
+    ...row,
+    unit_id: unitId,
+    status: "novo",
+    prospectar: false,
+    notas: "",
+    tags: [],
+    list_id: null,
+    product_id: null,
+    owner_id: null,
+    owner_desde: null,
   });
-  const { data, error } = await gravarEmpresas(payload);
+}
+
+/**
+ * Garante uma linha de carteira para (cnpj, unitId) — cria se não existir; se já
+ * existir, só atualiza a lista (quando informada), sem tocar status/dono/notas.
+ */
+export async function vincularCarteira(cnpjs: string[], unitId: string, listId?: string | null) {
+  if (cnpjs.length === 0) return;
+  const linhas = cnpjs.map((cnpj) => ({
+    cnpj,
+    unit_id: unitId,
+    ...(listId ? { list_id: listId } : {}),
+  }));
+  const { error } = await supabaseAdmin
+    .from("carteira")
+    .upsert(linhas as never, { onConflict: "cnpj,unit_id" });
+  if (error) throw new Error(error.message);
+}
+
+/** Lê de volta o cadastro + carteira de uma unidade específica, já no formato que a UI espera. */
+async function empresasDaCarteira(cnpjs: string[], unitId: string | null): Promise<Company[]> {
+  if (cnpjs.length === 0 || !unitId) return [];
+  const { data, error } = await supabaseAdmin
+    .from("v_carteira")
+    .select("*")
+    .in("cnpj", cnpjs)
+    .eq("unit_id", unitId);
   if (error) throw new Error(error.message);
   return ((data ?? []) as Row[]).map((r) => asCompany(r));
+}
+
+/**
+ * Grava o cadastro compartilhado (companies) e, se houver unidade, garante o
+ * vínculo de carteira para ela. Sem unidade (raro: usuário sem nenhuma
+ * vinculada), devolve o cadastro com comercial neutro, sem gravar carteira.
+ */
+async function persistir(mapped: Persistivel[], listId: string | null, unitId: string | null): Promise<Company[]> {
+  if (mapped.length === 0) return [];
+  const { data, error } = await gravarEmpresas(mapped as Record<string, unknown>[]);
+  if (error) throw new Error(error.message);
+  const linhas = (data ?? []) as Row[];
+  if (!unitId) return linhas.map((r) => comCarteiraNeutra(r));
+
+  const cnpjs = linhas.map((r) => String(r["cnpj"]));
+  await vincularCarteira(cnpjs, unitId, listId);
+  return empresasDaCarteira(cnpjs, unitId);
 }
 
 /** Colunas recentes que podem não existir se a migration ainda não foi aplicada. */
@@ -98,7 +132,7 @@ const COLUNAS_OPCIONAIS = ["simples_optante", "simples_desde", "mei_optante", "m
  */
 async function gravarEmpresas(payload: Record<string, unknown>[]) {
   const enviar = (linhas: Record<string, unknown>[]) =>
-    dbAny.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
+    supabaseAdmin.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
 
   // O PostgREST reporta uma coluna por vez, então tenta de novo a cada descarte.
   let linhas = payload;
@@ -154,40 +188,68 @@ export async function consultarCnpjs(input: {
     return { itens };
   }
 
-  // Empresas que já estão na base não vão para as fontes (não gasta crédito).
-  // "Buscar tudo" / reconsulta forçada ignoram esse atalho — mas só para o que
-  // é território da própria unidade: uma empresa de outra unidade nunca é
+  // Empresas que já estão no cadastro compartilhado não vão para as fontes
+  // (não gasta crédito), independente de quem já vinculou. "Buscar tudo" /
+  // reconsulta forçada ignoram esse atalho — mas só para o que é território
+  // da própria unidade: uma empresa vinculada por outra unidade nunca é
   // exibida nem reconsultada, forçar não muda de quem ela é.
-  const { data: jaNaBase } = await dbAny.from("companies").select("*").in("cnpj", validos);
-  const existentes = ((jaNaBase ?? []) as Row[]).map(asCompany);
-  const minhas = existentes.filter((c) =>
-    naUnidade(input.escopo, (c as unknown as Row)["unit_id"] as string | null),
-  );
-  const idsMinhas = new Set(minhas.map((c) => c.cnpj));
-  const deOutraUnidade = existentes.filter((c) => !idsMinhas.has(c.cnpj));
+  const unitIdAtual = unidadeDeGravacao(input.escopo, input.unitId);
+  const salvar = input.salvar !== false;
 
-  let aConsultar = validos.filter((c) => !deOutraUnidade.some((d) => d.cnpj === c));
+  const { data: cadastroRows } = await supabaseAdmin.from("companies").select("cnpj").in("cnpj", validos);
+  const noCadastro = new Set(((cadastroRows ?? []) as Row[]).map((r) => String(r["cnpj"])));
 
-  if (!input.forcar && !input.completo && minhas.length) {
-    aConsultar = aConsultar.filter((c) => !idsMinhas.has(c));
-    // Se houver lista de destino, apenas vincula sem reconsultar as fontes.
-    if (input.listId && input.salvar !== false) {
-      await dbAny
-        .from("companies")
-        .update({ list_id: input.listId } as never)
-        .in("cnpj", Array.from(idsMinhas));
+  const { data: carteiraRows } = await supabaseAdmin.from("carteira").select("cnpj, unit_id").in("cnpj", validos);
+  const carteiraPorCnpj = new Map<string, string>();
+  for (const r of (carteiraRows ?? []) as Row[]) carteiraPorCnpj.set(String(r["cnpj"]), String(r["unit_id"]));
+
+  const minhas: string[] = [];
+  const deOutraUnidade: string[] = [];
+  for (const [cnpj, unitDono] of carteiraPorCnpj)
+    (naUnidade(input.escopo, unitDono) ? minhas : deOutraUnidade).push(cnpj);
+  const semCarteira = validos.filter((c) => !carteiraPorCnpj.has(c));
+
+  let aConsultar = validos.filter((c) => !deOutraUnidade.includes(c));
+
+  if (!input.forcar && !input.completo) {
+    // Já é minha carteira: não reconsulta, só (opcionalmente) atualiza a lista.
+    const minhasNoCadastro = minhas.filter((c) => noCadastro.has(c));
+    if (minhasNoCadastro.length) {
+      aConsultar = aConsultar.filter((c) => !minhasNoCadastro.includes(c));
+      if (unitIdAtual && input.listId && salvar) {
+        await supabaseAdmin
+          .from("carteira")
+          .update({ list_id: input.listId } as never)
+          .in("cnpj", minhasNoCadastro)
+          .eq("unit_id", unitIdAtual);
+      }
+      for (const c of await empresasDaCarteira(minhasNoCadastro, unitIdAtual))
+        itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true });
     }
-    for (const c of minhas)
-      itens.push({
-        cnpj: c.cnpj,
-        encontrada: true,
-        company: input.listId ? { ...c, list_id: input.listId } : c,
-        salva: true,
-      });
+
+    // Cadastro já existe mas ninguém que eu vejo vinculou ainda: vincula sem gastar crédito.
+    const paraVincular = semCarteira.filter((c) => noCadastro.has(c));
+    if (paraVincular.length) {
+      aConsultar = aConsultar.filter((c) => !paraVincular.includes(c));
+      if (unitIdAtual && salvar) {
+        await vincularCarteira(paraVincular, unitIdAtual, input.listId ?? null);
+        for (const c of await empresasDaCarteira(paraVincular, unitIdAtual))
+          itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true });
+      } else {
+        const { data: previa } = await supabaseAdmin.from("companies").select("*").in("cnpj", paraVincular);
+        for (const r of (previa ?? []) as Row[])
+          itens.push({
+            cnpj: String(r["cnpj"]),
+            encontrada: true,
+            company: comCarteiraNeutra(r, unitIdAtual),
+            salva: false,
+          });
+      }
+    }
   }
   for (const c of deOutraUnidade)
     itens.push({
-      cnpj: c.cnpj,
+      cnpj: c,
       encontrada: false,
       erro: "Esta empresa já está na carteira de outra unidade de negócio.",
       salva: false,
@@ -228,9 +290,8 @@ export async function consultarCnpjs(input: {
     });
   }
 
-  const salvar = input.salvar !== false;
   let salvas: Company[] = [];
-  if (salvar) salvas = await persistir(encontradas, input.listId ?? null, unidadeDeGravacao(input.escopo, input.unitId));
+  if (salvar) salvas = await persistir(encontradas, input.listId ?? null, unitIdAtual);
 
   for (const m of encontradas) {
     const cnpj = String(m["cnpj"]);
@@ -238,7 +299,7 @@ export async function consultarCnpjs(input: {
     itens.push({
       cnpj,
       encontrada: true,
-      company: salva ?? (m as unknown as Company),
+      company: salva ?? comCarteiraNeutra(m as Row, unitIdAtual),
       salva: Boolean(salva),
     });
   }
@@ -286,14 +347,15 @@ export async function consultarChave(input: {
     } catch {
       /* mantém apenas o resultado da Econodata */
     }
+    const unitIdAtual = unidadeDeGravacao(input.escopo, input.unitId);
     const salvar = input.salvar !== false;
-    const salvas = salvar ? await persistir([final], input.listId ?? null, unidadeDeGravacao(input.escopo, input.unitId)) : [];
+    const salvas = salvar ? await persistir([final], input.listId ?? null, unitIdAtual) : [];
 
     await logQuery({ tipo, entrada, resultado: "ok", quantidade: 1 });
     return {
       cnpj: mapped.cnpj,
       encontrada: true,
-      company: salvas[0] ?? (mapped as unknown as Company),
+      company: salvas[0] ?? comCarteiraNeutra(mapped as unknown as Row, unitIdAtual),
       salva: salvas.length > 0,
     };
   } catch (e) {
@@ -337,9 +399,9 @@ export async function listarEmpresas(input: {
 }) {
   const page = Math.max(1, input.page ?? 1);
   const perPage = Math.min(100, input.perPage ?? 25);
-  // Território exclusivo: cada unidade vê as empresas que já são dela, mais as
-  // que ainda não foram trabalhadas por nenhuma unidade do grupo.
-  let q = restringirPorUnidade(dbAny.from("companies").select("*", { count: "exact" }), input.escopo);
+  // Território exclusivo: "Base de Empresas" é a carteira da(s) unidade(s) do
+  // usuário — cadastro compartilhado (companies) + comercial da unidade (carteira).
+  let q = restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*", { count: "exact" }), input.escopo);
 
 
   if (input.busca?.trim()) {
@@ -418,21 +480,22 @@ function chave(cnpj: string) {
 }
 
 /**
- * Território exclusivo: cada empresa pertence à unidade que a trouxe primeiro,
- * ou está livre se ainda não foi trabalhada por nenhuma unidade do grupo.
+ * Território exclusivo: só a(s) unidade(s) do usuário enxergam a linha de
+ * carteira. Aplica-se a `carteira`/`v_carteira`, onde unit_id nunca é nulo
+ * (sem linha de carteira = ninguém vinculou ainda, não aparece de jeito nenhum).
  * Master enxerga tudo.
  */
-function restringirPorUnidade<T extends { or: (f: string) => T }>(q: T, escopo: Escopo): T {
+function restringirPorUnidade<T extends { in: (col: string, vals: string[]) => T }>(q: T, escopo: Escopo): T {
   const unidades = unidadesFiltro(escopo);
   if (!unidades) return q;
-  return q.or(`unit_id.is.null,unit_id.in.(${unidades.join(",")})`);
+  return q.in("unit_id", unidades);
 }
 
-/** Mesma regra que `restringirPorUnidade`, para quando a empresa já foi lida em memória. */
+/** Mesma regra que `restringirPorUnidade`, para quando a linha já foi lida em memória. */
 function naUnidade(escopo: Escopo, unitId: string | null): boolean {
   const unidades = unidadesFiltro(escopo);
   if (!unidades) return true;
-  return unitId === null || unidades.includes(unitId);
+  return unitId !== null && unidades.includes(unitId);
 }
 
 /**
@@ -456,13 +519,12 @@ export async function contextoEmpresa(cnpj: string, escopo: Escopo) {
 }
 
 export async function obterEmpresa(cnpj: string, escopo: Escopo) {
-  const q = dbAny.from("companies").select("*").eq("cnpj", chave(cnpj));
-  const { data, error } = await q.maybeSingle();
+  const { data, error } = await supabaseAdmin.from("v_carteira").select("*").eq("cnpj", chave(cnpj)).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  // Território exclusivo: empresa de outra unidade não existe para este usuário,
-  // nem por link direto — se existisse, digitar a URL bastaria para contornar.
-  if (!naUnidade(escopo, (data as Row)["unit_id"] as string | null)) return null;
+  // Território exclusivo: carteira de outra unidade não existe para este
+  // usuário, nem por link direto — se existisse, digitar a URL bastaria pra contornar.
+  if (!naUnidade(escopo, (data as Row)["unit_id"] as string)) return null;
   return asCompany(data as Row);
 }
 
@@ -471,22 +533,31 @@ export async function obterEmpresa(cnpj: string, escopo: Escopo) {
  * A base é visível a todos, mas quem edita é o dono do lead. Empresa sem dono
  * segue livre; gestor, administrador de unidade e master passam por cima.
  */
-export async function exigirEdicao(escopo: Escopo, cnpj: string) {
-  const { data } = await dbAny
-    .from("companies")
-    .select("owner_id, unit_id")
-    .eq("cnpj", chave(cnpj))
-    .maybeSingle();
-  const linha = data as { owner_id: string | null; unit_id: string | null } | null;
+/** Resolve a linha de carteira desta empresa dentro do território do usuário (a única visível). */
+async function carteiraNoTerritorio(escopo: Escopo, cnpj: string) {
+  const { data } = await supabaseAdmin.from("carteira").select("unit_id, owner_id").eq("cnpj", chave(cnpj));
+  const linhas = (data ?? []) as Array<{ unit_id: string; owner_id: string | null }>;
+  const foraDoTerritorio = linhas.some((l) => !naUnidade(escopo, l.unit_id));
+  const minha = linhas.find((l) => naUnidade(escopo, l.unit_id)) ?? null;
+  return { minha, foraDoTerritorio: foraDoTerritorio && !minha };
+}
+
+/**
+ * Devolve a linha de carteira que este usuário pode editar (unidade + dono do
+ * lead), ou lança erro se a empresa pertence a outra unidade ou a outro
+ * vendedor. Devolve null quando a empresa nunca foi vinculada por ninguém.
+ */
+export async function exigirEdicao(escopo: Escopo, cnpj: string): Promise<{ unit_id: string } | null> {
+  const { minha, foraDoTerritorio } = await carteiraNoTerritorio(escopo, cnpj);
 
   // Território é mais forte que carteira: nem gestor passa por cima da unidade
   // de outro time, só quem de fato pertence àquela unidade (ou o master).
-  if (linha && !naUnidade(escopo, linha.unit_id))
-    throw new Error("Esta empresa pertence a outra unidade de negócio.");
+  if (foraDoTerritorio) throw new Error("Esta empresa pertence a outra unidade de negócio.");
+  if (!minha) return null;
 
-  if (gerenciaCarteira(escopo)) return;
-  const dono = linha?.owner_id ?? null;
-  if (!dono || dono === escopo.userId) return;
+  if (gerenciaCarteira(escopo)) return { unit_id: minha.unit_id };
+  const dono = minha.owner_id;
+  if (!dono || dono === escopo.userId) return { unit_id: minha.unit_id };
 
   const { data: perfil } = await supabaseAdmin
     .from("profiles")
@@ -503,7 +574,10 @@ export async function exigirEdicao(escopo: Escopo, cnpj: string) {
  * território (unidade), depois a carteira (dele ou sem dono — gestor passa
  * por cima da carteira, mas não da unidade).
  */
-function apenasEditaveis<T extends { or: (f: string) => T }>(q: T, escopo: Escopo): T {
+function apenasEditaveis<T extends { or: (f: string) => T; in: (col: string, vals: string[]) => T }>(
+  q: T,
+  escopo: Escopo,
+): T {
   q = restringirPorUnidade(q, escopo);
   if (gerenciaCarteira(escopo)) return q;
   return q.or(`owner_id.is.null,owner_id.eq.${escopo.userId}`);
@@ -519,7 +593,8 @@ export async function atualizarEmpresa(input: {
   tags?: string[] | undefined;
   prospectar?: boolean | undefined;
 }) {
-  await exigirEdicao(input.escopo, input.cnpj);
+  const alvo = await exigirEdicao(input.escopo, input.cnpj);
+  if (!alvo) throw new Error("Esta empresa ainda não foi vinculada a nenhuma unidade.");
   const patch: Row = {};
   if (input.status) patch["status"] = input.status;
   if (input.notas !== undefined) patch["notas"] = input.notas;
@@ -527,17 +602,20 @@ export async function atualizarEmpresa(input: {
   if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
   if (input.prospectar !== undefined) patch["prospectar"] = input.prospectar;
-  const uq = dbAny.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
-  const { data, error } = await uq.select("*").maybeSingle();
+  const { error } = await supabaseAdmin
+    .from("carteira")
+    .update(patch as never)
+    .eq("cnpj", chave(input.cnpj))
+    .eq("unit_id", alvo.unit_id);
   if (error) throw new Error(error.message);
-  return data ? asCompany(data as Row) : null;
+  return obterEmpresa(input.cnpj, input.escopo);
 }
 
 /** Marca/desmarca empresas como "prospectar" (clientes potenciais). */
 export async function marcarProspectar(cnpjs: string[], valor: boolean, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0, semPermissao: 0 };
-  const q = dbAny.from("companies").update({ prospectar: valor } as never).in("cnpj", chaves);
+  const q = supabaseAdmin.from("carteira").update({ prospectar: valor } as never).in("cnpj", chaves);
   const { data, error } = await apenasEditaveis(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
   const total = (data ?? []).length;
@@ -547,7 +625,7 @@ export async function marcarProspectar(cnpjs: string[], valor: boolean, escopo: 
 export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0, semPermissao: 0 };
-  const q = dbAny.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
+  const q = supabaseAdmin.from("carteira").update({ list_id: listId } as never).in("cnpj", chaves);
   const { data, error } = await apenasEditaveis(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
   const total = (data ?? []).length;
@@ -561,8 +639,8 @@ export async function vincularEmpresasLista(cnpjs: string[], listId: string | nu
 export async function assumirLeads(cnpjs: string[], escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { assumidos: 0, jaComDono: 0 };
-  const q = dbAny
-    .from("companies")
+  const q = supabaseAdmin
+    .from("carteira")
     .update({ owner_id: escopo.userId, owner_desde: new Date().toISOString() } as never)
     .in("cnpj", chaves)
     .is("owner_id", null);
@@ -576,8 +654,8 @@ export async function assumirLeads(cnpjs: string[], escopo: Escopo) {
 export async function liberarLeads(cnpjs: string[], escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { liberados: 0, semPermissao: 0 };
-  let q = dbAny
-    .from("companies")
+  let q = supabaseAdmin
+    .from("carteira")
     .update({ owner_id: null, owner_desde: null } as never)
     .in("cnpj", chaves);
   q = restringirPorUnidade(q, escopo);
@@ -594,8 +672,8 @@ export async function definirDono(cnpjs: string[], ownerId: string | null, escop
     throw new Error("Apenas gestor, administrador de unidade ou master pode transferir carteira.");
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { total: 0 };
-  const q = dbAny
-    .from("companies")
+  const q = supabaseAdmin
+    .from("carteira")
     .update({
       owner_id: ownerId,
       owner_desde: ownerId ? new Date().toISOString() : null,
@@ -606,10 +684,18 @@ export async function definirDono(cnpjs: string[], ownerId: string | null, escop
   return { total: (data ?? []).length };
 }
 
+/**
+ * "Excluir" aqui é desvincular da carteira da unidade — o cadastro (companies)
+ * é compartilhado e continua existindo para as demais unidades/grupos.
+ */
 export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
-  await exigirEdicao(escopo, cnpj);
-  const q = dbAny.from("companies").delete().eq("cnpj", chave(cnpj));
-  const { error } = await q;
+  const alvo = await exigirEdicao(escopo, cnpj);
+  if (!alvo) return { ok: true };
+  const { error } = await supabaseAdmin
+    .from("carteira")
+    .delete()
+    .eq("cnpj", chave(cnpj))
+    .eq("unit_id", alvo.unit_id);
   if (error) throw new Error(error.message);
   return { ok: true };
 }
@@ -622,8 +708,9 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   const { data, error } = await lq;
   if (error) throw new Error(error.message);
 
-  // Contagem sobre a base do sistema (sem filtro de unidade); as listas é que pertencem à unidade.
-  const cq = dbAny.from("companies").select("list_id");
+  // Contagem na carteira de cada unidade (a mesma empresa pode estar em listas
+  // diferentes conforme a unidade que a vinculou).
+  const cq = restringirPorUnidade(supabaseAdmin.from("carteira").select("list_id"), escopo);
   const { data: rows } = await cq;
   const contagem: Record<string, number> = {};
   for (const r of (rows ?? []) as Array<{ list_id: string | null }>) {
@@ -637,10 +724,12 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   }));
 }
 
-/** Quantidade de empresas ainda sem lista. */
-export async function contarSemLista(_escopo: Escopo) {
-  const q = dbAny.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
-
+/** Quantidade de empresas ainda sem lista, na carteira das unidades do usuário. */
+export async function contarSemLista(escopo: Escopo) {
+  const q = restringirPorUnidade(
+    supabaseAdmin.from("carteira").select("cnpj", { count: "exact", head: true }).is("list_id", null),
+    escopo,
+  );
   const { count } = await q;
   return count ?? 0;
 }
@@ -664,15 +753,17 @@ export async function excluirLista(id: string, escopo: Escopo) {
   return { ok: true };
 }
 
-export async function obterPainel(_escopo: Escopo) {
-  // Painel reflete a base de empresas do sistema, sem recorte por unidade.
-  const escopar = <T,>(q: T): T => q;
-
-  const { count: total } = await escopar(
-    dbAny.from("companies").select("cnpj", { count: "exact", head: true }),
+export async function obterPainel(escopo: Escopo) {
+  // Painel reflete a carteira da(s) unidade(s) do usuário (master vê tudo).
+  const { count: total } = await restringirPorUnidade(
+    supabaseAdmin.from("carteira").select("cnpj", { count: "exact", head: true }),
+    escopo,
   );
 
-  const { data: statusRows } = await escopar(dbAny.from("companies").select("status, uf, created_at"));
+  const { data: statusRows } = await restringirPorUnidade(
+    supabaseAdmin.from("v_carteira").select("status, uf, created_at"),
+    escopo,
+  );
 
   const porStatus: Record<string, number> = {};
   const porUf: Record<string, number> = {};
@@ -690,7 +781,7 @@ export async function obterPainel(_escopo: Escopo) {
     .order("created_at", { ascending: false })
     .limit(8);
 
-  const { data: recentes } = await escopar(dbAny.from("companies").select("*"))
+  const { data: recentes } = await restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*"), escopo)
     .order("created_at", { ascending: false })
     .limit(6);
 
@@ -785,7 +876,7 @@ export async function consultarChaves(input: {
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
 export async function opcoesFiltro(escopo: Escopo) {
   const q = restringirPorUnidade(
-    dbAny.from("companies").select("uf, cidade, porte_estimado, situacao, setores"),
+    supabaseAdmin.from("v_carteira").select("uf, cidade, porte_estimado, situacao, setores"),
     escopo,
   );
 
@@ -1017,7 +1108,7 @@ export type Pendencia = ProspectionActivity & {
 export async function listarPendencias(escopo: Escopo, apenasMinhas = false) {
   let q = supabaseAdmin
     .from("prospection_activities")
-    .select("*, companies(razao_social, nome_fantasia, owner_id)")
+    .select("*")
     .is("completed_at", null)
     .not("scheduled_at", "is", null)
     .order("scheduled_at", { ascending: true })
@@ -1027,29 +1118,48 @@ export async function listarPendencias(escopo: Escopo, apenasMinhas = false) {
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
+  const linhas = (data ?? []) as Row[];
+  const cnpjs = [...new Set(linhas.map((r) => String(r["company_cnpj"])))];
+
+  // Nome da empresa é cadastral (companies, compartilhado); dono do lead é
+  // comercial (carteira, por unidade) — a atividade já guarda seu próprio unit_id.
+  const [{ data: empresasRows }, { data: carteiraRows }] = cnpjs.length
+    ? await Promise.all([
+        supabaseAdmin.from("companies").select("cnpj, razao_social, nome_fantasia").in("cnpj", cnpjs),
+        supabaseAdmin.from("carteira").select("cnpj, unit_id, owner_id").in("cnpj", cnpjs),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  const nomes = new Map<string, { razao_social: string; nome_fantasia: string | null }>();
+  for (const r of (empresasRows ?? []) as Row[])
+    nomes.set(String(r["cnpj"]), {
+      razao_social: String(r["razao_social"] ?? ""),
+      nome_fantasia: r["nome_fantasia"] as string | null,
+    });
+
+  const donoPorCnpjUnidade = new Map<string, string | null>();
+  for (const r of (carteiraRows ?? []) as Row[])
+    donoPorCnpjUnidade.set(`${r["cnpj"]}::${r["unit_id"]}`, r["owner_id"] as string | null);
 
   const hojeFim = new Date();
   hojeFim.setHours(23, 59, 59, 999);
-  const amanhaFim = new Date(hojeFim);
-  amanhaFim.setDate(amanhaFim.getDate() + 1);
 
   const atrasadas: Pendencia[] = [];
   const hoje: Pendencia[] = [];
   const proximas: Pendencia[] = [];
 
-  for (const row of (data ?? []) as Row[]) {
-    const empresa = (row["companies"] ?? {}) as {
-      razao_social?: string;
-      nome_fantasia?: string | null;
-      owner_id?: string | null;
-    };
-    const meu = empresa.owner_id === escopo.userId;
+  for (const row of linhas) {
+    const cnpj = String(row["company_cnpj"] ?? "");
+    const unitId = row["unit_id"] as string | null;
+    const nomeEmpresa = nomes.get(cnpj);
+    const dono = unitId ? (donoPorCnpjUnidade.get(`${cnpj}::${unitId}`) ?? null) : null;
+    const meu = dono === escopo.userId;
     if (apenasMinhas && !meu) continue;
 
     const item: Pendencia = {
       ...asActivity(row),
-      empresa: empresa.nome_fantasia?.trim() || empresa.razao_social || "Empresa",
-      cnpj: String(row["company_cnpj"] ?? ""),
+      empresa: nomeEmpresa?.nome_fantasia?.trim() || nomeEmpresa?.razao_social || "Empresa",
+      cnpj,
       meu,
     };
     const quando = new Date(item.scheduled_at as string);
@@ -1107,9 +1217,7 @@ export async function obterUltimasAtividadesPorEmpresa(escopo: Escopo) {
 }
 
 export async function funilDados(escopo: Escopo) {
-  let q = dbAny.from("companies").select("*").eq("prospectar", true);
-  const unidades = unidadesFiltro(escopo);
-  if (unidades) q = q.in("unit_id", unidades);
+  const q = restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*").eq("prospectar", true), escopo);
   const { data, error } = await q.order("updated_at", { ascending: false }).limit(2000);
   if (error) throw new Error(error.message);
   const empresas: Company[] = ((data ?? []) as Row[]).map((r) => asCompany(r));
