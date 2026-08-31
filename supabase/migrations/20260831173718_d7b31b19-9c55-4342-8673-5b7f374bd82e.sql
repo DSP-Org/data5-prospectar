@@ -1,0 +1,1 @@
+ALTER VIEW public.v_carteira SET (security_invoker = on);
