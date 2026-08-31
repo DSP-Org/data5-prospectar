@@ -45,6 +45,7 @@ import {
   ACTIVITY_TYPES,
   formatCnpj,
   classificarTelefone,
+  linkWhatsapp,
   possuiWhatsapp,
   isEmailContabil,
   ordenarComAdministradorNoTopo,
@@ -71,6 +72,15 @@ import {
 } from "@/components/ui/select";
 
 type MotivoFim = "ganhou" | "perdeu" | "sem_fit";
+
+/** Sugestão de retorno: dois dias à frente, às 9h — o vendedor ajusta se quiser. */
+function proximoPadrao(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 2);
+  d.setHours(9, 0, 0, 0);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export const Route = createFileRoute("/_authenticated/empresas/$cnpj")({
   head: () => ({
@@ -104,6 +114,19 @@ function Campo({ label, valor }: { label: string; valor?: string | null }) {
 
 function txt(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+/** Abre o canal de contato e prepara o registro da atividade. */
+function BotaoCanal({ rotulo, onClick }: { rotulo: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+    >
+      {rotulo}
+    </button>
+  );
 }
 
 /** Registra o pedido de "não me contate mais" de um contato específico. */
@@ -164,7 +187,7 @@ function Detalhe() {
   const [tipoAtividade, setTipoAtividade] = useState<ActivityType>("ligacao");
   const [obsAtividade, setObsAtividade] = useState("");
   const [respAtividade, setRespAtividade] = useState("");
-  const [agendadaAtividade, setAgendadaAtividade] = useState("");
+  const [agendadaAtividade, setAgendadaAtividade] = useState(proximoPadrao);
   const [proximaTipo, setProximaTipo] = useState<ActivityType>("ligacao");
   const [encerrando, setEncerrando] = useState(false);
   const [motivoFim, setMotivoFim] = useState<MotivoFim>("ganhou");
@@ -217,7 +240,7 @@ function Detalhe() {
       );
       setObsAtividade("");
       setRespAtividade("");
-      setAgendadaAtividade("");
+      setAgendadaAtividade(proximoPadrao());
       setEncerrando(false);
       void qc.invalidateQueries({ queryKey: ["atividades", cnpj] });
       void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
@@ -251,6 +274,20 @@ function Detalhe() {
   const assumir = useServerFn(assumirLeadsFn);
   const liberar = useServerFn(liberarLeadsFn);
   const suprimir = useServerFn(registrarSupressaoFn);
+
+  /**
+   * Abre o canal e já deixa o registro pronto: o contato acontece fora do
+   * sistema, e o que se perde hoje é a volta. Aqui o vendedor sai do WhatsApp
+   * e encontra o formulário preenchido, faltando uma linha e o próximo passo.
+   */
+  function abrirCanal(tipo: ActivityType, url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTipoAtividade(tipo);
+    setEncerrando(false);
+    if (!agendadaAtividade) setAgendadaAtividade(proximoPadrao());
+    document.getElementById("obs")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => document.getElementById("obs")?.focus(), 300);
+  }
 
   function recarregarFicha() {
     void qc.invalidateQueries({ queryKey: ["empresa", cnpj] });
@@ -562,18 +599,27 @@ function Detalhe() {
                         ) : (
                           <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         )}
-                        <a
-                          href={`tel:${t}`}
-                          className={bloqueado ? "text-muted-foreground line-through" : "hover:text-accent"}
-                        >
-                          {t}
-                        </a>
+                        <span className={bloqueado ? "text-muted-foreground line-through" : ""}>{t}</span>
                         <Badge
                           variant="outline"
                           className={whatsapp ? "border-green-600 text-green-700" : "text-muted-foreground"}
                         >
                           {whatsapp ? "WhatsApp" : TIPO_TELEFONE_LABEL[classificarTelefone(t)]}
                         </Badge>
+                        {!bloqueado && !ctx.data?.empresaBloqueada && (
+                          <>
+                            {whatsapp && (
+                              <BotaoCanal
+                                rotulo="WhatsApp"
+                                onClick={() => abrirCanal("whatsapp", linkWhatsapp(t) as string)}
+                              />
+                            )}
+                            <BotaoCanal
+                              rotulo="Ligar"
+                              onClick={() => abrirCanal("ligacao", `tel:${t}`)}
+                            />
+                          </>
+                        )}
                         <BotaoOptOut
                           bloqueado={bloqueado}
                           onRegistrar={(motivo) =>
@@ -593,16 +639,19 @@ function Detalhe() {
                     const bloqueado = (ctx.data?.emailsBloqueados ?? []).includes(m);
                     return (
                       <div key={m} className="flex flex-wrap items-center gap-2 py-0.5">
-                        <a
-                          href={`mailto:${m}`}
+                        <span
                           className={
-                            bloqueado
-                              ? "break-all text-sm text-muted-foreground line-through"
-                              : "break-all text-sm hover:text-accent"
+                            bloqueado ? "break-all text-sm text-muted-foreground line-through" : "break-all text-sm"
                           }
                         >
                           {m}
-                        </a>
+                        </span>
+                        {!bloqueado && !ctx.data?.empresaBloqueada && (
+                          <BotaoCanal
+                            rotulo="E-mail"
+                            onClick={() => abrirCanal("email", `mailto:${m}`)}
+                          />
+                        )}
                         {contabil && (
                           <Badge variant="outline" className="gap-1 border-amber-500 text-amber-700">
                             <AlertTriangle className="h-3 w-3" />

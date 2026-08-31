@@ -182,6 +182,12 @@ export function possuiWhatsapp(valor: string): boolean {
   return classificarTelefone(valor) === "CELULAR";
 }
 
+/** Link de conversa no WhatsApp, com DDI do Brasil. Null quando não é celular. */
+export function linkWhatsapp(valor: string): string | null {
+  if (!possuiWhatsapp(valor)) return null;
+  return `https://wa.me/55${normalizarTelefone(valor)}`;
+}
+
 const PADROES_EMAIL_CONTABIL: RegExp[] = [
   /contabil/i,
   /escritorio/i,
