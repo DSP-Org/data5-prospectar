@@ -7,6 +7,8 @@ import {
   ChevronDown,
   Columns3,
   Download,
+  FileSpreadsheet,
+  FileText,
   FilterX,
   Loader2,
   Smartphone,
@@ -53,6 +55,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -87,12 +90,12 @@ export const Route = createFileRoute("/_authenticated/empresas/")({
       {
         name: "description",
         content:
-          "Filtre, acompanhe o status comercial e exporte em CSV todas as empresas salvas.",
+          "Filtre, acompanhe o status comercial e exporte em Excel ou PDF todas as empresas salvas.",
       },
       { property: "og:title", content: "Base de empresas | Prospectar360" },
       {
         property: "og:description",
-        content: "Filtros por status, estado e lista, com exportação CSV da base de empresas.",
+        content: "Filtros por status, estado e lista, com exportação em Excel e relatório PDF da base de empresas.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://data5-prospectar.lovable.app/empresas" },
@@ -253,19 +256,20 @@ const COLUNAS: Coluna[] = [
   },
 ];
 
-function csv(rows: Company[], visiveis: string[], ctx: Contexto) {
+/** Monta cabeçalhos e linhas conforme as colunas visíveis. */
+function tabelaExport(rows: Company[], visiveis: string[], ctx: Contexto) {
   const cols: Array<[string, (c: Company, ctx: Contexto) => string]> = [
-    ["CNPJ", (c) => c.cnpj],
+    ["CNPJ", (c) => formatCnpj(c.cnpj)],
     ["Razão social", (c) => c.razao_social],
     ["Cliente potencial", (c) => (c.prospectar ? "Sim" : "Não")],
     ...COLUNAS.filter((c) => visiveis.includes(c.key)).flatMap((c) => c.csv),
   ];
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-  return [
-    cols.map(([h]) => esc(h)).join(";"),
-    ...rows.map((r) => cols.map(([, f]) => esc(f(r, ctx))).join(";")),
-  ].join("\n");
+  return {
+    cabecalhos: cols.map(([h]) => h),
+    linhas: rows.map((r) => cols.map(([, f]) => f(r, ctx))),
+  };
 }
+
 
 type Avancados = {
   cidade: string;
@@ -453,19 +457,61 @@ function Empresas() {
   const paginas = Math.max(1, Math.ceil(total / 25));
   const ctx: Contexto = { donos: empresas.data?.donos ?? {}, meuId: me?.userId ?? null };
 
-  async function baixarCsv() {
+  const nomeLista = listas.data?.find((l) => l.id === lista)?.name;
+
+  /** Resumo dos filtros ativos, para o cabeçalho do PDF. */
+  function resumoFiltros(): Array<{ rotulo: string; valor: string }> {
+    const out: Array<{ rotulo: string; valor: string }> = [];
+    if (busca.trim()) out.push({ rotulo: "Busca", valor: busca.trim() });
+    if (status !== "todos")
+      out.push({ rotulo: "Status", valor: STATUS_LABEL[status as Status] ?? status });
+    if (uf !== "todos") out.push({ rotulo: "UF", valor: uf });
+    if (lista !== "todas") out.push({ rotulo: "Lista", valor: nomeLista ?? lista });
+    if (grupo !== "todas") out.push({ rotulo: "Natureza", valor: grupo });
+    if (potencial !== "todas")
+      out.push({ rotulo: "Cliente potencial", valor: potencial === "sim" ? "Sim" : "Não" });
+    if (carteira !== "todas") out.push({ rotulo: "Carteira", valor: carteira });
+    if (av.cidade.trim()) out.push({ rotulo: "Cidade", valor: av.cidade.trim() });
+    if (av.bairro.trim()) out.push({ rotulo: "Bairro", valor: av.bairro.trim() });
+    if (av.cnae.trim()) out.push({ rotulo: "CNAE", valor: av.cnae.trim() });
+    if (av.porte !== "todos") out.push({ rotulo: "Porte", valor: av.porte });
+    if (av.situacao !== "todas") out.push({ rotulo: "Situação", valor: av.situacao });
+    if (av.setor !== "todos") out.push({ rotulo: "Setor", valor: av.setor });
+    if (av.comTelefone) out.push({ rotulo: "Com telefone", valor: "Sim" });
+    if (av.comEmail) out.push({ rotulo: "Com e-mail", valor: "Sim" });
+    if (av.comSite) out.push({ rotulo: "Com site", valor: "Sim" });
+    if (av.comDecisor) out.push({ rotulo: "Com decisor", valor: "Sim" });
+    return out.length > 0 ? out : [{ rotulo: "", valor: "nenhum (base completa)" }];
+  }
+
+  async function exportarBase(formato: "excel" | "pdf") {
     setExportando(true);
     try {
-      const rows = await exportar({ data: filtros });
-      const blob = new Blob(["\ufeff" + csv(rows as Company[], colunas, ctx)], {
-        type: "text/csv;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `empresas-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const rows = (await exportar({ data: filtros })) as Company[];
+      if (rows.length === 0) {
+        toast.error("Nenhuma empresa para exportar com estes filtros.");
+        return;
+      }
+      const { cabecalhos, linhas } = tabelaExport(rows, colunas, ctx);
+      if (formato === "excel") {
+        const { baixarExcel } = await import("@/lib/exportar-base");
+        await baixarExcel(cabecalhos, linhas);
+      } else {
+        const { baixarPdf } = await import("@/lib/exportar-base");
+        const conta = (f: (c: Company) => boolean) => rows.filter(f).length;
+        await baixarPdf({
+          cabecalhos,
+          linhas,
+          filtros: resumoFiltros(),
+          indicadores: [
+            { rotulo: "Empresas", valor: String(rows.length) },
+            { rotulo: "Clientes potenciais", valor: String(conta((c) => !!c.prospectar)) },
+            { rotulo: "Com telefone", valor: String(conta((c) => (c.telefones ?? []).length > 0)) },
+            { rotulo: "Com e-mail", valor: String(conta((c) => (c.emails ?? []).length > 0)) },
+            { rotulo: "Com dono", valor: String(conta((c) => !!c.owner_id)) },
+          ],
+        });
+      }
       toast.success(`${rows.length} empresa(s) exportada(s).`);
     } catch (e) {
       toast.error((e as Error).message);
@@ -473,6 +519,7 @@ function Empresas() {
       setExportando(false);
     }
   }
+
 
 
   return (
@@ -510,10 +557,30 @@ function Empresas() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="outline" onClick={baixarCsv} disabled={exportando || total === 0}>
-          {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Exportar CSV
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" disabled={exportando || total === 0}>
+              {exportando ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Exportar
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Exportar resultado filtrado</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => void exportarBase("excel")}>
+              <FileSpreadsheet className="h-4 w-4" /> Planilha Excel (.xlsx)
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void exportarBase("pdf")}>
+              <FileText className="h-4 w-4" /> Relatório PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         </div>
 
       </header>
