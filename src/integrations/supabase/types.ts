@@ -32,6 +32,90 @@ export type Database = {
         }
         Relationships: []
       }
+      carteira: {
+        Row: {
+          cnpj: string
+          created_at: string
+          id: string
+          list_id: string | null
+          notas: string
+          owner_desde: string | null
+          owner_id: string | null
+          product_id: string | null
+          prospectar: boolean
+          status: string
+          tags: string[]
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          cnpj: string
+          created_at?: string
+          id?: string
+          list_id?: string | null
+          notas?: string
+          owner_desde?: string | null
+          owner_id?: string | null
+          product_id?: string | null
+          prospectar?: boolean
+          status?: string
+          tags?: string[]
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          id?: string
+          list_id?: string | null
+          notas?: string
+          owner_desde?: string | null
+          owner_id?: string | null
+          product_id?: string | null
+          prospectar?: boolean
+          status?: string
+          tags?: string[]
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carteira_cnpj_fkey"
+            columns: ["cnpj"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["cnpj"]
+          },
+          {
+            foreignKeyName: "carteira_cnpj_fkey"
+            columns: ["cnpj"]
+            isOneToOne: false
+            referencedRelation: "v_carteira"
+            referencedColumns: ["cnpj"]
+          },
+          {
+            foreignKeyName: "carteira_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "company_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           bairro: string | null
@@ -53,7 +137,6 @@ export type Database = {
           fonte_principal: string | null
           fontes: string[]
           link_detalhe: string | null
-          list_id: string | null
           logradouro: string | null
           mei_desde: string | null
           mei_optante: boolean | null
@@ -61,13 +144,8 @@ export type Database = {
           melhor_telefone: string | null
           natureza_juridica: string | null
           nome_fantasia: string | null
-          notas: string
           numero: string | null
-          owner_desde: string | null
-          owner_id: string | null
           porte_estimado: string | null
-          product_id: string | null
-          prospectar: boolean
           qtd_funcionarios_estimada: string | null
           raw: Json
           razao_social: string
@@ -76,13 +154,10 @@ export type Database = {
           simples_optante: boolean | null
           sites: string[]
           situacao: string | null
-          status: string
           synced_at: string
-          tags: string[]
           telefones: string[]
           tipo_unidade: string | null
           uf: string | null
-          unit_id: string | null
           updated_at: string
         }
         Insert: {
@@ -105,7 +180,6 @@ export type Database = {
           fonte_principal?: string | null
           fontes?: string[]
           link_detalhe?: string | null
-          list_id?: string | null
           logradouro?: string | null
           mei_desde?: string | null
           mei_optante?: boolean | null
@@ -113,13 +187,8 @@ export type Database = {
           melhor_telefone?: string | null
           natureza_juridica?: string | null
           nome_fantasia?: string | null
-          notas?: string
           numero?: string | null
-          owner_desde?: string | null
-          owner_id?: string | null
           porte_estimado?: string | null
-          product_id?: string | null
-          prospectar?: boolean
           qtd_funcionarios_estimada?: string | null
           raw?: Json
           razao_social?: string
@@ -128,13 +197,10 @@ export type Database = {
           simples_optante?: boolean | null
           sites?: string[]
           situacao?: string | null
-          status?: string
           synced_at?: string
-          tags?: string[]
           telefones?: string[]
           tipo_unidade?: string | null
           uf?: string | null
-          unit_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -157,7 +223,6 @@ export type Database = {
           fonte_principal?: string | null
           fontes?: string[]
           link_detalhe?: string | null
-          list_id?: string | null
           logradouro?: string | null
           mei_desde?: string | null
           mei_optante?: boolean | null
@@ -165,13 +230,8 @@ export type Database = {
           melhor_telefone?: string | null
           natureza_juridica?: string | null
           nome_fantasia?: string | null
-          notas?: string
           numero?: string | null
-          owner_desde?: string | null
-          owner_id?: string | null
           porte_estimado?: string | null
-          product_id?: string | null
-          prospectar?: boolean
           qtd_funcionarios_estimada?: string | null
           raw?: Json
           razao_social?: string
@@ -180,38 +240,13 @@ export type Database = {
           simples_optante?: boolean | null
           sites?: string[]
           situacao?: string | null
-          status?: string
           synced_at?: string
-          tags?: string[]
           telefones?: string[]
           tipo_unidade?: string | null
           uf?: string | null
-          unit_id?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "companies_list_id_fkey"
-            columns: ["list_id"]
-            isOneToOne: false
-            referencedRelation: "company_lists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "companies_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "companies_unit_id_fkey"
-            columns: ["unit_id"]
-            isOneToOne: false
-            referencedRelation: "units"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       company_lists: {
         Row: {
@@ -463,6 +498,13 @@ export type Database = {
             columns: ["company_cnpj"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["cnpj"]
+          },
+          {
+            foreignKeyName: "prospection_activities_company_cnpj_fkey"
+            columns: ["company_cnpj"]
+            isOneToOne: false
+            referencedRelation: "v_carteira"
             referencedColumns: ["cnpj"]
           },
           {
@@ -777,7 +819,84 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_carteira: {
+        Row: {
+          bairro: string | null
+          capital_social: number | null
+          carteira_id: string | null
+          cep: string | null
+          cidade: string | null
+          cnae_codigo: string | null
+          cnae_descricao: string | null
+          cnpj: string | null
+          complemento: string | null
+          contatos: Json | null
+          created_at: string | null
+          data_abertura: string | null
+          decisores: Json | null
+          email_receita: string | null
+          emails: string[] | null
+          enquadramento_porte: string[] | null
+          faturamento_presumido: string | null
+          fonte_principal: string | null
+          fontes: string[] | null
+          link_detalhe: string | null
+          list_id: string | null
+          logradouro: string | null
+          mei_desde: string | null
+          mei_optante: boolean | null
+          melhor_site: string | null
+          melhor_telefone: string | null
+          natureza_juridica: string | null
+          nome_fantasia: string | null
+          notas: string | null
+          numero: string | null
+          owner_desde: string | null
+          owner_id: string | null
+          porte_estimado: string | null
+          product_id: string | null
+          prospectar: boolean | null
+          qtd_funcionarios_estimada: string | null
+          raw: Json | null
+          razao_social: string | null
+          setores: string[] | null
+          simples_desde: string | null
+          simples_optante: boolean | null
+          sites: string[] | null
+          situacao: string | null
+          status: string | null
+          synced_at: string | null
+          tags: string[] | null
+          telefones: string[] | null
+          tipo_unidade: string | null
+          uf: string | null
+          unit_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carteira_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "company_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
