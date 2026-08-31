@@ -119,18 +119,46 @@ export async function baixarPdf(opcoes: {
   }
 
   // Textos longos são encurtados para a tabela caber com linhas compactas.
-  const corta = (v: string) => (v.length > 46 ? `${v.slice(0, 45)}…` : v);
+  const corta = (v: string) => (v.length > 70 ? `${v.slice(0, 69)}…` : v);
+
+  // Peso relativo de cada coluna, para distribuir a largura útil da página.
+  const PESO: Record<string, number> = {
+    CNPJ: 1.3,
+    "Razão social": 2.6,
+    "Cliente potencial": 0.8,
+    Endereço: 2.4,
+    "Atividade principal": 2.4,
+    Cidade: 1.2,
+    UF: 0.4,
+    Porte: 0.9,
+    "Faturamento presumido": 1.2,
+    Funcionários: 0.8,
+    Telefone: 1,
+    Telefones: 1.2,
+    Site: 1.6,
+    "E-mails": 1.8,
+    Status: 0.8,
+    Notas: 1.4,
+    Dono: 1,
+  };
+  const util = larguraPagina - 80;
+  const pesos = cabecalhos.map((h) => PESO[h] ?? 1);
+  const somaPesos = pesos.reduce((a, b) => a + b, 0) || 1;
+  const columnStyles = Object.fromEntries(
+    pesos.map((p, i) => [i, { cellWidth: (p / somaPesos) * util }]),
+  );
 
   autoTable(doc, {
     head: [cabecalhos],
     body: linhas.map((l) => l.map(corta)),
     startY: y,
     margin: { left: 40, right: 40, top: 40, bottom: 40 },
+    tableWidth: util,
+    columnStyles,
     styles: {
       font: "helvetica",
       fontSize: 7,
       cellPadding: 3,
-      minCellWidth: 34,
       valign: "top",
       overflow: "linebreak",
       textColor: [35, 40, 52],
@@ -139,7 +167,7 @@ export async function baixarPdf(opcoes: {
     },
     headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [247, 249, 252] },
-    rowPageBreak: "avoid",
+
     didDrawPage: () => {
       const pagina = doc.getNumberOfPages();
       const altura = doc.internal.pageSize.getHeight();
