@@ -13,10 +13,14 @@
 ## EGC Project Memory
 
 **Active decisions:**
-- Hierarquia de propriedade confirmada em 31/08/2026: Cliente (pagante) e dono de um Grupo financeiro, que contem Unidades (vinculadas ao grupo via futuro units.grupo_id). Usuario e um conceito INDEPENDENTE de Cliente/Grupo -- vincula-se a uma ou varias Unidades (user_units, ja implementado), nunca diretamente a Cliente ou Grupo
+- Migracao cadastro/carteira CONCLUIDA em codigo e banco (commit local c312950, branch main, AINDA NAO PUSHED). companies virou so cadastral (41 colunas). Nova tabela carteira (1171 linhas, backfill): status, owner_id, owner_desde, prospectar, list_id, product_id, notas, tags, unit_id, UNIQUE(cnpj,unit_id). View v_carteira junta as duas com os MESMOS nomes de campo da UI -- Company e quase toda UI nao mudaram, so repo.server.ts/admin.server.ts/importacoes.server.ts
+- Duas mudancas de comportamento na migracao: (1) excluirEmpresa agora DESVINCULA da carteira da unidade, nao apaga mais o cadastro compartilhado inteiro; (2) obterPainel (tela /) passa a respeitar a unidade ativa, antes sempre mostrava o sistema inteiro
+- CRITICO: commit c312950 nao foi enviado ao origin/main. Sessao encerrou com servidor local (localhost:8080, .claude/launch.json) rodando, aguardando login do usuario no navegador pra teste ao vivo que nao aconteceu
 
 **Next session:**
-- Se precisar isolar por grupo/cliente no futuro: criar tabelas grupos e clientes (clientes dono de grupos, grupos contem units via grupo_id) -- escopo de autorizacao do usuario continua vindo so de user_units, sem mudanca
+- URGENTE: decidir com o usuario -- push do commit c312950 agora, ou terminar teste ao vivo primeiro (servidor local ja rodando em localhost:8080 via .claude/launch.json, so falta o usuario logar no navegador que ja esta aberto)
+- Depois do push: navegar Base de Empresas + ficha de empresa + funil pra confirmar visualmente -- nunca testado clicando, so por SQL read-only e revisao de diff
 - Fase 2.3 pendente - mover o loop de importacao do navegador para o servidor
 - Fase 3 pendente - oportunidade com produto e valor, conversao por etapa
+- Migracao de 1156/1171 empresas para carteira: CONCLUIDA, nao repetir essa tarefa
 <!-- egc:end -->
