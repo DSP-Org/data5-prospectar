@@ -157,16 +157,21 @@ export async function baixarPdf(opcoes: {
     columnStyles,
     styles: {
       font: "helvetica",
-      fontSize: 7,
-      cellPadding: 3,
-      minCellWidth: 22,
+      // Com muitas colunas visíveis reduzimos a fonte para a tabela caber na página.
+      fontSize: cabecalhos.length > 12 ? 6 : 7.5,
+      cellPadding: cabecalhos.length > 12 ? 2 : 3,
       valign: "top",
       overflow: "linebreak",
       textColor: [35, 40, 52],
       lineColor: [225, 229, 236],
       lineWidth: 0.4,
     },
-    headStyles: { fillColor: AZUL, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: "bold" },
+    headStyles: {
+      fillColor: AZUL,
+      textColor: [255, 255, 255],
+      fontSize: cabecalhos.length > 12 ? 6 : 7.5,
+      fontStyle: "bold",
+    },
     alternateRowStyles: { fillColor: [247, 249, 252] },
 
     didDrawPage: () => {
