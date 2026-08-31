@@ -557,29 +557,27 @@ function Empresas() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" disabled={exportando || total === 0}>
-              {exportando ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Exportar
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Exportar resultado filtrado</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => void exportarBase("excel")}>
-              <FileSpreadsheet className="h-4 w-4" /> Planilha Excel (.xlsx)
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void exportarBase("pdf")}>
-              <FileText className="h-4 w-4" /> Relatório PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          variant="outline"
+          disabled={exportando || total === 0}
+          onClick={() => void exportarBase("excel")}
+        >
+          {exportando ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="h-4 w-4" />
+          )}
+          Excel
+        </Button>
+        <Button disabled={exportando || total === 0} onClick={() => void exportarBase("pdf")}>
+          {exportando ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          Gerar relatório PDF
+        </Button>
+
 
         </div>
 
