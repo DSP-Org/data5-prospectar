@@ -86,7 +86,7 @@ async function persistir(mapped: Persistivel[], listId: string | null, unitId: s
   });
   const { data, error } = await gravarEmpresas(payload);
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => asCompany(r as Row));
+  return (data ?? []).map((r: unknown) => asCompany(r as Row));
 }
 
 /** Colunas recentes que podem não existir se a migration ainda não foi aplicada. */
@@ -391,7 +391,7 @@ export async function listarEmpresas(input: {
     .range((page - 1) * perPage, page * perPage - 1);
   if (error) throw new Error(error.message);
 
-  const empresas = (data ?? []).map((r) => asCompany(r as Row));
+  const empresas = (data ?? []).map((r: unknown) => asCompany(r as Row));
   return {
     empresas,
     donos: await nomesDosDonos(empresas),
@@ -708,7 +708,7 @@ export async function obterPainel(_escopo: Escopo) {
       .slice(0, 6)
       .map(([uf, qtd]) => ({ uf, qtd })),
     log: (log ?? []) as unknown as QueryLogEntry[],
-    recentes: (recentes ?? []).map((r) => asCompany(r as Row)),
+    recentes: (recentes ?? []).map((r: unknown) => asCompany(r as Row)),
   };
 }
 
@@ -1112,7 +1112,7 @@ export async function funilDados(escopo: Escopo) {
   if (unidades) q = q.in("unit_id", unidades);
   const { data, error } = await q.order("updated_at", { ascending: false }).limit(2000);
   if (error) throw new Error(error.message);
-  const empresas = (data ?? []).map((r) => asCompany(r as Row));
+  const empresas = (data ?? []).map((r: unknown) => asCompany(r as Row));
   const ultimas = await obterUltimasAtividadesPorEmpresa(escopo);
   return {
     empresas,
