@@ -13,14 +13,12 @@
 ## EGC Project Memory
 
 **Active decisions:**
-- Fase 2.1 concluida (commit 0ab8084): registrarContato exige agendar a proxima acao OU encerrar com motivo (ganhou/perdeu/sem_fit); encerrar atualiza o status da empresa
-- A proxima acao e gravada como atividade pendente (scheduled_at preenchido, completed_at nulo), nao como coluna na empresa
-- Atrasado e medido pelo FIM do dia agendado, nao pela hora
-- A fila (listarPendencias) usa embedding do PostgREST via FK prospection_activities.company_cnpj -> companies.cnpj para trazer nome e dono da empresa
+- Modelo de negocio confirmado: uma instalacao (projeto Lovable + Supabase) atende um cliente por vez. As chaves de API (Econodata, CNPJa) sao globais ao sistema/instalacao, nao por unidade nem por usuario -- confirmado explicitamente pelo usuario em 31/08/2026
+- unit_id em companies e conceito de carteira/visibilidade (quem viu a empresa primeiro), NAO de propriedade financeira do dado -- quem 'paga' e sempre a instalacao inteira, independente da unidade que consultou
+- Caso o negocio migre para Modelo B (cadastro central compartilhado, multiplos clientes na mesma instalacao, tabela clientes/contas acima de units), isso exige redesenho de escopo -- nao aplicado, so registrado como bifurcacao futura
 
 **Next session:**
-- Fase 2.2 - botao de WhatsApp e e-mail que ja registra a atividade
-- Fase 2.3 - mover o loop de importacao do navegador para o servidor
-- Mostrar contador de pendencias atrasadas no painel e no menu
-- Fase 3 - oportunidade com produto e valor, conversao por etapa
+- Se um segundo cliente pagante aparecer, criar nova instalacao (novo projeto Lovable + banco), nao nova unidade dentro da atual
+- Fase 2.3 pendente - mover o loop de importacao do navegador para o servidor
+- Fase 3 pendente - oportunidade com produto e valor, conversao por etapa
 <!-- egc:end -->
