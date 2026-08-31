@@ -11,6 +11,12 @@ import { type Escopo, gerenciaCarteira, unidadeDeGravacao, unidadesFiltro } from
 import { isAdministrador, normalizarSocio } from "./types";
 import type { ActivityType, Company, CompanyList, Json, LookupItem, ProspectionActivity, QueryLogEntry, Status } from "./types";
 
+// Transicao: colunas comerciais sairam de `companies` para `carteira`; o codigo
+// que usa a nova estrutura chega na sequencia. Ate la, consultas a `companies`
+// usam um cliente sem tipagem gerada.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dbAny = supabaseAdmin as any;
+
 
 type Row = Record<string, unknown>;
 
@@ -66,7 +72,7 @@ async function persistir(mapped: Persistivel[], listId: string | null, unitId: s
   if (mapped.length === 0) return [] as Company[];
   // Mantém a unidade já existente da empresa; só define unidade para registros novos.
   const cnpjs = mapped.map((m) => String((m as Record<string, unknown>)["cnpj"] ?? ""));
-  const { data: existentes } = await supabaseAdmin
+  const { data: existentes } = await dbAny
     .from("companies")
     .select("cnpj, unit_id")
     .in("cnpj", cnpjs);
@@ -92,7 +98,7 @@ const COLUNAS_OPCIONAIS = ["simples_optante", "simples_desde", "mei_optante", "m
  */
 async function gravarEmpresas(payload: Record<string, unknown>[]) {
   const enviar = (linhas: Record<string, unknown>[]) =>
-    supabaseAdmin.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
+    dbAny.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
 
   // O PostgREST reporta uma coluna por vez, então tenta de novo a cada descarte.
   let linhas = payload;
@@ -152,7 +158,7 @@ export async function consultarCnpjs(input: {
   // "Buscar tudo" / reconsulta forçada ignoram esse atalho — mas só para o que
   // é território da própria unidade: uma empresa de outra unidade nunca é
   // exibida nem reconsultada, forçar não muda de quem ela é.
-  const { data: jaNaBase } = await supabaseAdmin.from("companies").select("*").in("cnpj", validos);
+  const { data: jaNaBase } = await dbAny.from("companies").select("*").in("cnpj", validos);
   const existentes = ((jaNaBase ?? []) as Row[]).map(asCompany);
   const minhas = existentes.filter((c) =>
     naUnidade(input.escopo, (c as unknown as Row)["unit_id"] as string | null),
@@ -166,7 +172,7 @@ export async function consultarCnpjs(input: {
     aConsultar = aConsultar.filter((c) => !idsMinhas.has(c));
     // Se houver lista de destino, apenas vincula sem reconsultar as fontes.
     if (input.listId && input.salvar !== false) {
-      await supabaseAdmin
+      await dbAny
         .from("companies")
         .update({ list_id: input.listId } as never)
         .in("cnpj", Array.from(idsMinhas));
@@ -333,7 +339,7 @@ export async function listarEmpresas(input: {
   const perPage = Math.min(100, input.perPage ?? 25);
   // Território exclusivo: cada unidade vê as empresas que já são dela, mais as
   // que ainda não foram trabalhadas por nenhuma unidade do grupo.
-  let q = restringirPorUnidade(supabaseAdmin.from("companies").select("*", { count: "exact" }), input.escopo);
+  let q = restringirPorUnidade(dbAny.from("companies").select("*", { count: "exact" }), input.escopo);
 
 
   if (input.busca?.trim()) {
@@ -450,7 +456,7 @@ export async function contextoEmpresa(cnpj: string, escopo: Escopo) {
 }
 
 export async function obterEmpresa(cnpj: string, escopo: Escopo) {
-  const q = supabaseAdmin.from("companies").select("*").eq("cnpj", chave(cnpj));
+  const q = dbAny.from("companies").select("*").eq("cnpj", chave(cnpj));
   const { data, error } = await q.maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
@@ -466,7 +472,7 @@ export async function obterEmpresa(cnpj: string, escopo: Escopo) {
  * segue livre; gestor, administrador de unidade e master passam por cima.
  */
 export async function exigirEdicao(escopo: Escopo, cnpj: string) {
-  const { data } = await supabaseAdmin
+  const { data } = await dbAny
     .from("companies")
     .select("owner_id, unit_id")
     .eq("cnpj", chave(cnpj))
@@ -521,7 +527,7 @@ export async function atualizarEmpresa(input: {
   if (input.productId !== undefined) patch["product_id"] = input.productId;
   if (input.tags) patch["tags"] = input.tags;
   if (input.prospectar !== undefined) patch["prospectar"] = input.prospectar;
-  const uq = supabaseAdmin.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
+  const uq = dbAny.from("companies").update(patch as never).eq("cnpj", chave(input.cnpj));
   const { data, error } = await uq.select("*").maybeSingle();
   if (error) throw new Error(error.message);
   return data ? asCompany(data as Row) : null;
@@ -531,7 +537,7 @@ export async function atualizarEmpresa(input: {
 export async function marcarProspectar(cnpjs: string[], valor: boolean, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0, semPermissao: 0 };
-  const q = supabaseAdmin.from("companies").update({ prospectar: valor } as never).in("cnpj", chaves);
+  const q = dbAny.from("companies").update({ prospectar: valor } as never).in("cnpj", chaves);
   const { data, error } = await apenasEditaveis(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
   const total = (data ?? []).length;
@@ -541,7 +547,7 @@ export async function marcarProspectar(cnpjs: string[], valor: boolean, escopo: 
 export async function vincularEmpresasLista(cnpjs: string[], listId: string | null, escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { ok: true, total: 0, semPermissao: 0 };
-  const q = supabaseAdmin.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
+  const q = dbAny.from("companies").update({ list_id: listId } as never).in("cnpj", chaves);
   const { data, error } = await apenasEditaveis(q, escopo).select("cnpj");
   if (error) throw new Error(error.message);
   const total = (data ?? []).length;
@@ -555,7 +561,7 @@ export async function vincularEmpresasLista(cnpjs: string[], listId: string | nu
 export async function assumirLeads(cnpjs: string[], escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { assumidos: 0, jaComDono: 0 };
-  const q = supabaseAdmin
+  const q = dbAny
     .from("companies")
     .update({ owner_id: escopo.userId, owner_desde: new Date().toISOString() } as never)
     .in("cnpj", chaves)
@@ -570,7 +576,7 @@ export async function assumirLeads(cnpjs: string[], escopo: Escopo) {
 export async function liberarLeads(cnpjs: string[], escopo: Escopo) {
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { liberados: 0, semPermissao: 0 };
-  let q = supabaseAdmin
+  let q = dbAny
     .from("companies")
     .update({ owner_id: null, owner_desde: null } as never)
     .in("cnpj", chaves);
@@ -588,7 +594,7 @@ export async function definirDono(cnpjs: string[], ownerId: string | null, escop
     throw new Error("Apenas gestor, administrador de unidade ou master pode transferir carteira.");
   const chaves = cnpjs.map((c) => chave(c));
   if (chaves.length === 0) return { total: 0 };
-  const q = supabaseAdmin
+  const q = dbAny
     .from("companies")
     .update({
       owner_id: ownerId,
@@ -602,7 +608,7 @@ export async function definirDono(cnpjs: string[], ownerId: string | null, escop
 
 export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
   await exigirEdicao(escopo, cnpj);
-  const q = supabaseAdmin.from("companies").delete().eq("cnpj", chave(cnpj));
+  const q = dbAny.from("companies").delete().eq("cnpj", chave(cnpj));
   const { error } = await q;
   if (error) throw new Error(error.message);
   return { ok: true };
@@ -617,7 +623,7 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
   if (error) throw new Error(error.message);
 
   // Contagem sobre a base do sistema (sem filtro de unidade); as listas é que pertencem à unidade.
-  const cq = supabaseAdmin.from("companies").select("list_id");
+  const cq = dbAny.from("companies").select("list_id");
   const { data: rows } = await cq;
   const contagem: Record<string, number> = {};
   for (const r of (rows ?? []) as Array<{ list_id: string | null }>) {
@@ -633,7 +639,7 @@ export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
 
 /** Quantidade de empresas ainda sem lista. */
 export async function contarSemLista(_escopo: Escopo) {
-  const q = supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
+  const q = dbAny.from("companies").select("cnpj", { count: "exact", head: true }).is("list_id", null);
 
   const { count } = await q;
   return count ?? 0;
@@ -663,10 +669,10 @@ export async function obterPainel(_escopo: Escopo) {
   const escopar = <T,>(q: T): T => q;
 
   const { count: total } = await escopar(
-    supabaseAdmin.from("companies").select("cnpj", { count: "exact", head: true }),
+    dbAny.from("companies").select("cnpj", { count: "exact", head: true }),
   );
 
-  const { data: statusRows } = await escopar(supabaseAdmin.from("companies").select("status, uf, created_at"));
+  const { data: statusRows } = await escopar(dbAny.from("companies").select("status, uf, created_at"));
 
   const porStatus: Record<string, number> = {};
   const porUf: Record<string, number> = {};
@@ -684,7 +690,7 @@ export async function obterPainel(_escopo: Escopo) {
     .order("created_at", { ascending: false })
     .limit(8);
 
-  const { data: recentes } = await escopar(supabaseAdmin.from("companies").select("*"))
+  const { data: recentes } = await escopar(dbAny.from("companies").select("*"))
     .order("created_at", { ascending: false })
     .limit(6);
 
@@ -779,7 +785,7 @@ export async function consultarChaves(input: {
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
 export async function opcoesFiltro(escopo: Escopo) {
   const q = restringirPorUnidade(
-    supabaseAdmin.from("companies").select("uf, cidade, porte_estimado, situacao, setores"),
+    dbAny.from("companies").select("uf, cidade, porte_estimado, situacao, setores"),
     escopo,
   );
 
@@ -1101,7 +1107,7 @@ export async function obterUltimasAtividadesPorEmpresa(escopo: Escopo) {
 }
 
 export async function funilDados(escopo: Escopo) {
-  let q = supabaseAdmin.from("companies").select("*").eq("prospectar", true);
+  let q = dbAny.from("companies").select("*").eq("prospectar", true);
   const unidades = unidadesFiltro(escopo);
   if (unidades) q = q.in("unit_id", unidades);
   const { data, error } = await q.order("updated_at", { ascending: false }).limit(2000);
