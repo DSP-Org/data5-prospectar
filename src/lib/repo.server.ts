@@ -189,10 +189,11 @@ export async function consultarCnpjs(input: {
   }
 
   // Empresas que já estão no cadastro compartilhado não vão para as fontes
-  // (não gasta crédito), independente de quem já vinculou. "Buscar tudo" /
-  // reconsulta forçada ignoram esse atalho — mas só para o que é território
-  // da própria unidade: uma empresa vinculada por outra unidade nunca é
-  // exibida nem reconsultada, forçar não muda de quem ela é.
+  // (não gasta crédito). Unidades são independentes — cada uma vincula (ou
+  // não) as empresas que quiser, sem depender de quem mais já vinculou a
+  // mesma empresa: a mesma empresa pode estar na carteira de nenhuma, uma ou
+  // várias unidades ao mesmo tempo. "Buscar tudo" / reconsulta forçada
+  // ignoram o atalho de carteira e vão direto às fontes.
   const unitIdAtual = unidadeDeGravacao(input.escopo, input.unitId);
   const salvar = input.salvar !== false;
 
@@ -203,13 +204,13 @@ export async function consultarCnpjs(input: {
   const carteiraPorCnpj = new Map<string, string>();
   for (const r of (carteiraRows ?? []) as Row[]) carteiraPorCnpj.set(String(r["cnpj"]), String(r["unit_id"]));
 
-  const minhas: string[] = [];
-  const deOutraUnidade: string[] = [];
-  for (const [cnpj, unitDono] of carteiraPorCnpj)
-    (naUnidade(input.escopo, unitDono) ? minhas : deOutraUnidade).push(cnpj);
-  const semCarteira = validos.filter((c) => !carteiraPorCnpj.has(c));
+  const minhas = validos.filter((c) => {
+    const unitDono = carteiraPorCnpj.get(c);
+    return unitDono !== undefined && naUnidade(input.escopo, unitDono);
+  });
+  const semCarteiraPropria = validos.filter((c) => !minhas.includes(c));
 
-  let aConsultar = validos.filter((c) => !deOutraUnidade.includes(c));
+  let aConsultar = [...validos];
 
   if (!input.forcar && !input.completo) {
     // Já é minha carteira: não reconsulta, só (opcionalmente) atualiza a lista.
@@ -227,8 +228,8 @@ export async function consultarCnpjs(input: {
         itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true });
     }
 
-    // Cadastro já existe mas ninguém que eu vejo vinculou ainda: vincula sem gastar crédito.
-    const paraVincular = semCarteira.filter((c) => noCadastro.has(c));
+    // Cadastro já existe mas minha unidade ainda não vinculou: vincula sem gastar crédito.
+    const paraVincular = semCarteiraPropria.filter((c) => noCadastro.has(c));
     if (paraVincular.length) {
       aConsultar = aConsultar.filter((c) => !paraVincular.includes(c));
       if (unitIdAtual && salvar) {
@@ -247,13 +248,6 @@ export async function consultarCnpjs(input: {
       }
     }
   }
-  for (const c of deOutraUnidade)
-    itens.push({
-      cnpj: c,
-      encontrada: false,
-      erro: "Esta empresa já está na carteira de outra unidade de negócio.",
-      salva: false,
-    });
 
   if (aConsultar.length === 0) return { itens };
 
@@ -519,40 +513,41 @@ export async function contextoEmpresa(cnpj: string, escopo: Escopo) {
 }
 
 export async function obterEmpresa(cnpj: string, escopo: Escopo) {
-  const { data, error } = await supabaseAdmin.from("v_carteira").select("*").eq("cnpj", chave(cnpj)).maybeSingle();
+  // A mesma empresa pode ter uma linha de carteira em cada unidade do usuário
+  // (unidades independentes) — v_carteira pode devolver mais de uma linha
+  // para o mesmo cnpj, então não dá pra usar maybeSingle() aqui.
+  const q = restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*").eq("cnpj", chave(cnpj)), escopo);
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
-  if (!data) return null;
-  // Território exclusivo: carteira de outra unidade não existe para este
-  // usuário, nem por link direto — se existisse, digitar a URL bastaria pra contornar.
-  if (!naUnidade(escopo, (data as Row)["unit_id"] as string)) return null;
-  return asCompany(data as Row);
+  const linhas = (data ?? []) as Row[];
+  const primeira = linhas[0];
+  if (!primeira) return null;
+  const daUnidadeAtiva = linhas.find((l) => l["unit_id"] === escopo.unidadeAtiva);
+  return asCompany(daUnidadeAtiva ?? primeira);
 }
 
 
 /**
+ * Unidades são independentes (cada uma como se fosse uma empresa à parte):
+ * a mesma empresa pode estar na carteira de nenhuma, uma ou várias unidades
+ * ao mesmo tempo, sem que uma saiba da outra. O que importa aqui é só a linha
+ * de carteira da(s) unidade(s) do próprio usuário.
+ */
+async function carteiraNaMinhaUnidade(escopo: Escopo, cnpj: string) {
+  const { data } = await supabaseAdmin.from("carteira").select("unit_id, owner_id").eq("cnpj", chave(cnpj));
+  const linhas = (data ?? []) as Array<{ unit_id: string; owner_id: string | null }>;
+  return linhas.find((l) => naUnidade(escopo, l.unit_id)) ?? null;
+}
+
+/**
+ * Devolve a linha de carteira que este usuário pode editar (dono do lead na
+ * sua própria unidade), ou lança erro se pertence a outro vendedor. Devolve
+ * null quando a própria unidade do usuário nunca vinculou esta empresa.
  * A base é visível a todos, mas quem edita é o dono do lead. Empresa sem dono
  * segue livre; gestor, administrador de unidade e master passam por cima.
  */
-/** Resolve a linha de carteira desta empresa dentro do território do usuário (a única visível). */
-async function carteiraNoTerritorio(escopo: Escopo, cnpj: string) {
-  const { data } = await supabaseAdmin.from("carteira").select("unit_id, owner_id").eq("cnpj", chave(cnpj));
-  const linhas = (data ?? []) as Array<{ unit_id: string; owner_id: string | null }>;
-  const foraDoTerritorio = linhas.some((l) => !naUnidade(escopo, l.unit_id));
-  const minha = linhas.find((l) => naUnidade(escopo, l.unit_id)) ?? null;
-  return { minha, foraDoTerritorio: foraDoTerritorio && !minha };
-}
-
-/**
- * Devolve a linha de carteira que este usuário pode editar (unidade + dono do
- * lead), ou lança erro se a empresa pertence a outra unidade ou a outro
- * vendedor. Devolve null quando a empresa nunca foi vinculada por ninguém.
- */
 export async function exigirEdicao(escopo: Escopo, cnpj: string): Promise<{ unit_id: string } | null> {
-  const { minha, foraDoTerritorio } = await carteiraNoTerritorio(escopo, cnpj);
-
-  // Território é mais forte que carteira: nem gestor passa por cima da unidade
-  // de outro time, só quem de fato pertence àquela unidade (ou o master).
-  if (foraDoTerritorio) throw new Error("Esta empresa pertence a outra unidade de negócio.");
+  const minha = await carteiraNaMinhaUnidade(escopo, cnpj);
   if (!minha) return null;
 
   if (gerenciaCarteira(escopo)) return { unit_id: minha.unit_id };

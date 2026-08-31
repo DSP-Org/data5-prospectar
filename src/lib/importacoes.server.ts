@@ -137,15 +137,26 @@ export async function processarLote(input: {
     .in("cnpj", pendentes.map((p) => p.cnpj));
   const existentes = new Set(((jaExistem ?? []) as { cnpj: string }[]).map((c) => c.cnpj));
   const pulados = pendentes.filter((p) => existentes.has(p.cnpj));
-  if (pulados.length && job.unit_id) {
-    const { vincularCarteira } = await import("./repo.server");
-    await vincularCarteira(pulados.map((p) => p.cnpj), job.unit_id, job.list_id);
-  }
-  for (const item of pulados) {
-    await db()
-      .from("import_items")
-      .update({ status: "concluido", erro: null })
-      .eq("id", item.id);
+
+  if (pulados.length) {
+    if (job.unit_id) {
+      const { vincularCarteira } = await import("./repo.server");
+      await vincularCarteira(pulados.map((p) => p.cnpj), job.unit_id, job.list_id);
+      for (const item of pulados) {
+        await db()
+          .from("import_items")
+          .update({ status: "concluido", erro: null })
+          .eq("id", item.id);
+      }
+    } else {
+      // Sem unidade ativa não há onde vincular — reporta erro em vez de "concluído" falso.
+      for (const item of pulados) {
+        await db()
+          .from("import_items")
+          .update({ status: "erro", erro: "Nenhuma unidade ativa para vincular esta empresa." })
+          .eq("id", item.id);
+      }
+    }
   }
   pendentes = pendentes.filter((p) => !existentes.has(p.cnpj));
   if (pendentes.length === 0) {
