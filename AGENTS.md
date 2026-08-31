@@ -13,12 +13,10 @@
 ## EGC Project Memory
 
 **Active decisions:**
-- Modelo de negocio confirmado: uma instalacao (projeto Lovable + Supabase) atende um cliente por vez. As chaves de API (Econodata, CNPJa) sao globais ao sistema/instalacao, nao por unidade nem por usuario -- confirmado explicitamente pelo usuario em 31/08/2026
-- unit_id em companies e conceito de carteira/visibilidade (quem viu a empresa primeiro), NAO de propriedade financeira do dado -- quem 'paga' e sempre a instalacao inteira, independente da unidade que consultou
-- Caso o negocio migre para Modelo B (cadastro central compartilhado, multiplos clientes na mesma instalacao, tabela clientes/contas acima de units), isso exige redesenho de escopo -- nao aplicado, so registrado como bifurcacao futura
+- Isolamento hoje e por unidade financeira (territorio exclusivo, ja implementado). Caminho futuro definido pelo usuario em 31/08/2026: se precisar isolar por grupo (holding com varias unidades), criar tabela grupos e adicionar units.grupo_id como FK -- substitui a nota anterior mais vaga de 'tabela clientes/contas acima de units'
 
 **Next session:**
-- Se um segundo cliente pagante aparecer, criar nova instalacao (novo projeto Lovable + banco), nao nova unidade dentro da atual
+- Se precisar isolar por grupo no futuro: criar tabela grupos + units.grupo_id, sem mexer no isolamento por unidade ja existente
 - Fase 2.3 pendente - mover o loop de importacao do navegador para o servidor
 - Fase 3 pendente - oportunidade com produto e valor, conversao por etapa
 <!-- egc:end -->
