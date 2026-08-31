@@ -46,7 +46,7 @@ const schema = z.object({
 });
 
 export const buscarCnpjaFn = createServerFn({ method: "POST" })
-  .middleware([exigirAcesso("/consulta")])
+  .middleware([exigirAcesso("/consulta", "/empresas")])
   .inputValidator((d: unknown) => schema.parse(d))
   .handler(async ({ data }) => {
     const { buscarEmpresasCnpja } = await import("./cnpja-busca.server");

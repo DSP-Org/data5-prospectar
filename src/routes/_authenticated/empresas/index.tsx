@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -11,6 +11,7 @@ import {
   FileText,
   FilterX,
   Loader2,
+  Search,
   Smartphone,
   Star,
   UserCheck,
@@ -21,6 +22,7 @@ import { useListas } from "@/lib/use-listas";
 
 import {
   assumirLeadsFn,
+  consultarCnpjsFn,
   exportarEmpresasFn,
   liberarLeadsFn,
   listarEmpresasFn,
@@ -28,6 +30,7 @@ import {
   opcoesFiltroFn,
   vincularEmpresasListaFn,
 } from "@/lib/econodata.functions";
+import { buscarCnpjaFn } from "@/lib/cnpja-busca.functions";
 import { meFn } from "@/lib/auth.functions";
 import { cn } from "@/lib/utils";
 import {
@@ -457,7 +460,92 @@ function Empresas() {
   const paginas = Math.max(1, Math.ceil(total / 25));
   const ctx: Contexto = { donos: empresas.data?.donos ?? {}, meuId: me?.userId ?? null };
 
+  // Sem outros filtros: a busca externa não sabe honrar status/UF/lista/etc.,
+  // então só oferece o atalho quando o único critério é o termo digitado.
+  const semOutrosFiltros =
+    status === "todos" &&
+    uf === "todos" &&
+    lista === "todas" &&
+    grupo === "todas" &&
+    potencial === "todas" &&
+    carteira === "todas" &&
+    !avancadosAtivos;
+  // isFetching (não isLoading): com keepPreviousData, isLoading vira false após a
+  // primeira busca e `total` passaria a refletir o resultado anterior (stale)
+  // enquanto a busca atual do termo novo ainda está em andamento.
+  const semResultadoLocal =
+    !empresas.isFetching && total === 0 && busca.trim().length >= 3 && semOutrosFiltros;
+  const cnpjDigitado = busca.replace(/\D/g, "");
+  const ehCnpjCompleto = cnpjDigitado.length === 14;
+
   const nomeLista = listas.data?.find((l) => l.id === lista)?.name;
+
+  /**
+   * CNPJ completo que não está na base: busca nas fontes externas sem
+   * perguntar. É uma única empresa, custo previsível — o mesmo caminho que
+   * hoje só existe em /consulta, agora disponível direto na Base de Empresas
+   * para o cliente não precisar ir à aba de atualização.
+   */
+  const consultarCnpj = useServerFn(consultarCnpjsFn);
+  const [cnpjTentado, setCnpjTentado] = useState<string | null>(null);
+  const buscarPorCnpj = useMutation({
+    mutationFn: (cnpj: string) => consultarCnpj({ data: { cnpjs: [cnpj] } }),
+    onSuccess: (r) => {
+      const item = r.itens[0];
+      if (item?.encontrada) {
+        toast.success(`${item.company?.razao_social ?? "Empresa"} encontrada e adicionada à base.`);
+        void qc.invalidateQueries({ queryKey: ["empresas"] });
+      } else {
+        toast.error(item?.erro ?? "CNPJ não encontrado nas fontes externas.");
+      }
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const erroCnpj = buscarPorCnpj.isError
+    ? (buscarPorCnpj.error as Error).message
+    : !buscarPorCnpj.data?.itens[0]?.encontrada
+      ? (buscarPorCnpj.data?.itens[0]?.erro ?? null)
+      : null;
+
+  useEffect(() => {
+    if (semResultadoLocal && ehCnpjCompleto && cnpjTentado !== cnpjDigitado && !buscarPorCnpj.isPending) {
+      setCnpjTentado(cnpjDigitado);
+      buscarPorCnpj.mutate(cnpjDigitado);
+    }
+  }, [semResultadoLocal, ehCnpjCompleto, cnpjDigitado, cnpjTentado, buscarPorCnpj]);
+
+  /**
+   * Nome sem resultado local: aqui não dá para automatizar — a busca por
+   * nome no CNPJá pode trazer dezenas de empresas e gasta crédito por
+   * chamada, então exige um clique deliberado do cliente.
+   */
+  const buscarCnpja = useServerFn(buscarCnpjaFn);
+  const [selecionadosExterno, setSelecionadosExterno] = useState<string[]>([]);
+  const buscarPorNome = useMutation({
+    mutationFn: () => buscarCnpja({ data: { nome: busca.trim(), limite: 20 } }),
+    onSuccess: (r) => {
+      setSelecionadosExterno([]);
+      if (r.itens.length === 0) toast.info("Nada encontrado nas fontes externas para este termo.");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const resultadoExterno = buscarPorNome.data?.itens ?? null;
+  const salvarExterno = useMutation({
+    mutationFn: (cnpjs: string[]) => consultarCnpj({ data: { cnpjs } }),
+    onSuccess: (r) => {
+      const salvas = r.itens.filter((i) => i.encontrada).length;
+      toast.success(`${salvas} empresa(s) adicionada(s) à base.`);
+      buscarPorNome.reset();
+      setSelecionadosExterno([]);
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  useEffect(() => {
+    buscarPorNome.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busca]);
 
   /** Resumo dos filtros ativos, para o cabeçalho do PDF. */
   function resumoFiltros(): Array<{ rotulo: string; valor: string }> {
@@ -903,6 +991,94 @@ function Empresas() {
         </CardContent>
       </Card>
 
+      {semResultadoLocal && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="space-y-3 p-4">
+            {ehCnpjCompleto ? (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {buscarPorCnpj.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Não está na base — buscando este CNPJ nas fontes externas…
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 text-primary" />
+                    {erroCnpj ?? "CNPJ não encontrado nas fontes externas."}
+                    <button
+                      type="button"
+                      onClick={() => setCnpjTentado(null)}
+                      className="text-xs text-primary underline-offset-2 hover:underline"
+                    >
+                      tentar novamente
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : resultadoExterno === null ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Search className="h-4 w-4 text-primary" />
+                  Não encontramos "{busca.trim()}" na base local.
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={buscarPorNome.isPending}
+                  onClick={() => buscarPorNome.mutate()}
+                >
+                  {buscarPorNome.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Buscar nas fontes externas
+                </Button>
+              </div>
+            ) : resultadoExterno.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nada encontrado nas fontes externas para "{busca.trim()}".
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    {resultadoExterno.length} empresa(s) encontrada(s) fora da base. Selecione para
+                    trazer para cá (consome créditos das fontes pagas).
+                  </p>
+                  <Button
+                    size="sm"
+                    disabled={selecionadosExterno.length === 0 || salvarExterno.isPending}
+                    onClick={() => salvarExterno.mutate(selecionadosExterno)}
+                  >
+                    {salvarExterno.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Adicionar {selecionadosExterno.length || ""} à base
+                  </Button>
+                </div>
+                <div className="max-h-64 space-y-1 overflow-y-auto">
+                  {resultadoExterno.map((item) => (
+                    <label
+                      key={item.cnpj}
+                      className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={selecionadosExterno.includes(item.cnpj)}
+                        onCheckedChange={(v) =>
+                          setSelecionadosExterno((s) =>
+                            v ? [...s, item.cnpj] : s.filter((c) => c !== item.cnpj),
+                          )
+                        }
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{item.razaoSocial || item.cnpj}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {formatCnpj(item.cnpj)} · {[item.cidade, item.uf].filter(Boolean).join("/")}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {selecionados.length > 0 && (
         <Card>
