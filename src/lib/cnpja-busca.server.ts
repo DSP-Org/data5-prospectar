@@ -100,6 +100,11 @@ const lista = (v?: string | null) =>
     .filter(Boolean);
 
 export async function buscarEmpresasCnpja(f: FiltroCnpjaBusca): Promise<ResultadoBuscaCnpja> {
+  const { somenteGratisAtivo } = await import("./sources/registry.server");
+  if (await somenteGratisAtivo())
+    throw new Error(
+      "A trava “somente fontes gratuitas” está ligada em Configurações. A busca avançada por filtros consome créditos e está bloqueada.",
+    );
   const key = await chaveCnpja();
   const p = new URLSearchParams();
   p.set("limit", String(Math.min(Math.max(f.limite ?? 20, 1), 100)));
