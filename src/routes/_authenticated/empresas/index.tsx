@@ -617,6 +617,21 @@ function Empresas() {
     return out.length > 0 ? out : [{ rotulo: "", valor: "nenhum (base completa)" }];
   }
 
+  /** Etiquetas do recorte ativo (vindo da calculadora ou do refino local). */
+  const chipsFiltros = resumoFiltros().filter((r) => r.rotulo);
+
+  function limparTudo() {
+    setBusca("");
+    setStatus("todos");
+    setUf("todos");
+    setLista("todas");
+    setGrupo("todas");
+    setPotencial("todas");
+    setCarteira("todas");
+    setAv({ ...AVANCADOS_VAZIOS });
+    setPage(1);
+  }
+
   async function exportarBase(formato: "excel" | "pdf") {
     setExportando(true);
     try {
