@@ -361,8 +361,10 @@ export async function buscarMultiFonte(
   };
 
 
-  // Só conta como crédito gasto quando a fonte paga de fato retornou dados.
+  // Só conta como crédito gasto quando a fonte paga de fato retornou dados
+  // e a trava de custo estava desligada (com ela, a fonte paga só lê cache).
   const contarPagas = (candidatos: string[]) => {
+    if (somenteGratis) return;
     for (const cnpj of candidatos) {
       if (pagas.some((id) => resultados.get(id)?.get(cnpj))) pagasUsadas.push(cnpj);
     }
