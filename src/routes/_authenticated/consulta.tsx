@@ -181,6 +181,16 @@ function Consulta() {
                       : "sem custo quando o cache ou as fontes gratuitas resolvem"}
                   </Badge>
                 </div>
+
+                <div className="border-t border-border/60 pt-4">
+                  <JanelaCnpja
+                    listId={alvoLista}
+                    onEscalar={(termo) => {
+                      setTermoPago(termo);
+                      setAba("cnpja");
+                    }}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="lista" className="space-y-4 pt-4">
