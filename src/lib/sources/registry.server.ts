@@ -319,15 +319,19 @@ export async function buscarMultiFonte(
     modo?: ModoConsulta | undefined;
     /** Busca máxima: ignora cache, consulta online e liga todos os módulos da CNPJá. */
     completo?: boolean | undefined;
+    /** De onde veio a consulta (para o painel de consumo). */
+    origem?: string | undefined;
+    unitId?: string | null | undefined;
   },
 ): Promise<ResultadoMultiFonte> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
   const ativas = prioridade.filter((id) => ativa(id, s, Boolean(chaveDaFonte(id, s))));
-  const { modo: modoSalvo, ttlDias } = economiaDe(s);
-  const buscaTotal = opts?.completo === true;
-  const modo = buscaTotal ? "completo" : (opts?.modo ?? modoSalvo);
-  const forcar = opts?.forcar === true || buscaTotal;
+  const { modo: modoSalvo, ttlDias, somenteGratis } = economiaDe(s);
+  // Com a trava de custo ligada, nada pode ir online: nem "buscar tudo".
+  const buscaTotal = opts?.completo === true && !somenteGratis;
+  const modo = somenteGratis ? "economico" : buscaTotal ? "completo" : (opts?.modo ?? modoSalvo);
+  const forcar = (opts?.forcar === true || buscaTotal) && !somenteGratis;
 
   const empresas = new Map<string, EmpresaMesclada>();
   const doCache: string[] = [];
