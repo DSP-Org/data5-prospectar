@@ -118,11 +118,11 @@ function Consulta() {
       <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <Card>
           <CardContent className="pt-6">
-            <Tabs defaultValue="individual">
+            <Tabs value={aba} onValueChange={setAba}>
               <TabsList>
-                <TabsTrigger value="individual">CNPJ individual</TabsTrigger>
+                <TabsTrigger value="individual">Buscar por nome ou CNPJ (grátis)</TabsTrigger>
                 <TabsTrigger value="lista">Lista de CNPJs</TabsTrigger>
-                <TabsTrigger value="cnpja">Janela CNPJá</TabsTrigger>
+                <TabsTrigger value="cnpja">Busca avançada (plano pago)</TabsTrigger>
               </TabsList>
 
               <TabsContent value="individual" className="space-y-4 pt-4">
