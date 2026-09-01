@@ -21,6 +21,8 @@ const enabledKey = (id: SourceId) => `source_${id}_enabled`;
 const PRIORITY_KEY = "sources_priority";
 const MODE_KEY = "sources_modo";
 const TTL_KEY = "sources_cache_ttl_dias";
+/** Trava global de custo: nenhuma consulta pode debitar crédito. */
+const SOMENTE_GRATIS_KEY = "sources_somente_gratis";
 const moduloKey = (id: keyof ModulosCnpja) => `cnpja_modulo_${id}`;
 
 
