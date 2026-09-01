@@ -443,6 +443,7 @@ function Empresas() {
     grupoNatureza: grupo,
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
     ...(carteira === "todas" ? {} : { dono: carteira as "meus" | "sem_dono" | "outros" }),
+    ...(dados === "todas" ? {} : { dados: dados as "com" | "sem" }),
     ...filtrosAvancados(av),
     ...(unidade ? { unidade } : {}),
   };
