@@ -202,7 +202,7 @@ async function marcar(ids: string[], patch: Record<string, unknown>) {
     await db().from("import_items").update(patch).in("id", bloco);
 }
 
-/** Etapa 2: processa um bloco de pendentes do job. */
+/** Etapa 2 (opcional): enriquece um bloco de CNPJs já cadastrados pelo job. */
 export async function processarLote(input: {
   escopo: Escopo;
   jobId: string;
@@ -215,11 +215,11 @@ export async function processarLote(input: {
     .from("import_items")
     .select("id, cnpj")
     .eq("job_id", job.id)
-    .eq("status", "pendente")
+    .in("status", ["pendente", A_ENRIQUECER])
     .order("created_at", { ascending: true })
     .limit(tamanho);
 
-  let pendentes = (data ?? []) as { id: string; cnpj: string }[];
+  const pendentes = (data ?? []) as { id: string; cnpj: string }[];
   if (pendentes.length === 0) {
     const resumo = await recontar(job.id);
     return { processados: 0, ...resumo };
@@ -227,32 +227,8 @@ export async function processarLote(input: {
 
   await db().from("import_jobs").update({ status: "processando" }).eq("id", job.id);
 
-  // Rede de segurança: itens reprocessados podem ter entrado no cadastro nesse meio-tempo.
-  const { data: jaExistem } = await db()
-    .from("companies")
-    .select("cnpj")
-    .in("cnpj", pendentes.map((p) => p.cnpj));
-  const existentes = new Set(((jaExistem ?? []) as { cnpj: string }[]).map((c) => c.cnpj));
-  const pulados = pendentes.filter((p) => existentes.has(p.cnpj));
+  const pulados: { id: string }[] = [];
 
-  if (pulados.length) {
-    if (job.unit_id) {
-      const { vincularCarteira } = await import("./repo.server");
-      await vincularCarteira(pulados.map((p) => p.cnpj), job.unit_id, job.list_id);
-      await marcar(pulados.map((p) => p.id), { status: "concluido", erro: JA_NA_BASE });
-    } else {
-      // Sem unidade ativa não há onde vincular — reporta erro em vez de "concluído" falso.
-      await marcar(pulados.map((p) => p.id), {
-        status: "erro",
-        erro: "Nenhuma unidade ativa para vincular esta empresa.",
-      });
-    }
-  }
-  pendentes = pendentes.filter((p) => !existentes.has(p.cnpj));
-  if (pendentes.length === 0) {
-    const resumo = await recontar(job.id);
-    return { processados: pulados.length, ...resumo };
-  }
 
   try {
     const r = await consultarCnpjs({
