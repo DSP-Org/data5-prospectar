@@ -4,9 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
+  Briefcase,
+  Building2,
   ChevronDown,
   Columns3,
   Download,
+  MapPin,
+  Phone,
+  Scale,
   FileSpreadsheet,
   FileText,
   FilterX,
