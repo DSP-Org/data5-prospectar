@@ -22,6 +22,7 @@ import {
   Trash2,
   UserCheck,
   UserMinus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useListas } from "@/lib/use-listas";
