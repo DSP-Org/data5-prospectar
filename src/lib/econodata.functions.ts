@@ -78,6 +78,7 @@ const filtrosSchema = z.object({
   mei: z.enum(["sim", "nao"]).optional(),
   prospectar: z.boolean().optional(),
   dono: z.enum(["meus", "sem_dono", "outros"]).optional(),
+  dados: z.enum(["com", "sem"]).optional(),
   unidade: z.string().uuid().optional(),
 });
 
