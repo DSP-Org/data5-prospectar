@@ -90,6 +90,11 @@ export async function somenteGratisAtivo(): Promise<boolean> {
   return s[SOMENTE_GRATIS_KEY] === "true";
 }
 
+/** Configuração de economia/validade do cache, lida do banco. */
+export async function economiaAtual(): Promise<EconomiaConfig> {
+  return economiaDe(await lerSettings());
+}
+
 /** Registra consultas que consumiram crédito de fonte paga. */
 async function registrarConsumo(
   cnpjs: string[],
