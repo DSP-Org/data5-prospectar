@@ -67,7 +67,8 @@ export function FontesDados() {
   });
 
   const mutEconomia = useMutation({
-    mutationFn: (v: { modo?: ModoConsulta; ttlDias?: number }) => salvarEconomia({ data: v }),
+    mutationFn: (v: { modo?: ModoConsulta; ttlDias?: number; somenteGratis?: boolean }) =>
+      salvarEconomia({ data: v }),
     onSuccess: () => {
       invalidate();
       toast.success("Preferências de consulta salvas.");
@@ -83,6 +84,8 @@ export function FontesDados() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const consumo = useQuery({ queryKey: ["consumo-consultas"], queryFn: () => resumoConsumoFn() });
 
   const economia = fontes.data?.economia;
   const modulos = fontes.data?.modulosCnpja;
