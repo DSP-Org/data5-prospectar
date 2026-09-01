@@ -354,6 +354,7 @@ export async function buscarMultiFonte(
     maxAgeDias: ttlDias > 0 ? ttlDias : 45,
     economico: modo === "economico" && !forcar,
     online: buscaTotal,
+    somenteCache: somenteGratis,
     // "Buscar tudo" força consulta online, mas os módulos extras da CNPJá
     // continuam obedecendo os toggles de Configurações (cada um custa crédito).
     modulos: modulosCnpjaDe(s),
