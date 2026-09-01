@@ -165,6 +165,21 @@ export const excluirEmpresaFn = createServerFn({ method: "POST" })
     return excluirEmpresa(data.cnpj, restringirUnidade(context.escopo, data.unidade));
   });
 
+export const desvincularEmpresasFn = createServerFn({ method: "POST" })
+  .middleware([exigirAcesso("/empresas")])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        cnpjs: z.array(z.string().min(14).max(20)).min(1).max(500),
+        unidade: z.string().uuid().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { desvincularEmpresas } = await import("./repo.server");
+    return desvincularEmpresas(data.cnpjs, restringirUnidade(context.escopo, data.unidade));
+  });
+
 export const vincularEmpresasListaFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/empresas", "/listas")])
   .inputValidator((d: unknown) =>
