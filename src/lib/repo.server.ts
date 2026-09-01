@@ -748,6 +748,116 @@ export async function excluirLista(id: string, escopo: Escopo) {
   return { ok: true };
 }
 
+export type FiltrosMercado = {
+  escopo: Escopo;
+  uf?: string | undefined;
+  cidade?: string | undefined;
+  cnae?: string | undefined;
+  porte?: string | undefined;
+  setor?: string | undefined;
+  situacao?: string | undefined;
+  listId?: string | undefined;
+  status?: string | undefined;
+  prospectar?: boolean | undefined;
+  comTelefone?: boolean | undefined;
+  comEmail?: boolean | undefined;
+};
+
+type LinhaMercado = {
+  uf: string | null;
+  cidade: string | null;
+  porte_estimado: string | null;
+  setores: string[] | null;
+  cnae_descricao: string | null;
+  melhor_telefone: string | null;
+  melhor_site: string | null;
+  email_receita: string | null;
+  status: string | null;
+};
+
+function topN(mapa: Record<string, number>, n = 6) {
+  return Object.entries(mapa)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([label, qtd]) => ({ label, qtd }));
+}
+
+/**
+ * Calculadora de mercado: quantas empresas da base (carteira da unidade)
+ * cabem no recorte escolhido, com as quebras por UF, porte e atividade.
+ */
+export async function mercadoAgregado(input: FiltrosMercado) {
+  const { escopo } = input;
+
+  const { count: baseTotal } = await restringirPorUnidade(
+    supabaseAdmin.from("carteira").select("cnpj", { count: "exact", head: true }),
+    escopo,
+  );
+
+  let q = restringirPorUnidade(
+    supabaseAdmin
+      .from("v_carteira")
+      .select(
+        "uf, cidade, porte_estimado, setores, cnae_descricao, melhor_telefone, melhor_site, email_receita, status",
+      ),
+    escopo,
+  );
+
+  if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
+  if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
+  if (input.cnae?.trim()) {
+    const t = input.cnae.trim();
+    q = q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`);
+  }
+  if (input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
+  if (input.setor && input.setor !== "todos") q = q.contains("setores", [input.setor]);
+  if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
+  if (input.listId === "sem_lista") q = q.is("list_id", null);
+  else if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
+  if (input.status && input.status !== "todos") q = q.eq("status", input.status);
+  if (input.prospectar) q = q.eq("prospectar", true);
+  if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
+  if (input.comEmail) q = q.not("email_receita", "is", null);
+
+  const { data, error } = await q.limit(20000);
+  if (error) throw new Error(error.message);
+
+  const linhas = (data ?? []) as LinhaMercado[];
+  const porUf: Record<string, number> = {};
+  const porPorte: Record<string, number> = {};
+  const porAtividade: Record<string, number> = {};
+  const porStatus: Record<string, number> = {};
+  let comTelefone = 0;
+  let comEmail = 0;
+  let acionaveis = 0;
+
+  for (const r of linhas) {
+    if (r.uf) porUf[r.uf] = (porUf[r.uf] ?? 0) + 1;
+    const porte = r.porte_estimado ?? "Não informado";
+    porPorte[porte] = (porPorte[porte] ?? 0) + 1;
+    const atividade = r.cnae_descricao ?? r.setores?.[0] ?? "Não informado";
+    porAtividade[atividade] = (porAtividade[atividade] ?? 0) + 1;
+    if (r.status) porStatus[r.status] = (porStatus[r.status] ?? 0) + 1;
+    const tel = Boolean(r.melhor_telefone);
+    const mail = Boolean(r.email_receita);
+    if (tel) comTelefone += 1;
+    if (mail) comEmail += 1;
+    if (tel || mail) acionaveis += 1;
+  }
+
+  return {
+    baseTotal: baseTotal ?? 0,
+    empresas: linhas.length,
+    comTelefone,
+    comEmail,
+    acionaveis,
+    porStatus,
+    topUf: topN(porUf),
+    topPorte: topN(porPorte),
+    topAtividade: topN(porAtividade),
+  };
+}
+
 export async function obterPainel(escopo: Escopo) {
   // Painel reflete a carteira da(s) unidade(s) do usuário (master vê tudo).
   const { count: total } = await restringirPorUnidade(
