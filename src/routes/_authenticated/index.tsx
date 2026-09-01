@@ -542,9 +542,24 @@ function CalculadoraMercado() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Barras titulo="Por estado" itens={mercado?.topUf ?? []} total={empresas} />
-        <Barras titulo="Por porte" itens={mercado?.topPorte ?? []} total={empresas} />
-        <Barras titulo="Por atividade" itens={mercado?.topAtividade ?? []} total={empresas} />
+        <Barras
+          titulo="Por estado"
+          itens={mercado?.topUf ?? []}
+          total={empresas}
+          linkDe={(uf) => ({ ...buscaEmpresas(f), uf })}
+        />
+        <Barras
+          titulo="Por porte"
+          itens={mercado?.topPorte ?? []}
+          total={empresas}
+          linkDe={(porte) => ({ ...buscaEmpresas(f), porte })}
+        />
+        <Barras
+          titulo="Por atividade"
+          itens={mercado?.topAtividade ?? []}
+          total={empresas}
+          linkDe={(cnae) => ({ ...buscaEmpresas(f), cnae })}
+        />
       </div>
     </div>
   );
