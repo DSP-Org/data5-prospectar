@@ -432,10 +432,11 @@ function Empresas() {
   const listas = useListas();
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const opcoes = useQuery({
-    queryKey: ["opcoes-filtro", unidade],
-    queryFn: () => opcoesFiltroFn({ data: unidade ? { unidade } : {} }),
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["opcoes-filtro", filtros],
+    queryFn: () => opcoesFiltroFn({ data: filtros }),
+    staleTime: 60 * 1000,
   });
+
   const empresas = useQuery({
     queryKey: ["empresas", filtros, page],
     queryFn: () => listarEmpresasFn({ data: { ...filtros, page, perPage: 25 } }),
