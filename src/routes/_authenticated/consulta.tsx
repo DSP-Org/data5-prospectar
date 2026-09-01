@@ -325,6 +325,9 @@ function Consulta() {
                         {item.company.cnae_descricao ?? "—"} · {item.company.cidade ?? "—"}/
                         {item.company.uf ?? "—"}
                       </p>
+                      <div className="mt-2">
+                        <SeloOrigem origem={item.origem} syncedAt={item.company.synced_at} />
+                      </div>
                       <p className="mt-2 text-xs text-accent">Ver ficha completa →</p>
                     </Link>
                   ) : (
