@@ -8,6 +8,7 @@ import { useListas } from "@/lib/use-listas";
 import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 
 import { criarImportacaoFn } from "@/lib/importacoes.functions";
+import { PreviaLote } from "@/components/PreviaLote";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -185,6 +186,8 @@ export function ImportarEmpresas() {
               </p>
             </TabsContent>
           </Tabs>
+
+          <PreviaLote cnpjs={cnpjs} onPlano={() => undefined} />
 
           <div className="space-y-2">
             <Label>Vincular à lista</Label>
