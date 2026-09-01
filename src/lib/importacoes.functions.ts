@@ -30,7 +30,7 @@ export const criarImportacaoFn = createServerFn({ method: "POST" })
 export const processarLoteFn = createServerFn({ method: "POST" })
   .middleware([exigirAcesso("/importacoes", "/empresas")])
   .inputValidator((d: unknown) =>
-    z.object({ jobId: z.string().uuid(), tamanho: z.number().int().min(1).max(30).optional() }).parse(d),
+    z.object({ jobId: z.string().uuid(), tamanho: z.number().int().min(1).max(60).optional() }).parse(d),
   )
   .handler(async ({ data, context }) => {
     const { processarLote } = await import("./importacoes.server");
