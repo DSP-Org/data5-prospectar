@@ -216,6 +216,54 @@ export function FontesDados() {
           </div>
         )}
 
+        {consumo.data && (
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Wallet className="h-4 w-4 text-primary" />
+              Consumo de fontes pagas
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Cada linha é um CNPJ que precisou de fonte paga. Consultas atendidas por cache ou por
+              fontes gratuitas não aparecem aqui.
+            </p>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {[
+                { rotulo: "Hoje", valor: consumo.data.hoje },
+                { rotulo: "Este mês", valor: consumo.data.mes },
+                { rotulo: "Total", valor: consumo.data.total },
+              ].map((k) => (
+                <div key={k.rotulo} className="rounded-md border border-border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">{k.rotulo}</p>
+                  <p className="text-xl font-semibold">{k.valor}</p>
+                </div>
+              ))}
+            </div>
+            {consumo.data.porOrigem.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {consumo.data.porOrigem.map((o) => (
+                  <Badge key={o.origem} variant="outline">
+                    {o.origem}: {o.qtd}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {consumo.data.ultimos.length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {consumo.data.ultimos.map((u, i) => (
+                  <li key={`${u.cnpj}-${i}`} className="flex justify-between gap-2">
+                    <span>
+                      {u.cnpj} · {u.fonte}
+                    </span>
+                    <span>{new Date(u.created_at).toLocaleString("pt-BR")}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+
+
 
 
         {lista.map((f, idx) => (
