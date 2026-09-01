@@ -16,6 +16,7 @@ import {
   FileText,
   FilterX,
   Loader2,
+  RefreshCw,
   Search,
   Smartphone,
   Star,
@@ -405,6 +406,7 @@ function Empresas() {
   const [grupo, setGrupo] = useState("todas");
   const [potencial, setPotencial] = useState(inicial.prospectar ? "sim" : "todas");
   const [carteira, setCarteira] = useState("todas");
+  const [dados, setDados] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
   const [colunas, setColunas] = useState<string[]>(
@@ -442,6 +444,7 @@ function Empresas() {
     grupoNatureza: grupo,
     ...(potencial === "todas" ? {} : { prospectar: potencial === "sim" }),
     ...(carteira === "todas" ? {} : { dono: carteira as "meus" | "sem_dono" | "outros" }),
+    ...(dados === "todas" ? {} : { dados: dados as "com" | "sem" }),
     ...filtrosAvancados(av),
     ...(unidade ? { unidade } : {}),
   };
@@ -519,6 +522,29 @@ function Empresas() {
     },
     onError: (e) => toast.error((e as Error).message),
   });
+
+  const enriquecerLote = useServerFn(consultarCnpjsFn);
+  const mutEnriquecer = useMutation({
+    mutationFn: async (cnpjs: string[]) => {
+      // Blocos pequenos para não estourar o tempo da requisição.
+      let ok = 0;
+      for (let i = 0; i < cnpjs.length; i += 20) {
+        const bloco = cnpjs.slice(i, i + 20);
+        const r = (await enriquecerLote({
+          data: { cnpjs: bloco, salvar: true, unitId: unidade ?? null },
+        })) as { empresas?: unknown[] };
+        ok += r.empresas?.length ?? 0;
+      }
+      return ok;
+    },
+    onSuccess: (ok) => {
+      toast.success(`${ok} empresa(s) atualizada(s) com dados das fontes.`);
+      setSelecionados([]);
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
 
   const mutProspectar = useMutation({
     mutationFn: ({ cnpjs, valor }: { cnpjs: string[]; valor: boolean }) =>
@@ -723,6 +749,7 @@ function Empresas() {
     (lista !== "todas" ? 1 : 0) +
     (status !== "todos" ? 1 : 0) +
     (potencial !== "todas" ? 1 : 0) +
+    (dados !== "todas" ? 1 : 0) +
     (carteira !== "todas" ? 1 : 0);
 
   const limparLocalizacao = () => {
@@ -740,8 +767,10 @@ function Empresas() {
     setStatus("todos");
     setPotencial("todas");
     setCarteira("todas");
+    setDados("todas");
     setPage(1);
   };
+
 
 
   async function exportarBase(formato: "excel" | "pdf") {
@@ -1276,7 +1305,27 @@ function Empresas() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-1">
+                      <Label>Dados das fontes</Label>
+                      <Select
+                        value={dados}
+                        onValueChange={(v) => {
+                          setDados(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Dados das fontes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Com ou sem dados</SelectItem>
+                          <SelectItem value="com">Somente com dados</SelectItem>
+                          <SelectItem value="sem">Somente sem dados (só CNPJ)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
                   {ativosComercial > 0 && (
                     <Button variant="ghost" size="sm" onClick={limparComercial}>
                       <FilterX className="h-4 w-4" /> Limpar gestão comercial
@@ -1416,6 +1465,20 @@ function Empresas() {
             >
               <UserMinus className="h-4 w-4" /> Liberar
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={mutEnriquecer.isPending}
+              onClick={() => mutEnriquecer.mutate(selecionados)}
+            >
+              {mutEnriquecer.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Buscar dados nas fontes
+            </Button>
+
             <Button
               size="sm"
               disabled={mutProspectar.isPending}

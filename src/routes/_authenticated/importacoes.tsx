@@ -68,7 +68,6 @@ function Pagina() {
 
   function pausar() {
     parar.current = true;
-    autoIniciado.current = true;
     toast.info("Pausando após o bloco atual…");
   }
 
@@ -101,7 +100,7 @@ function Pagina() {
         qc.invalidateQueries({ queryKey: ["importacoes"] });
         if (r.processados === 0 || r.pendentes === 0) break;
       }
-      toast.success(parar.current ? "Importação pausada." : "Importação processada.");
+      toast.success(parar.current ? "Enriquecimento pausado." : "Enriquecimento concluído.");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -113,18 +112,7 @@ function Pagina() {
     }
   }
 
-  // Retoma sozinho a primeira importação com pendências ao abrir a tela.
-  const autoIniciado = useRef(false);
-  useEffect(() => {
-    if (autoIniciado.current || rodando || !jobs.data) return;
-    const alvo = (jobs.data as unknown as Job[]).find(
-      (j) => j.total - (j.concluidos + j.nao_encontrados + j.erros) > 0,
-    );
-    if (!alvo) return;
-    autoIniciado.current = true;
-    void rodar(alvo.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs.data]);
+
 
 
   useEffect(() => () => void (parar.current = true), []);
@@ -150,9 +138,10 @@ function Pagina() {
         <header>
           <h1 className="font-display text-2xl font-semibold">Importações</h1>
           <p className="text-sm text-muted-foreground">
-            O arquivo é recebido na hora e o enriquecimento roda depois, em blocos. Você pode
-            retomar de onde parou e reprocessar os CNPJs que falharam.
+            A importação cadastra os CNPJs na hora, sem consultar fonte nenhuma. Buscar os dados
+            nas fontes é um passo à parte: rode quando quiser, pause e retome de onde parou.
           </p>
+
         </header>
 
         {lista.length === 0 ? (
@@ -176,14 +165,14 @@ function Pagina() {
                     </p>
                   </div>
                   <Badge variant={pendentes === 0 ? "secondary" : "default"}>
-                    {pendentes === 0 ? "Concluída" : `${pendentes} pendente(s)`}
+                    {pendentes === 0 ? "Tudo com dados" : `${pendentes} sem dados`}
                   </Badge>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Progress value={pct} />
                   <p className="text-sm text-muted-foreground">
-                    {feitos} de {j.total} processados · {j.concluidos} importada(s) ·{" "}
-                    {j.nao_encontrados} sem retorno · {j.erros} com erro
+                    {j.total} CNPJ(s) cadastrados · {j.concluidos} com dados ·{" "}
+                    {pendentes} sem dados · {j.nao_encontrados} sem retorno · {j.erros} com erro
                   </p>
                   <Etapas job={j} rodando={rodando === j.id} />
                   <div className="flex flex-wrap gap-2">
@@ -201,10 +190,10 @@ function Pagina() {
                       >
                         <Play className="h-4 w-4" />
                         {pendentes === 0
-                          ? "Sem pendências"
+                          ? "Tudo enriquecido"
                           : feitos > 0
-                            ? "Retomar"
-                            : "Processar"}
+                            ? "Continuar enriquecendo"
+                            : "Enriquecer agora"}
                       </Button>
                     )}
                     <Button
@@ -304,7 +293,7 @@ function Etapas({ job, rodando }: { job: Job; rodando: boolean }) {
   const linhas: Array<{ nome: string; detalhe: string; estado: EtapaEstado }> = [
     {
       nome: "1. Arquivo recebido",
-      detalhe: `${job.total} CNPJ(s) válidos na fila`,
+      detalhe: `${job.total} CNPJ(s) válidos`,
       estado: job.total > 0 ? "ok" : "pendente",
     },
     {
@@ -313,19 +302,19 @@ function Etapas({ job, rodando }: { job: Job; rodando: boolean }) {
       estado: job.total > 0 ? "ok" : "pendente",
     },
     {
-      nome: "3. Enriquecimento nas fontes",
-      detalhe:
-        pendentes === 0
-          ? "Todos os blocos processados"
-          : rodando
-            ? `Processando… faltam ${pendentes}`
-            : `${pendentes} aguardando processamento`,
-      estado: pendentes === 0 ? "ok" : rodando ? "andamento" : "pendente",
+      nome: "3. Cadastrados e vinculados à unidade",
+      detalhe: `${job.total} empresa(s) já disponíveis na base`,
+      estado: job.total > 0 ? "ok" : "pendente",
     },
     {
-      nome: "4. Empresas salvas na base",
-      detalhe: `${job.concluidos} empresa(s) disponíveis`,
-      estado: job.concluidos > 0 ? "ok" : pendentes > 0 ? "pendente" : "atencao",
+      nome: "4. Dados buscados nas fontes (opcional)",
+      detalhe:
+        pendentes === 0
+          ? `${job.concluidos} empresa(s) com dados`
+          : rodando
+            ? `Buscando… faltam ${pendentes}`
+            : `${pendentes} ainda sem dados`,
+      estado: pendentes === 0 ? "ok" : rodando ? "andamento" : "pendente",
     },
     {
       nome: "5. Revisão de falhas",

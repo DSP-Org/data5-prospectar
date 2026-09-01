@@ -124,7 +124,13 @@ async function persistir(mapped: Persistivel[], listId: string | null, unitId: s
 }
 
 /** Colunas recentes que podem não existir se a migration ainda não foi aplicada. */
-const COLUNAS_OPCIONAIS = ["simples_optante", "simples_desde", "mei_optante", "mei_desde"];
+const COLUNAS_OPCIONAIS = [
+  "simples_optante",
+  "simples_desde",
+  "mei_optante",
+  "mei_desde",
+  "enriquecido_em",
+];
 
 /**
  * Grava as empresas e, se o banco ainda não tiver alguma coluna opcional
@@ -134,8 +140,9 @@ async function gravarEmpresas(payload: Record<string, unknown>[]) {
   const enviar = (linhas: Record<string, unknown>[]) =>
     supabaseAdmin.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
 
-  // O PostgREST reporta uma coluna por vez, então tenta de novo a cada descarte.
-  let linhas = payload;
+  // Toda gravação vinda das fontes marca a empresa como enriquecida.
+  const agora = new Date().toISOString();
+  let linhas: Record<string, unknown>[] = payload.map((l) => ({ enriquecido_em: agora, ...l }));
   let resposta = await enviar(linhas);
   for (let tentativa = 0; tentativa < COLUNAS_OPCIONAIS.length; tentativa += 1) {
     const mensagem = resposta.error?.message;
@@ -197,8 +204,17 @@ export async function consultarCnpjs(input: {
   const unitIdAtual = unidadeDeGravacao(input.escopo, input.unitId);
   const salvar = input.salvar !== false;
 
-  const { data: cadastroRows } = await supabaseAdmin.from("companies").select("cnpj").in("cnpj", validos);
-  const noCadastro = new Set(((cadastroRows ?? []) as Row[]).map((r) => String(r["cnpj"])));
+  // Só conta como "já no cadastro" quem já foi enriquecido: registros criados
+  // pela importação (só o CNPJ) precisam ir às fontes na primeira busca.
+  const { data: cadastroRows } = await supabaseAdmin
+    .from("companies")
+    .select("cnpj, enriquecido_em")
+    .in("cnpj", validos);
+  const noCadastro = new Set(
+    ((cadastroRows ?? []) as Row[])
+      .filter((r) => Boolean(r["enriquecido_em"]))
+      .map((r) => String(r["cnpj"])),
+  );
 
   const { data: carteiraRows } = await supabaseAdmin.from("carteira").select("cnpj, unit_id").in("cnpj", validos);
   const carteiraPorCnpj = new Map<string, string>();
@@ -393,6 +409,8 @@ export type FiltrosCarteira = {
   prospectar?: boolean | undefined;
   /** Carteira: "meus", "sem_dono" ou "outros". */
   dono?: string | undefined;
+  /** "com" = já enriquecida nas fontes; "sem" = cadastro básico. */
+  dados?: string | undefined;
 };
 
 /** Campos que podem ser ignorados ao montar as opções de um filtro específico. */
@@ -446,6 +464,8 @@ function aplicarFiltrosCarteira<T>(consulta: T, input: FiltrosCarteira, ignorar:
   else if (input.dono === "sem_dono") q = q.is("owner_id", null);
   else if (input.dono === "outros")
     q = q.not("owner_id", "is", null).neq("owner_id", input.escopo.userId);
+  if (input.dados === "com") q = q.not("enriquecido_em", "is", null);
+  else if (input.dados === "sem") q = q.is("enriquecido_em", null);
   return q as T;
 }
 
