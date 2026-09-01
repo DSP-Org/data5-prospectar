@@ -113,9 +113,20 @@ function Barras({
           return (
             <div key={i.label}>
               <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate" title={i.label}>
-                  {i.label}
-                </span>
+                {linkDe ? (
+                  <Link
+                    to="/empresas"
+                    search={linkDe(i.label)}
+                    className="truncate underline-offset-2 hover:text-accent hover:underline"
+                    title={`Ver empresas: ${i.label}`}
+                  >
+                    {i.label}
+                  </Link>
+                ) : (
+                  <span className="truncate" title={i.label}>
+                    {i.label}
+                  </span>
+                )}
                 <span className="tabular text-muted-foreground">
                   {num(i.qtd)} · {pct}%
                 </span>
