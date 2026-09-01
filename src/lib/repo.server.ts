@@ -361,7 +361,8 @@ export async function consultarChave(input: {
   }
 }
 
-export async function listarEmpresas(input: {
+/** Recorte da carteira usado tanto na listagem quanto nas opções dos filtros. */
+export type FiltrosCarteira = {
   escopo: Escopo;
   busca?: string | undefined;
   status?: string | undefined;
@@ -390,16 +391,16 @@ export async function listarEmpresas(input: {
   prospectar?: boolean | undefined;
   /** Carteira: "meus", "sem_dono" ou "outros". */
   dono?: string | undefined;
-  page?: number | undefined;
-  perPage?: number | undefined;
-}) {
-  const page = Math.max(1, input.page ?? 1);
-  const perPage = Math.min(100, input.perPage ?? 25);
-  // Território exclusivo: "Base de Empresas" é a carteira da(s) unidade(s) do
-  // usuário — cadastro compartilhado (companies) + comercial da unidade (carteira).
-  let q = restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*", { count: "exact" }), input.escopo);
+};
 
+/** Campos que podem ser ignorados ao montar as opções de um filtro específico. */
+type DimensaoFiltro = "uf" | "cidade" | "porte" | "situacao" | "setor" | "cnae";
 
+/** Aplica o recorte na consulta da v_carteira (já restrita por unidade). */
+function aplicarFiltrosCarteira<T>(consulta: T, input: FiltrosCarteira, ignorar: DimensaoFiltro[] = []): T {
+  const pula = (d: DimensaoFiltro) => ignorar.includes(d);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q = consulta as any;
   if (input.busca?.trim()) {
     const termo = input.busca.trim();
     const digitos = termo.replace(/\D/g, "");
@@ -409,24 +410,24 @@ export async function listarEmpresas(input: {
     );
   }
   if (input.status && input.status !== "todos") q = q.eq("status", input.status);
-  if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
+  if (!pula("uf") && input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
   if (input.listId === "sem_lista") q = q.is("list_id", null);
   else if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
   if (input.productId === "sem_produto") q = q.is("product_id", null);
   else if (input.productId && input.productId !== "todos") q = q.eq("product_id", input.productId);
-  if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
+  if (!pula("cidade") && input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
   if (input.bairro?.trim()) q = q.ilike("bairro", `%${input.bairro.trim()}%`);
-  if (input.cnae?.trim()) {
+  if (!pula("cnae") && input.cnae?.trim()) {
     const t = input.cnae.trim();
     q = q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`);
   }
-  if (input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
-  if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
+  if (!pula("porte") && input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
+  if (!pula("situacao") && input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
   if (input.naturezaJuridica?.trim())
     q = q.ilike("natureza_juridica", `%${input.naturezaJuridica.trim()}%`);
   if (input.grupoNatureza && input.grupoNatureza !== "todas")
     q = q.ilike("natureza_juridica", `${input.grupoNatureza}%`);
-  if (input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
+  if (!pula("setor") && input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
   if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
   if (input.comSite) q = q.not("melhor_site", "is", null);
   if (input.comEmail) q = q.not("email_receita", "is", null);
@@ -443,6 +444,22 @@ export async function listarEmpresas(input: {
   else if (input.dono === "sem_dono") q = q.is("owner_id", null);
   else if (input.dono === "outros")
     q = q.not("owner_id", "is", null).neq("owner_id", input.escopo.userId);
+  return q as T;
+}
+
+export async function listarEmpresas(
+  input: FiltrosCarteira & { page?: number | undefined; perPage?: number | undefined },
+) {
+  const page = Math.max(1, input.page ?? 1);
+  const perPage = Math.min(100, input.perPage ?? 25);
+  // Território exclusivo: "Base de Empresas" é a carteira da(s) unidade(s) do
+  // usuário — cadastro compartilhado (companies) + comercial da unidade (carteira).
+  const q = aplicarFiltrosCarteira(
+    restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*", { count: "exact" }), input.escopo),
+    input,
+  );
+
+
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
