@@ -14,6 +14,7 @@ import {
   Search,
   Smartphone,
   Star,
+  Trash2,
   UserCheck,
   UserMinus,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { useUnidadeAtiva } from "@/lib/unidade-ativa";
 import {
   assumirLeadsFn,
   consultarCnpjsFn,
+  desvincularEmpresasFn,
   exportarEmpresasFn,
   liberarLeadsFn,
   listarEmpresasFn,
@@ -484,6 +486,19 @@ function Empresas() {
       else toast.success(`${r.liberados} lead(s) devolvido(s) para a base.`);
       setSelecionados([]);
       void qc.invalidateQueries({ queryKey: ["empresas"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const desvincular = useServerFn(desvincularEmpresasFn);
+  const mutDesvincular = useMutation({
+    mutationFn: (cnpjs: string[]) => desvincular({ data: { cnpjs, unidade: unidade ?? undefined } }),
+    onSuccess: (r) => {
+      toast.success(`${r.total} empresa(s) removida(s) da base da unidade.`);
+      setSelecionados([]);
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+      void qc.invalidateQueries({ queryKey: ["listas"] });
+      void qc.invalidateQueries({ queryKey: ["sem-lista"] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -1225,6 +1240,21 @@ function Empresas() {
               onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: false })}
             >
               Desmarcar
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={mutDesvincular.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Excluir ${selecionados.length} empresa(s) da base desta unidade?\n\nO cadastro continua existindo no sistema: a empresa apenas é desvinculada e vai para a unidade residual "Sem unidade (residual)".`,
+                  )
+                )
+                  mutDesvincular.mutate(selecionados);
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Excluir da base
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelecionados([])}>
               Limpar seleção
