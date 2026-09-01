@@ -18,6 +18,7 @@ import { conversarFiltrosFn } from "@/lib/ia-filtros.functions";
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
 import { Combobox, ComboboxMulti } from "@/components/Combobox";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
