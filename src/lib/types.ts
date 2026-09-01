@@ -104,6 +104,8 @@ export type LookupItem = {
   erro?: string | null;
   company?: Company | null;
   salva: boolean;
+  /** De onde veio o resultado: base local (sem custo) ou consulta às fontes. */
+  origem?: "base" | "fontes";
 };
 
 export function formatCnpj(value: string): string {

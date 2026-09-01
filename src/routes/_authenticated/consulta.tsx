@@ -18,6 +18,8 @@ import { conversarFiltrosFn } from "@/lib/ia-filtros.functions";
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
 import { Combobox, ComboboxMulti } from "@/components/Combobox";
+import { PreviaLote, type PlanoLote } from "@/components/PreviaLote";
+import { SeloOrigem } from "@/components/SeloOrigem";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -76,14 +78,21 @@ function Consulta() {
   const listas = useListas();
   const { unidade } = useUnidadeAtiva();
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
+  const [plano, setPlano] = useState<PlanoLote | null>(null);
 
 
   const alvoLista = listId === "nenhuma" ? null : listId;
 
   const mutCnpjs = useMutation({
-    mutationFn: (p: { cnpjs: string[]; completo: boolean }) =>
+    mutationFn: (p: { cnpjs: string[]; completo: boolean; forcar?: boolean }) =>
       consultarCnpjs({
-        data: { cnpjs: p.cnpjs, listId: alvoLista, completo: p.completo, unitId: unidade ?? undefined },
+        data: {
+          cnpjs: p.cnpjs,
+          listId: alvoLista,
+          completo: p.completo,
+          forcar: p.forcar ?? false,
+          unitId: unidade ?? undefined,
+        },
       }),
     onSuccess: (res) => {
       setItens(res.itens);
@@ -208,25 +217,47 @@ function Consulta() {
                     Separe por linha, vírgula ou espaço. {cnpjs.length} identificado(s).
                   </p>
                 </div>
+
+                <PreviaLote cnpjs={cnpjs} onPlano={setPlano} />
+
                 <p className="rounded-md border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
                   Em lote o sistema usa o cache e as fontes gratuitas primeiro para economizar
                   créditos. Use a aba “Buscar por nome ou CNPJ” quando precisar do “Buscar tudo”.
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
-                    disabled={cnpjs.length === 0 || carregando}
-                    onClick={() => mutCnpjs.mutate({ cnpjs, completo: false })}
+                    disabled={!plano || plano.cnpjs.length === 0 || carregando}
+                    onClick={() => {
+                      if (!plano || plano.cnpjs.length === 0) return;
+                      if (
+                        plano.forcar &&
+                        !window.confirm(
+                          "Forçar tudo ignora a validade do cache e pode debitar crédito nas fontes pagas. Continuar?",
+                        )
+                      )
+                        return;
+                      mutCnpjs.mutate({
+                        cnpjs: plano.cnpjs,
+                        completo: false,
+                        forcar: plano.forcar,
+                      });
+                    }}
                   >
                     {mutCnpjs.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Search className="h-4 w-4" />
                     )}
-                    Consultar {cnpjs.length > 1 ? `${cnpjs.length} CNPJs` : "CNPJ"}
+                    Consultar {plano && plano.cnpjs.length > 1 ? `${plano.cnpjs.length} CNPJs` : "CNPJ"}
                   </Button>
                   <Badge variant="secondary">cache e fontes gratuitas primeiro</Badge>
                 </div>
               </TabsContent>
+
+
+
+
+
 
 
 
@@ -295,6 +326,9 @@ function Consulta() {
                         {item.company.cnae_descricao ?? "—"} · {item.company.cidade ?? "—"}/
                         {item.company.uf ?? "—"}
                       </p>
+                      <div className="mt-2">
+                        <SeloOrigem origem={item.origem} syncedAt={item.company.synced_at} />
+                      </div>
                       <p className="mt-2 text-xs text-accent">Ver ficha completa →</p>
                     </Link>
                   ) : (

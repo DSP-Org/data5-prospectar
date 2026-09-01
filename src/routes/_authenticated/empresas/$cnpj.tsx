@@ -58,6 +58,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { FichaImpressao } from "@/components/FichaImpressao";
 import { Badge } from "@/components/ui/badge";
+import { SeloOrigem } from "@/components/SeloOrigem";
 import { SOURCE_LABEL } from "@/lib/sources/catalog";
 
 import { Button } from "@/components/ui/button";
@@ -912,9 +913,13 @@ function Detalhe() {
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                Sincronizado em {new Date(e.synced_at).toLocaleString("pt-BR")}
-              </p>
+              <div className="space-y-2">
+                <SeloOrigem origem="base" syncedAt={e.synced_at} />
+                <p className="text-xs text-muted-foreground">
+                  Sincronizado em {new Date(e.synced_at).toLocaleString("pt-BR")}. Use
+                  “Reconsultar” para buscar dados novos nas fontes (pode consumir crédito).
+                </p>
+              </div>
             </CardContent>
           </Card>
 
