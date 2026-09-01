@@ -1,34 +1,72 @@
-# Importação unificada de CNPJs
+# Calculadora de mercado (substitui Painel + Calculadora)
 
-Hoje existem três caminhos diferentes para jogar CNPJ na base, cada um com comportamento próprio:
+Inspirado na Calculadora de Mercado da Econodata: você monta um recorte de mercado
+com filtros, o sistema diz **quantas empresas existem nesse recorte** e transforma
+isso em potencial de faturamento, meta e esforço de prospecção.
 
-1. **Base de Empresas → botão "Importar"** — só aceita arquivo; envia para a fila (`import_jobs`) e o enriquecimento roda na tela Importações, com retomada e reprocesso.
-2. **Atualização Novas → aba "Lista de CNPJs"** — aceita texto colado, mas processa na hora, na frente do usuário: se a aba fechar, o trabalho se perde e não há registro do que falhou.
-3. **Busca avançada CNPJá → "Salvar selecionados"** — salva o lote direto, também sem registro nem retomada.
+A diferença: em vez de consultar a base da Econodata, o cálculo roda sobre a
+**nossa base de empresas**, sempre respeitando a unidade selecionada no seletor do
+topo (master vê todas; usuário vê só as unidades vinculadas).
 
-## Como fica
+## O que muda nas páginas
 
-Uma única tela de importação, usada em todos os lugares:
+- A home (`/`) passa a ser a **Calculadora de mercado**.
+- A página `/calculadora` deixa de existir; o menu passa a ter um item só,
+  "Calculadora de mercado", apontando para a home.
+- Os indicadores do painel atual (empresas na base, adicionadas em 30 dias,
+  funil por status, últimas consultas, principais estados) não se perdem: viram a
+  faixa de contexto no topo da nova página, já filtrada pelo recorte escolhido.
 
-- **Colar CNPJs** — caixa de texto, aceita até 100 CNPJs por vez (avisa quando passar disso e sugere o arquivo).
-- **Enviar arquivo** — CSV ou TXT, sem limite prático, com o modelo para baixar.
-- Escolha da lista de destino (respeitando a unidade ativa), igual hoje.
-- Os dois modos fazem exatamente a mesma coisa: criam uma Importação, mostram "X CNPJ(s) na fila" e levam para a tela **Importações**, onde já existe progresso ao vivo, etapas com check, pausar/retomar, reprocessar falhas e excluir.
-- CNPJ que já está na base continua sendo pulado (só é vinculado à lista), sem gastar consulta.
+## Como a página funciona
 
-## Onde aparece
+**1. Recorte de mercado (filtros)**
+Painel de filtros recolhível, no mesmo espírito da busca de empresas da Econodata:
 
-- **Base de Empresas** — mesmo botão "Importar" de hoje, abrindo a tela nova.
-- **Importações** — botão "Nova importação" no topo.
-- **Atualização Novas** — a aba "Lista de CNPJs" sai; ficam "CNPJ individual" (consulta imediata, um por vez, como hoje) e "Janela CNPJá". No lugar da aba removida, um atalho "Importar lista de CNPJs" abre a mesma tela.
-- **Busca avançada CNPJá** — "Salvar selecionados" passa a criar uma Importação com os CNPJs marcados, em vez de consultar tudo na hora.
+- Estado (UF) e município
+- Atividade econômica (CNAE / setor)
+- Porte estimado e faixa de faturamento presumido
+- Situação cadastral (ativa / demais)
+- Lista, status comercial e "somente marcadas para prospectar"
+- Somente empresas com telefone / e-mail (mercado realmente acionável)
 
-Assim só existe um jeito de importar, um só lugar para acompanhar e nada mais se perde quando a aba fecha.
+**2. Tamanho do mercado**
+Cards com: empresas no recorte, % da base da unidade, empresas com contato
+válido, e a quebra do recorte por UF, porte e atividade (barras com top 6 de cada).
+
+**3. Potencial e metas**
+Campos editáveis: ticket médio, meta de faturamento, taxa de conversão de
+contato → cliente, taxa de resposta e % de comissão. Resultado:
+
+- Mercado potencial (empresas × ticket médio)
+- Clientes necessários e contatos necessários para bater a meta
+- Cobertura: se o recorte tem empresas suficientes para o esforço planejado
+- Comissão estimada e receita por vendedor da unidade
+
+**4. Ações**
+Botões para abrir o recorte na Base de Empresas com os mesmos filtros,
+e exportar o resumo do cálculo.
+
+## Fora deste plano
+
+Busca de pessoas/decisores (a página `busca-pessoa` da Econodata) não entra agora —
+depende de dados de contato individuais que hoje só existem parcialmente em
+`decisores`. Pode virar uma fase seguinte.
 
 ## Detalhes técnicos
 
-- `src/components/ImportarEmpresas.tsx` vira `ImportarCnpjs`: dialog com abas "Colar" e "Arquivo", reutilizando `extrairCnpjs`; no modo colar, corta/avisa acima de 100. Ambos chamam `criarImportacaoFn` e navegam para `/importacoes`.
-- `src/routes/_authenticated/consulta.tsx`: remove o `TabsContent value="lista"` e o gatilho correspondente; a aba individual segue com `consultarCnpjsFn`.
-- Busca avançada (mesmo arquivo, mutação `salvar` do bloco de seleção): troca `consultarCnpjsFn` por `criarImportacaoFn` com `arquivo: "Busca avançada CNPJá"`.
-- `src/routes/_authenticated/importacoes.tsx`: adiciona o botão que abre o mesmo componente.
-- Sem mudança de banco e sem mudança no motor de enriquecimento (`importacoes.server.ts`, `repo.server.ts`).
+- Nova server fn `calculadoraMercadoFn` (em `src/lib/econodata.functions.ts`)
+  chamando `mercadoAgregado(filtros, escopo)` em `src/lib/repo.server.ts`.
+  A agregação lê `v_carteira` com `restringirPorUnidade`, reaproveitando a mesma
+  montagem de filtros de `listarEmpresas` e o padrão de contagem já usado em
+  `opcoesFiltro` (linha ~874): contagem `head: true` para o total e uma leitura
+  de colunas enxutas (`uf, cidade, porte_estimado, setores, cnae_descricao,
+  melhor_telefone, melhor_site, email_receita, status`) para as quebras.
+- `src/routes/_authenticated/index.tsx` é reescrita como a calculadora; o cálculo
+  financeiro é puro no cliente (reaproveita a lógica atual de `calculadora.tsx`).
+- `src/routes/_authenticated/calculadora.tsx` é removida e o item correspondente
+  em `src/components/AppShell.tsx` some; a rota `/calculadora` passa a redirecionar
+  para `/`.
+- Remover `/calculadora` de `role_permissions` exige migração; em vez disso a rota
+  redirecionada mantém as permissões atuais válidas.
+- Unidade ativa via `useUnidadeAtiva` + `restringirUnidade`, igual às demais telas.
+- `head()` da home atualizado com título e descrição da calculadora de mercado.
