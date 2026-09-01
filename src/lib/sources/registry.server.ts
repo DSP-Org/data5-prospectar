@@ -208,9 +208,15 @@ export async function salvarModulosCnpja(input: { [K in keyof ModulosCnpja]?: bo
   return { ok: true };
 }
 
-export async function salvarEconomia(input: { modo?: ModoConsulta | undefined; ttlDias?: number | undefined }) {
+export async function salvarEconomia(input: {
+  modo?: ModoConsulta | undefined;
+  ttlDias?: number | undefined;
+  somenteGratis?: boolean | undefined;
+}) {
   if (input.modo) await gravar(MODE_KEY, input.modo);
   if (input.ttlDias !== undefined) await gravar(TTL_KEY, String(Math.max(0, Math.min(365, Math.round(input.ttlDias)))));
+  if (input.somenteGratis !== undefined)
+    await gravar(SOMENTE_GRATIS_KEY, input.somenteGratis ? "true" : "false");
   return { ok: true };
 }
 
