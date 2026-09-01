@@ -280,6 +280,44 @@ export type Database = {
           },
         ]
       }
+      consumo_consultas: {
+        Row: {
+          cnpj: string
+          created_at: string
+          creditos: number
+          fonte: string
+          id: string
+          origem: string
+          unit_id: string | null
+        }
+        Insert: {
+          cnpj?: string
+          created_at?: string
+          creditos?: number
+          fonte: string
+          id?: string
+          origem?: string
+          unit_id?: string | null
+        }
+        Update: {
+          cnpj?: string
+          created_at?: string
+          creditos?: number
+          fonte?: string
+          id?: string
+          origem?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumo_consultas_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_items: {
         Row: {
           cnpj: string
