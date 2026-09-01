@@ -797,7 +797,13 @@ function BuscaAvancadaCnpja({
       const r = await conversar({ data: { mensagens: historico } });
 
       if (!r.aplicar || !r.filtros) {
-        return { r, historico, uf: "", municipiosIds: [] as string[], cnaesIds: [] as string[] };
+        return {
+          r,
+          historico,
+          uf: "",
+          municipiosIds: [] as string[],
+          cnaeSugestoes: [] as { id: string; descricao: string }[],
+        };
       }
 
       const s = r.filtros;
