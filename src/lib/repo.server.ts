@@ -1115,8 +1115,10 @@ export async function opcoesFiltro(escopo: Escopo, recorte?: Omit<FiltrosCarteir
     const s = new Set<string>();
     for (const l of linhas) {
       const v = pega(l);
-      if (Array.isArray(v)) for (const x of v) if (x) s.add(x);
-      else if (v) s.add(v);
+      if (Array.isArray(v)) {
+        for (const x of v) if (x) s.add(x);
+      } else if (v) s.add(v);
+
     }
     return ord(s);
   };
