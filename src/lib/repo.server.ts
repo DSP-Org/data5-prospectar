@@ -848,36 +848,66 @@ export async function mercadoAgregado(input: FiltrosMercado) {
     escopo,
   );
 
-  let q = restringirPorUnidade(
-    supabaseAdmin
-      .from("v_carteira")
-      .select(
-        "uf, cidade, porte_estimado, setores, cnae_descricao, melhor_telefone, melhor_site, email_receita, status",
-      ),
-    escopo,
+  // PostgREST limita cada resposta a 1.000 linhas: contamos o recorte com
+  // count exato e lemos as quebras paginando por blocos.
+  const aplicarFiltros = <T>(base: T): T => {
+    let q = base as never as {
+      eq: (...a: unknown[]) => unknown;
+      ilike: (...a: unknown[]) => unknown;
+      or: (...a: unknown[]) => unknown;
+      contains: (...a: unknown[]) => unknown;
+      is: (...a: unknown[]) => unknown;
+      not: (...a: unknown[]) => unknown;
+    };
+    const ap = (r: unknown) => {
+      q = r as typeof q;
+    };
+    if (input.uf && input.uf !== "todos") ap(q.eq("uf", input.uf));
+    if (input.cidade?.trim()) ap(q.ilike("cidade", `%${input.cidade.trim()}%`));
+    if (input.cnae?.trim()) {
+      const t = input.cnae.trim();
+      ap(q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`));
+    }
+    if (input.porte && input.porte !== "todos") ap(q.eq("porte_estimado", input.porte));
+    if (input.setor && input.setor !== "todos") ap(q.contains("setores", [input.setor]));
+    if (input.situacao && input.situacao !== "todas") ap(q.ilike("situacao", input.situacao));
+    if (input.listId === "sem_lista") ap(q.is("list_id", null));
+    else if (input.listId && input.listId !== "todas") ap(q.eq("list_id", input.listId));
+    if (input.status && input.status !== "todos") ap(q.eq("status", input.status));
+    if (input.prospectar) ap(q.eq("prospectar", true));
+    if (input.comTelefone) ap(q.not("melhor_telefone", "is", null));
+    if (input.comEmail) ap(q.not("email_receita", "is", null));
+    return q as never as T;
+  };
+
+  const { count: totalRecorte, error: erroCount } = await aplicarFiltros(
+    restringirPorUnidade(
+      supabaseAdmin.from("v_carteira").select("cnpj", { count: "exact", head: true }),
+      escopo,
+    ),
   );
+  if (erroCount) throw new Error(erroCount.message);
 
-  if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
-  if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
-  if (input.cnae?.trim()) {
-    const t = input.cnae.trim();
-    q = q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`);
+  const colunas =
+    "uf, cidade, porte_estimado, setores, cnae_descricao, melhor_telefone, melhor_site, email_receita, status";
+  const bloco = 1000;
+  const maximo = 50000;
+  const linhas: LinhaMercado[] = [];
+  const alvo = Math.min(totalRecorte ?? 0, maximo);
+  for (let inicio = 0; inicio < alvo; inicio += bloco) {
+    const { data, error } = await aplicarFiltros(
+      restringirPorUnidade(supabaseAdmin.from("v_carteira").select(colunas), escopo),
+    )
+      .order("cnpj", { ascending: true })
+      .range(inicio, Math.min(inicio + bloco, alvo) - 1);
+    if (error) throw new Error(error.message);
+    const pagina = (data ?? []) as LinhaMercado[];
+    linhas.push(...pagina);
+    if (pagina.length < bloco) break;
   }
-  if (input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
-  if (input.setor && input.setor !== "todos") q = q.contains("setores", [input.setor]);
-  if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
-  if (input.listId === "sem_lista") q = q.is("list_id", null);
-  else if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
-  if (input.status && input.status !== "todos") q = q.eq("status", input.status);
-  if (input.prospectar) q = q.eq("prospectar", true);
-  if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
-  if (input.comEmail) q = q.not("email_receita", "is", null);
 
-  const { data, error } = await q.limit(20000);
-  if (error) throw new Error(error.message);
-
-  const linhas = (data ?? []) as LinhaMercado[];
   const porUf: Record<string, number> = {};
+
   const porPorte: Record<string, number> = {};
   const porAtividade: Record<string, number> = {};
   const porStatus: Record<string, number> = {};
