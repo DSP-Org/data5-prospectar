@@ -748,6 +748,10 @@ function BuscaAvancadaCnpja({
   const [filtrosAbertos, setFiltrosAbertos] = useState(true);
   const [avancadosAbertos, setAvancadosAbertos] = useState(false);
   const [conversa, setConversa] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  /** Candidatos de CNAE sugeridos pela IA — o usuário escolhe quais valem. */
+  const [sugestoesCnae, setSugestoesCnae] = useState<{ id: string; descricao: string }[]>([]);
+  const [cnaeEscolhidos, setCnaeEscolhidos] = useState<string[]>([]);
+  const [incluirSecundaria, setIncluirSecundaria] = useState(true);
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
@@ -793,7 +797,13 @@ function BuscaAvancadaCnpja({
       const r = await conversar({ data: { mensagens: historico } });
 
       if (!r.aplicar || !r.filtros) {
-        return { r, historico, uf: "", municipiosIds: [] as string[], cnaesIds: [] as string[] };
+        return {
+          r,
+          historico,
+          uf: "",
+          municipiosIds: [] as string[],
+          cnaeSugestoes: [] as { id: string; descricao: string }[],
+        };
       }
 
       const s = r.filtros;
@@ -811,7 +821,8 @@ function BuscaAvancadaCnpja({
           .filter(Boolean);
       }
 
-      let cnaesIds: string[] = [];
+      /** Candidatos ordenados por aderência — nada é aplicado sem o usuário escolher. */
+      let cnaeSugestoes: { id: string; descricao: string }[] = [];
       if ((s.cnaeTermos?.length ?? 0) > 0) {
         const lista = cnaes.data ?? (await listarCnaes());
         const PARADAS = new Set([
@@ -823,12 +834,25 @@ function BuscaAvancadaCnpja({
             .split(/[^a-z0-9]+/)
             .filter((w) => w.length >= 3 && !PARADAS.has(w));
 
+        const achados = new Map<string, { id: string; descricao: string; peso: number; tamanho: number }>();
+        const guardar = (c: CnaeIbge, peso: number) => {
+          const atualPeso = achados.get(c.id)?.peso ?? -1;
+          if (peso > atualPeso) {
+            achados.set(c.id, {
+              id: c.id,
+              descricao: c.descricao,
+              peso,
+              tamanho: normalizar(c.descricao).length,
+            });
+          }
+        };
+
         for (const termo of s.cnaeTermos ?? []) {
           const codigo = termo.replace(/\D/g, "");
           if (codigo.length >= 4) {
-            const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 5);
+            const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 8);
             if (exato.length > 0) {
-              cnaesIds.push(...exato.map((c) => c.id));
+              for (const c of exato) guardar(c, 100);
               continue;
             }
           }
@@ -836,37 +860,42 @@ function BuscaAvancadaCnpja({
           if (palavras.length === 0) continue;
 
           const pontuados = lista
-            .map((c) => {
-              const desc = normalizar(c.descricao);
-              const acertos = palavras.filter((p) => desc.includes(p)).length;
-              return { id: c.id, acertos, tamanho: desc.length };
-            })
+            .map((c) => ({
+              c,
+              acertos: palavras.filter((p) => normalizar(c.descricao).includes(p)).length,
+            }))
             .filter((x) => x.acertos > 0);
 
           const melhor = Math.max(...pontuados.map((x) => x.acertos), 0);
           if (melhor === 0) continue;
-          const minimo = Math.max(1, Math.min(melhor, Math.ceil(palavras.length / 2)));
 
-          cnaesIds.push(
-            ...pontuados
-              .filter((x) => x.acertos >= minimo)
-              .sort((a, b) => b.acertos - a.acertos || a.tamanho - b.tamanho)
-              .slice(0, 8)
-              .map((x) => x.id),
-          );
+          // Só entram os que casam com TODAS as palavras do termo (ou com o melhor casamento possível).
+          for (const x of pontuados
+            .filter((x) => x.acertos >= melhor)
+            .sort((a, b) => normalizar(a.c.descricao).length - normalizar(b.c.descricao).length)
+            .slice(0, 10)) {
+            guardar(x.c, x.acertos);
+          }
         }
-        cnaesIds = [...new Set(cnaesIds)].slice(0, 20);
+
+        cnaeSugestoes = [...achados.values()]
+          .sort((a, b) => b.peso - a.peso || a.tamanho - b.tamanho)
+          .slice(0, 25)
+          .map(({ id, descricao }) => ({ id, descricao }));
       }
 
-      return { r, historico, uf, municipiosIds, cnaesIds };
+      return { r, historico, uf, municipiosIds, cnaeSugestoes };
     },
-    onSuccess: ({ r, historico, uf, municipiosIds, cnaesIds }) => {
+    onSuccess: ({ r, historico, uf, municipiosIds, cnaeSugestoes }) => {
       const s = r.filtros;
       const fala = r.mensagem || (r.aplicar ? s?.explicacao ?? "Filtros preenchidos." : "…");
       setConversa([...historico, { role: "assistant" as const, content: fala }]);
       setPedidoIa("");
 
       if (!r.aplicar || !s) return;
+
+      setSugestoesCnae(cnaeSugestoes);
+      setCnaeEscolhidos(cnaeSugestoes.slice(0, 3).map((c) => c.id));
 
       setF((atual) => ({
         ...atual,
@@ -875,7 +904,6 @@ function BuscaAvancadaCnpja({
         uf: uf || atual.uf,
         municipiosIbge: municipiosIds.length > 0 ? municipiosIds : uf ? [] : atual.municipiosIbge,
         bairro: s.bairro ?? atual.bairro,
-        cnaesPrincipais: cnaesIds.length > 0 ? cnaesIds : atual.cnaesPrincipais,
         porteIds: (s.porteIds?.length ?? 0) > 0 ? (s.porteIds as string[]) : atual.porteIds,
         situacaoIds: (s.situacaoIds?.length ?? 0) > 0 ? (s.situacaoIds as string[]) : atual.situacaoIds,
         capitalMin: s.capitalMin != null ? String(s.capitalMin) : atual.capitalMin,
@@ -1042,6 +1070,89 @@ function BuscaAvancadaCnpja({
           </span>
         </div>
       </div>
+
+      {sugestoesCnae.length > 0 ? (
+        <div className="space-y-3 rounded-md border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-medium">
+              Atividades sugeridas — escolha as que valem ({cnaeEscolhidos.length} de{" "}
+              {sugestoesCnae.length})
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSugestoesCnae([]);
+                setCnaeEscolhidos([]);
+              }}
+            >
+              Descartar sugestões
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Nenhuma atividade entra no filtro sem a sua confirmação.
+          </p>
+          <div className="max-h-56 space-y-1 overflow-y-auto rounded-md bg-muted/40 p-2">
+            {sugestoesCnae.map((c) => (
+              <label key={c.id} className="flex items-start gap-2 rounded px-1 py-1 text-xs hover:bg-background">
+                <Checkbox
+                  className="mt-0.5"
+                  checked={cnaeEscolhidos.includes(c.id)}
+                  onCheckedChange={() =>
+                    setCnaeEscolhidos((atual) =>
+                      atual.includes(c.id) ? atual.filter((v) => v !== c.id) : [...atual, c.id],
+                    )
+                  }
+                />
+                <span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{c.id}</span>{" "}
+                  {c.descricao}
+                </span>
+              </label>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={incluirSecundaria}
+              onCheckedChange={(v) => setIncluirSecundaria(v === true)}
+            />
+            Considerar também quem tem a atividade como secundária
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={cnaeEscolhidos.length === 0}
+              onClick={() => {
+                setF((atual) =>
+                  incluirSecundaria
+                    ? { ...atual, cnaesPrincipais: [], cnaeQualquer: cnaeEscolhidos.join(",") }
+                    : { ...atual, cnaesPrincipais: cnaeEscolhidos, cnaeQualquer: "" },
+                );
+                toast.success(
+                  `${cnaeEscolhidos.length} atividade(s) aplicada(s)${incluirSecundaria ? " (principal ou secundária)" : " (só principal)"}.`,
+                );
+              }}
+            >
+              Aplicar atividades selecionadas
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setCnaeEscolhidos(sugestoesCnae.map((c) => c.id))}
+            >
+              Marcar todas
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setCnaeEscolhidos([])}>
+              Desmarcar todas
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+
 
 
       <Collapsible open={filtrosAbertos} onOpenChange={setFiltrosAbertos}>
