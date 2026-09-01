@@ -256,6 +256,8 @@ export async function consultarCnpjs(input: {
     const { empresas, falhas } = await buscarMultiFonte(aConsultar, {
       forcar: input.forcar,
       completo: input.completo,
+      origem: aConsultar.length > 1 ? "lote" : "consulta",
+      unitId: unitIdAtual,
     });
 
 
