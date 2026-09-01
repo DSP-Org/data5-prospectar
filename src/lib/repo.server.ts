@@ -361,7 +361,8 @@ export async function consultarChave(input: {
   }
 }
 
-export async function listarEmpresas(input: {
+/** Recorte da carteira usado tanto na listagem quanto nas opções dos filtros. */
+export type FiltrosCarteira = {
   escopo: Escopo;
   busca?: string | undefined;
   status?: string | undefined;
@@ -390,16 +391,16 @@ export async function listarEmpresas(input: {
   prospectar?: boolean | undefined;
   /** Carteira: "meus", "sem_dono" ou "outros". */
   dono?: string | undefined;
-  page?: number | undefined;
-  perPage?: number | undefined;
-}) {
-  const page = Math.max(1, input.page ?? 1);
-  const perPage = Math.min(100, input.perPage ?? 25);
-  // Território exclusivo: "Base de Empresas" é a carteira da(s) unidade(s) do
-  // usuário — cadastro compartilhado (companies) + comercial da unidade (carteira).
-  let q = restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*", { count: "exact" }), input.escopo);
+};
 
+/** Campos que podem ser ignorados ao montar as opções de um filtro específico. */
+type DimensaoFiltro = "uf" | "cidade" | "porte" | "situacao" | "setor" | "cnae";
 
+/** Aplica o recorte na consulta da v_carteira (já restrita por unidade). */
+function aplicarFiltrosCarteira<T>(consulta: T, input: FiltrosCarteira, ignorar: DimensaoFiltro[] = []): T {
+  const pula = (d: DimensaoFiltro) => ignorar.includes(d);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q = consulta as any;
   if (input.busca?.trim()) {
     const termo = input.busca.trim();
     const digitos = termo.replace(/\D/g, "");
@@ -409,24 +410,24 @@ export async function listarEmpresas(input: {
     );
   }
   if (input.status && input.status !== "todos") q = q.eq("status", input.status);
-  if (input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
+  if (!pula("uf") && input.uf && input.uf !== "todos") q = q.eq("uf", input.uf);
   if (input.listId === "sem_lista") q = q.is("list_id", null);
   else if (input.listId && input.listId !== "todas") q = q.eq("list_id", input.listId);
   if (input.productId === "sem_produto") q = q.is("product_id", null);
   else if (input.productId && input.productId !== "todos") q = q.eq("product_id", input.productId);
-  if (input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
+  if (!pula("cidade") && input.cidade?.trim()) q = q.ilike("cidade", `%${input.cidade.trim()}%`);
   if (input.bairro?.trim()) q = q.ilike("bairro", `%${input.bairro.trim()}%`);
-  if (input.cnae?.trim()) {
+  if (!pula("cnae") && input.cnae?.trim()) {
     const t = input.cnae.trim();
     q = q.or(`cnae_codigo.ilike.%${t}%,cnae_descricao.ilike.%${t}%`);
   }
-  if (input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
-  if (input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
+  if (!pula("porte") && input.porte && input.porte !== "todos") q = q.eq("porte_estimado", input.porte);
+  if (!pula("situacao") && input.situacao && input.situacao !== "todas") q = q.ilike("situacao", input.situacao);
   if (input.naturezaJuridica?.trim())
     q = q.ilike("natureza_juridica", `%${input.naturezaJuridica.trim()}%`);
   if (input.grupoNatureza && input.grupoNatureza !== "todas")
     q = q.ilike("natureza_juridica", `${input.grupoNatureza}%`);
-  if (input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
+  if (!pula("setor") && input.setor?.trim()) q = q.contains("setores", [input.setor.trim()]);
   if (input.comTelefone) q = q.not("melhor_telefone", "is", null);
   if (input.comSite) q = q.not("melhor_site", "is", null);
   if (input.comEmail) q = q.not("email_receita", "is", null);
@@ -443,6 +444,22 @@ export async function listarEmpresas(input: {
   else if (input.dono === "sem_dono") q = q.is("owner_id", null);
   else if (input.dono === "outros")
     q = q.not("owner_id", "is", null).neq("owner_id", input.escopo.userId);
+  return q as T;
+}
+
+export async function listarEmpresas(
+  input: FiltrosCarteira & { page?: number | undefined; perPage?: number | undefined },
+) {
+  const page = Math.max(1, input.page ?? 1);
+  const perPage = Math.min(100, input.perPage ?? 25);
+  // Território exclusivo: "Base de Empresas" é a carteira da(s) unidade(s) do
+  // usuário — cadastro compartilhado (companies) + comercial da unidade (carteira).
+  const q = aplicarFiltrosCarteira(
+    restringirPorUnidade(supabaseAdmin.from("v_carteira").select("*", { count: "exact" }), input.escopo),
+    input,
+  );
+
+
 
   const { data, error, count } = await q
     .order("created_at", { ascending: false })
@@ -1065,40 +1082,57 @@ export async function consultarChaves(input: {
 }
 
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
-export async function opcoesFiltro(escopo: Escopo) {
-  const q = restringirPorUnidade(
-    supabaseAdmin.from("v_carteira").select("uf, cidade, porte_estimado, situacao, setores"),
-    escopo,
-  );
+export async function opcoesFiltro(escopo: Escopo, recorte?: Omit<FiltrosCarteira, "escopo">) {
+  const filtros: FiltrosCarteira = { ...(recorte ?? {}), escopo };
+  const base = () =>
+    restringirPorUnidade(
+      supabaseAdmin.from("v_carteira").select("uf, cidade, porte_estimado, situacao, setores, cnae_descricao"),
+      escopo,
+    );
+  // Cada dimensão ignora o próprio filtro, mas respeita o restante do recorte —
+  // assim os selects mostram só o que existe dentro da base recortada.
+  const ler = async (ignorar: DimensaoFiltro[]) =>
+    ((await aplicarFiltrosCarteira(base(), filtros, ignorar).limit(5000)).data ?? []) as Array<{
+      uf: string | null;
+      cidade: string | null;
+      porte_estimado: string | null;
+      situacao: string | null;
+      setores: string[] | null;
+      cnae_descricao: string | null;
+    }>;
 
-  const { data } = await q.limit(5000);
-  const ufs = new Set<string>();
-  const cidades = new Set<string>();
-  const portes = new Set<string>();
-  const situacoes = new Set<string>();
-  const setores = new Set<string>();
-  for (const r of (data ?? []) as Array<{
-    uf: string | null;
-    cidade: string | null;
-    porte_estimado: string | null;
-    situacao: string | null;
-    setores: string[] | null;
-  }>) {
-    if (r.uf) ufs.add(r.uf);
-    if (r.cidade) cidades.add(r.cidade);
-    if (r.porte_estimado) portes.add(r.porte_estimado);
-    if (r.situacao) situacoes.add(r.situacao);
-    for (const s of r.setores ?? []) if (s) setores.add(s);
-  }
+  const [linhasUf, linhasCidade, linhasPorte, linhasSituacao, linhasSetor, linhasCnae] = await Promise.all([
+    ler(["uf"]),
+    ler(["cidade"]),
+    ler(["porte"]),
+    ler(["situacao"]),
+    ler(["setor"]),
+    ler(["cnae"]),
+  ]);
+
   const ord = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const coletar = <T,>(linhas: T[], pega: (r: T) => string[] | string | null) => {
+    const s = new Set<string>();
+    for (const l of linhas) {
+      const v = pega(l);
+      if (Array.isArray(v)) {
+        for (const x of v) if (x) s.add(x);
+      } else if (v) s.add(v);
+
+    }
+    return ord(s);
+  };
+
   return {
-    ufs: ord(ufs),
-    cidades: ord(cidades).slice(0, 300),
-    portes: ord(portes),
-    situacoes: ord(situacoes),
-    setores: ord(setores).slice(0, 200),
+    ufs: coletar(linhasUf, (r) => r.uf),
+    cidades: coletar(linhasCidade, (r) => r.cidade).slice(0, 300),
+    portes: coletar(linhasPorte, (r) => r.porte_estimado),
+    situacoes: coletar(linhasSituacao, (r) => r.situacao),
+    setores: coletar(linhasSetor, (r) => r.setores).slice(0, 200),
+    atividades: coletar(linhasCnae, (r) => r.cnae_descricao).slice(0, 300),
   };
 }
+
 
 /** Lê o status da chave da API Econodata salva no banco. Nunca retorna o valor completo. */
 export async function obterStatusChaveApi() {

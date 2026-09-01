@@ -101,11 +101,13 @@ export const consultarChavesFn = createServerFn({ method: "POST" })
 
 export const opcoesFiltroFn = createServerFn({ method: "GET" })
   .middleware([exigirAcesso("/empresas", "/", "/calculadora")])
-  .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
+  .inputValidator((d: unknown) => filtrosSchema.parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { opcoesFiltro } = await import("./repo.server");
-    return opcoesFiltro(restringirUnidade(context.escopo, data.unidade));
+    const { unidade, ...recorte } = data;
+    return opcoesFiltro(restringirUnidade(context.escopo, unidade), recorte);
   });
+
 
 export const listarEmpresasFn = createServerFn({ method: "GET" })
   .middleware([exigirAcesso("/empresas", "/clientes-potenciais", "/funil")])
