@@ -1323,10 +1323,22 @@ function BuscaAvancadaCnpja({
 
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => mut.mutate(null)} disabled={mut.isPending}>
+        <Button
+          onClick={() => {
+            if (
+              !window.confirm(
+                "A busca por filtros usa a API paga do CNPJá e debita crédito a cada página de resultados. Continuar?",
+              )
+            )
+              return;
+            mut.mutate(null);
+          }}
+          disabled={mut.isPending}
+        >
           {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           Buscar
         </Button>
+        <Badge variant="destructive">consome crédito</Badge>
         <Button
           variant="outline"
           onClick={() => {
