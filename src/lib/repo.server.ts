@@ -409,6 +409,8 @@ export type FiltrosCarteira = {
   prospectar?: boolean | undefined;
   /** Carteira: "meus", "sem_dono" ou "outros". */
   dono?: string | undefined;
+  /** "com" = já enriquecida nas fontes; "sem" = cadastro básico. */
+  dados?: string | undefined;
 };
 
 /** Campos que podem ser ignorados ao montar as opções de um filtro específico. */
