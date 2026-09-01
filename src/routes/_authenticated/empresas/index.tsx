@@ -1063,6 +1063,7 @@ function Empresas() {
               </CollapsibleContent>
             </Collapsible>
           </div>
+          </div>
         </CardContent>
       </Card>
 
