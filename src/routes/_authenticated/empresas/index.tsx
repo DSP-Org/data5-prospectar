@@ -789,322 +789,396 @@ function Empresas() {
             </div>
           )}
 
-          <div className={cn("grid gap-3 md:grid-cols-4", !painelAberto && "hidden")}>
-          <Select
-            value={status}
-            onValueChange={(v) => {
-              setStatus(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os status</SelectItem>
-              {Object.entries(STATUS_LABEL).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={uf}
-            onValueChange={(v) => {
-              setUf(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="UF" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os estados</SelectItem>
-              {(opcoes.data?.ufs?.length ? opcoes.data.ufs : UFS).map((u) => (
-                <SelectItem key={u} value={u}>
-                  {u}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={lista}
-            onValueChange={(v) => {
-              setLista(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Lista" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as listas</SelectItem>
-              <SelectItem value="sem_lista">Sem lista</SelectItem>
-              {(listas.data ?? []).map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={grupo}
-            onValueChange={(v) => {
-              setGrupo(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Natureza jurídica" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as naturezas</SelectItem>
-              {Object.entries(GRUPOS_NATUREZA).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={potencial}
-            onValueChange={(v) => {
-              setPotencial(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Clientes potenciais" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as empresas</SelectItem>
-              <SelectItem value="sim">Somente clientes potenciais</SelectItem>
-              <SelectItem value="nao">Sem marcação de prospectar</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={carteira}
-            onValueChange={(v) => {
-              setCarteira(v);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Carteira" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Toda a base</SelectItem>
-              <SelectItem value="meus">Meus leads</SelectItem>
-              <SelectItem value="sem_dono">Sem dono</SelectItem>
-              <SelectItem value="outros">De outros vendedores</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="md:col-span-4">
-            <Collapsible open={avancadosAbertos} onOpenChange={setAvancadosAbertos}>
-              <div className="flex items-center gap-2">
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex-1 justify-between">
-                    Filtros avançados (situação, cidade, CNAE, porte, capital, contato…)
-                    {avancadosAtivos && (
-                      <Badge variant="secondary" className="ml-2">
-                        ativos
-                      </Badge>
-                    )}
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 transition-transform",
-                        avancadosAbertos && "rotate-180",
-                      )}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                {avancadosAtivos && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAv({ ...AVANCADOS_VAZIOS });
-                      setPage(1);
-                    }}
-                  >
-                    <FilterX className="h-4 w-4" /> Limpar
-                  </Button>
-                )}
-              </div>
-              <CollapsibleContent>
-                <div className="mt-2 grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-1">
-                    <Label>Situação cadastral</Label>
-                    <Select
-                      value={av.situacao}
-                      onValueChange={(v) => setAvancado("situacao", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Situação" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todas">Todas as situações</SelectItem>
-                        {(opcoes.data?.situacoes ?? []).map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Cidade</Label>
-                    <Combobox
-                      opcoes={(opcoes.data?.cidades ?? []).map((c) => ({ value: c, label: c }))}
-                      valor={av.cidade}
-                      onChange={(v) => setAvancado("cidade", v)}
-                      placeholder="Todas as cidades do recorte"
-                      buscaPlaceholder="Buscar cidade…"
-                      vazio="Nenhuma cidade no recorte."
-                      loading={opcoes.isLoading}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Bairro</Label>
-                    <Input
-                      value={av.bairro}
-                      onChange={(e) => setAvancado("bairro", e.target.value)}
-                      placeholder="Ex.: Pituba"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Atividade principal (CNAE)</Label>
-                    <Combobox
-                      opcoes={(opcoes.data?.atividades ?? []).map((a) => ({ value: a, label: a }))}
-                      valor={av.cnae}
-                      onChange={(v) => setAvancado("cnae", v)}
-                      placeholder="Todas as atividades do recorte"
-                      buscaPlaceholder="Buscar atividade…"
-                      vazio="Nenhuma atividade no recorte."
-                      loading={opcoes.isLoading}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Porte</Label>
-                    <Select value={av.porte} onValueChange={(v) => setAvancado("porte", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Porte" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos os portes</SelectItem>
-                        {(opcoes.data?.portes ?? []).map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Setor</Label>
-                    <Select value={av.setor} onValueChange={(v) => setAvancado("setor", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Setor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos os setores</SelectItem>
-                        {(opcoes.data?.setores ?? []).map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Capital social mínimo</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={av.capitalMin}
-                      onChange={(e) => setAvancado("capitalMin", e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Capital social máximo</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={av.capitalMax}
-                      onChange={(e) => setAvancado("capitalMax", e.target.value)}
-                      placeholder="Sem limite"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Aberta a partir de</Label>
-                    <Input
-                      type="date"
-                      value={av.aberturaDe}
-                      onChange={(e) => setAvancado("aberturaDe", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Aberta até</Label>
-                    <Input
-                      type="date"
-                      value={av.aberturaAte}
-                      onChange={(e) => setAvancado("aberturaAte", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Simples Nacional</Label>
-                    <Select value={av.simples} onValueChange={(v) => setAvancado("simples", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Simples Nacional" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Tanto faz</SelectItem>
-                        <SelectItem value="sim">Somente optantes</SelectItem>
-                        <SelectItem value="nao">Excluir optantes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>MEI</Label>
-                    <Select value={av.mei} onValueChange={(v) => setAvancado("mei", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="MEI" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Tanto faz</SelectItem>
-                        <SelectItem value="sim">Somente MEI</SelectItem>
-                        <SelectItem value="nao">Excluir MEI</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Somente empresas com</Label>
-                    <div className="flex flex-wrap gap-4">
-                      {(
-                        [
-                          ["comTelefone", "Telefone"],
-                          ["comEmail", "E-mail"],
-                          ["comSite", "Site"],
-                          ["comDecisor", "Decisor"],
-                        ] as Array<[keyof Avancados, string]>
-                      ).map(([campo, rotulo]) => (
-                        <label key={campo} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={av[campo] as boolean}
-                            onCheckedChange={(v) => setAvancado(campo, Boolean(v) as never)}
-                          />
-                          {rotulo}
-                        </label>
-                      ))}
+          <div className={cn(!painelAberto && "hidden")}>
+            <Accordion
+              type="multiple"
+              value={gruposAbertos}
+              onValueChange={setGruposAbertos}
+              className="rounded-md border px-3"
+            >
+              {/* Localização */}
+              <AccordionItem value="localizacao">
+                <AccordionTrigger className="text-sm">
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" /> Localização
+                    {ativosLocalizacao > 0 && <Badge variant="secondary">{ativosLocalizacao}</Badge>}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid gap-3 pb-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label>Estado (UF)</Label>
+                      <Select
+                        value={uf}
+                        onValueChange={(v) => {
+                          setUf(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="UF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos os estados</SelectItem>
+                          {(opcoes.data?.ufs?.length ? opcoes.data.ufs : UFS).map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {u}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Cidade</Label>
+                      <Combobox
+                        opcoes={(opcoes.data?.cidades ?? []).map((c) => ({ value: c, label: c }))}
+                        valor={av.cidade}
+                        onChange={(v) => setAvancado("cidade", v)}
+                        placeholder="Todas as cidades do recorte"
+                        buscaPlaceholder="Buscar cidade…"
+                        vazio="Nenhuma cidade no recorte."
+                        loading={opcoes.isLoading}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Bairro</Label>
+                      <Input
+                        value={av.bairro}
+                        onChange={(e) => setAvancado("bairro", e.target.value)}
+                        placeholder="Ex.: Pituba"
+                      />
                     </div>
                   </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+                  {ativosLocalizacao > 0 && (
+                    <Button variant="ghost" size="sm" onClick={limparLocalizacao}>
+                      <FilterX className="h-4 w-4" /> Limpar localização
+                    </Button>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Atividade e porte */}
+              <AccordionItem value="atividade">
+                <AccordionTrigger className="text-sm">
+                  <span className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" /> Atividade e porte
+                    {ativosAtividade > 0 && <Badge variant="secondary">{ativosAtividade}</Badge>}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid gap-3 pb-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label>Atividade principal (CNAE)</Label>
+                      <Combobox
+                        opcoes={(opcoes.data?.atividades ?? []).map((a) => ({ value: a, label: a }))}
+                        valor={av.cnae}
+                        onChange={(v) => setAvancado("cnae", v)}
+                        placeholder="Todas as atividades do recorte"
+                        buscaPlaceholder="Buscar atividade…"
+                        vazio="Nenhuma atividade no recorte."
+                        loading={opcoes.isLoading}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Setor</Label>
+                      <Select value={av.setor} onValueChange={(v) => setAvancado("setor", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Setor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos os setores</SelectItem>
+                          {(opcoes.data?.setores ?? []).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Porte</Label>
+                      <Select value={av.porte} onValueChange={(v) => setAvancado("porte", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Porte" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos os portes</SelectItem>
+                          {(opcoes.data?.portes ?? []).map((p) => (
+                            <SelectItem key={p} value={p}>
+                              {p}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Capital social mínimo</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={av.capitalMin}
+                        onChange={(e) => setAvancado("capitalMin", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Capital social máximo</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={av.capitalMax}
+                        onChange={(e) => setAvancado("capitalMax", e.target.value)}
+                        placeholder="Sem limite"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Aberta de</Label>
+                        <Input
+                          type="date"
+                          value={av.aberturaDe}
+                          onChange={(e) => setAvancado("aberturaDe", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Aberta até</Label>
+                        <Input
+                          type="date"
+                          value={av.aberturaAte}
+                          onChange={(e) => setAvancado("aberturaAte", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {ativosAtividade > 0 && (
+                    <Button variant="ghost" size="sm" onClick={limparAtividade}>
+                      <FilterX className="h-4 w-4" /> Limpar atividade e porte
+                    </Button>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Situação e regime */}
+              <AccordionItem value="situacao">
+                <AccordionTrigger className="text-sm">
+                  <span className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-muted-foreground" /> Situação e regime
+                    {ativosSituacao > 0 && <Badge variant="secondary">{ativosSituacao}</Badge>}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid gap-3 pb-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                      <Label>Situação cadastral</Label>
+                      <Select value={av.situacao} onValueChange={(v) => setAvancado("situacao", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Situação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Todas as situações</SelectItem>
+                          {(opcoes.data?.situacoes ?? []).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Natureza jurídica</Label>
+                      <Select
+                        value={grupo}
+                        onValueChange={(v) => {
+                          setGrupo(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Natureza jurídica" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Todas as naturezas</SelectItem>
+                          {Object.entries(GRUPOS_NATUREZA).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>
+                              {v}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Simples Nacional</Label>
+                      <Select value={av.simples} onValueChange={(v) => setAvancado("simples", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Simples Nacional" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Tanto faz</SelectItem>
+                          <SelectItem value="sim">Somente optantes</SelectItem>
+                          <SelectItem value="nao">Excluir optantes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>MEI</Label>
+                      <Select value={av.mei} onValueChange={(v) => setAvancado("mei", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="MEI" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Tanto faz</SelectItem>
+                          <SelectItem value="sim">Somente MEI</SelectItem>
+                          <SelectItem value="nao">Excluir MEI</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {ativosSituacao > 0 && (
+                    <Button variant="ghost" size="sm" onClick={limparSituacao}>
+                      <FilterX className="h-4 w-4" /> Limpar situação e regime
+                    </Button>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Contato disponível */}
+              <AccordionItem value="contato">
+                <AccordionTrigger className="text-sm">
+                  <span className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" /> Contato disponível
+                    {ativosContato > 0 && <Badge variant="secondary">{ativosContato}</Badge>}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-wrap gap-4 pb-2">
+                    {(
+                      [
+                        ["comTelefone", "Telefone"],
+                        ["comEmail", "E-mail"],
+                        ["comSite", "Site"],
+                        ["comDecisor", "Decisor"],
+                      ] as Array<[keyof Avancados, string]>
+                    ).map(([campo, rotulo]) => (
+                      <label key={campo} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={av[campo] as boolean}
+                          onCheckedChange={(v) => setAvancado(campo, Boolean(v) as never)}
+                        />
+                        Somente com {rotulo.toLowerCase()}
+                      </label>
+                    ))}
+                  </div>
+                  {ativosContato > 0 && (
+                    <Button variant="ghost" size="sm" onClick={limparContato}>
+                      <FilterX className="h-4 w-4" /> Limpar contato
+                    </Button>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Gestão comercial */}
+              <AccordionItem value="comercial" className="border-b-0">
+                <AccordionTrigger className="text-sm">
+                  <span className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-muted-foreground" /> Gestão comercial
+                    {ativosComercial > 0 && <Badge variant="secondary">{ativosComercial}</Badge>}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid gap-3 pb-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                      <Label>Lista</Label>
+                      <Select
+                        value={lista}
+                        onValueChange={(v) => {
+                          setLista(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Lista" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Todas as listas</SelectItem>
+                          <SelectItem value="sem_lista">Sem lista</SelectItem>
+                          {(listas.data ?? []).map((l) => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Status do funil</Label>
+                      <Select
+                        value={status}
+                        onValueChange={(v) => {
+                          setStatus(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos os status</SelectItem>
+                          {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>
+                              {v}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Clientes potenciais</Label>
+                      <Select
+                        value={potencial}
+                        onValueChange={(v) => {
+                          setPotencial(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Clientes potenciais" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Todas as empresas</SelectItem>
+                          <SelectItem value="sim">Somente clientes potenciais</SelectItem>
+                          <SelectItem value="nao">Sem marcação de prospectar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Carteira</Label>
+                      <Select
+                        value={carteira}
+                        onValueChange={(v) => {
+                          setCarteira(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Carteira" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Toda a base</SelectItem>
+                          <SelectItem value="meus">Meus leads</SelectItem>
+                          <SelectItem value="sem_dono">Sem dono</SelectItem>
+                          <SelectItem value="outros">De outros vendedores</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {ativosComercial > 0 && (
+                    <Button variant="ghost" size="sm" onClick={limparComercial}>
+                      <FilterX className="h-4 w-4" /> Limpar gestão comercial
+                    </Button>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </CardContent>
       </Card>
