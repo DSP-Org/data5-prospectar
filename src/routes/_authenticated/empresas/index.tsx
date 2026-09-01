@@ -377,13 +377,23 @@ function filtrosAvancados(a: Avancados) {
 }
 
 function Empresas() {
+  const inicial = Route.useSearch();
+  const avancadosIniciais: Avancados = {
+    ...AVANCADOS_VAZIOS,
+    ...(inicial.cidade ? { cidade: inicial.cidade } : {}),
+    ...(inicial.cnae ? { cnae: inicial.cnae } : {}),
+    ...(inicial.porte ? { porte: inicial.porte } : {}),
+    ...(inicial.setor ? { setor: inicial.setor } : {}),
+    ...(inicial.situacao ? { situacao: inicial.situacao } : {}),
+    ...(inicial.comTelefone ? { comTelefone: true } : {}),
+    ...(inicial.comEmail ? { comEmail: true } : {}),
+  };
   const [busca, setBusca] = useState("");
-  const [status, setStatus] = useState("todos");
-  const [uf, setUf] = useState("todos");
-  const { lista: listaInicial } = Route.useSearch();
-  const [lista, setLista] = useState(listaInicial ?? "todas");
+  const [status, setStatus] = useState(inicial.status ?? "todos");
+  const [uf, setUf] = useState(inicial.uf ?? "todos");
+  const [lista, setLista] = useState(inicial.lista ?? "todas");
   const [grupo, setGrupo] = useState("todas");
-  const [potencial, setPotencial] = useState("todas");
+  const [potencial, setPotencial] = useState(inicial.prospectar ? "sim" : "todas");
   const [carteira, setCarteira] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
@@ -392,8 +402,10 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const [avancadosAbertos, setAvancadosAbertos] = useState(false);
-  const [av, setAv] = useState({ ...AVANCADOS_VAZIOS });
+  const [avancadosAbertos, setAvancadosAbertos] = useState(
+    filtrosAvancadosAtivos(avancadosIniciais),
+  );
+  const [av, setAv] = useState<Avancados>(avancadosIniciais);
   // Toda mudança de filtro volta para a primeira página.
   const setAvancado = <K extends keyof Avancados>(campo: K, valor: Avancados[K]) => {
     setAv((s) => ({ ...s, [campo]: valor }));
