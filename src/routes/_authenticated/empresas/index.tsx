@@ -45,7 +45,7 @@ import {
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
-import { ImportarEmpresas } from "@/components/ImportarEmpresas";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -406,6 +406,8 @@ function Empresas() {
     filtrosAvancadosAtivos(avancadosIniciais),
   );
   const [av, setAv] = useState<Avancados>(avancadosIniciais);
+  /** O recorte nasce na calculadora; aqui o painel fica fechado por padrão. */
+  const [painelAberto, setPainelAberto] = useState(false);
   // Toda mudança de filtro volta para a primeira página.
   const setAvancado = <K extends keyof Avancados>(campo: K, valor: Avancados[K]) => {
     setAv((s) => ({ ...s, [campo]: valor }));
@@ -617,6 +619,21 @@ function Empresas() {
     return out.length > 0 ? out : [{ rotulo: "", valor: "nenhum (base completa)" }];
   }
 
+  /** Etiquetas do recorte ativo (vindo da calculadora ou do refino local). */
+  const chipsFiltros = resumoFiltros().filter((r) => r.rotulo);
+
+  function limparTudo() {
+    setBusca("");
+    setStatus("todos");
+    setUf("todos");
+    setLista("todas");
+    setGrupo("todas");
+    setPotencial("todas");
+    setCarteira("todas");
+    setAv({ ...AVANCADOS_VAZIOS });
+    setPage(1);
+  }
+
   async function exportarBase(formato: "excel" | "pdf") {
     setExportando(true);
     try {
@@ -661,11 +678,14 @@ function Empresas() {
         <div>
           <h1 className="text-3xl font-semibold">Base de Empresas - Geral</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {total} empresa(s) salva(s) a partir da Econodata.
+            {total} empresa(s) no recorte atual. Monte o recorte na{" "}
+            <Link to="/" className="underline underline-offset-2 hover:text-accent">
+              calculadora de mercado
+            </Link>
+            .
           </p>
         </div>
         <div className="flex gap-2">
-        <ImportarEmpresas />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
@@ -717,15 +737,42 @@ function Empresas() {
       </header>
 
       <Card>
-        <CardContent className="grid gap-3 p-4 md:grid-cols-4">
-          <Input
-            placeholder="Buscar por nome, CNPJ ou cidade"
-            value={busca}
-            onChange={(e) => {
-              setBusca(e.target.value);
-              setPage(1);
-            }}
-          />
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="min-w-[240px] flex-1"
+              placeholder="Buscar por nome, CNPJ ou cidade"
+              value={busca}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPage(1);
+              }}
+            />
+            <Button variant="outline" onClick={() => setPainelAberto((v) => !v)}>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", painelAberto && "rotate-180")} />
+              Refinar aqui
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/">Ajustar recorte na calculadora</Link>
+            </Button>
+            {chipsFiltros.length > 0 && (
+              <Button variant="ghost" onClick={limparTudo}>
+                <FilterX className="h-4 w-4" /> Limpar recorte
+              </Button>
+            )}
+          </div>
+
+          {chipsFiltros.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {chipsFiltros.map((c) => (
+                <Badge key={`${c.rotulo}-${c.valor}`} variant="secondary">
+                  {c.rotulo}: {c.valor}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <div className={cn("grid gap-3 md:grid-cols-4", !painelAberto && "hidden")}>
           <Select
             value={status}
             onValueChange={(v) => {
@@ -1032,6 +1079,7 @@ function Empresas() {
                 </div>
               </CollapsibleContent>
             </Collapsible>
+          </div>
           </div>
         </CardContent>
       </Card>
