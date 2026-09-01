@@ -85,7 +85,13 @@ export function ImportarEmpresas() {
         },
       });
       qc.invalidateQueries({ queryKey: ["importacoes"] });
-      toast.success(`${r.total} CNPJ(s) na fila. Iniciando o processamento…`);
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      toast.success(
+        r.novos > 0
+          ? `${r.jaNaBase} já estava(m) na base (vinculada(s) na hora) · ${r.novos} na fila para consulta.`
+          : `${r.jaNaBase} empresa(s) vinculada(s) direto da base. Nada a consultar.`,
+      );
+
       setAberto(false);
       limpar();
       navigate({ to: "/importacoes" });
