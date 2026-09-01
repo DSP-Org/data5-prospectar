@@ -681,21 +681,73 @@ export async function definirDono(cnpjs: string[], ownerId: string | null, escop
   return { total: (data ?? []).length };
 }
 
+/** Nome fixo da unidade residual, onde ficam as empresas sem vínculo. */
+export const UNIDADE_RESIDUAL_NOME = "Sem unidade (residual)";
+
+/** Busca (ou cria) a unidade residual que guarda empresas desvinculadas. */
+export async function unidadeResidual(): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("units")
+    .select("id")
+    .eq("nome", UNIDADE_RESIDUAL_NOME)
+    .maybeSingle();
+  if (data?.id) return data.id;
+  const { data: nova, error } = await supabaseAdmin
+    .from("units")
+    .insert({ nome: UNIDADE_RESIDUAL_NOME, cor: "slate", ativa: false } as never)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return nova.id;
+}
+
 /**
  * "Excluir" aqui é desvincular da carteira da unidade — o cadastro (companies)
- * é compartilhado e continua existindo para as demais unidades/grupos.
+ * é compartilhado e continua existindo para as demais unidades/grupos. A linha
+ * comercial vai para a unidade residual, sem dono, lista nem prospecção.
  */
 export async function excluirEmpresa(cnpj: string, escopo: Escopo) {
-  const alvo = await exigirEdicao(escopo, cnpj);
-  if (!alvo) return { ok: true };
-  const { error } = await supabaseAdmin
-    .from("carteira")
-    .delete()
-    .eq("cnpj", chave(cnpj))
-    .eq("unit_id", alvo.unit_id);
-  if (error) throw new Error(error.message);
-  return { ok: true };
+  return desvincularEmpresas([cnpj], escopo);
 }
+
+/** Move as linhas de carteira selecionadas para a unidade residual. */
+export async function desvincularEmpresas(cnpjs: string[], escopo: Escopo) {
+  const residual = await unidadeResidual();
+  let total = 0;
+  for (const cnpj of cnpjs) {
+    const alvo = await exigirEdicao(escopo, cnpj);
+    if (!alvo || alvo.unit_id === residual) continue;
+    const k = chave(cnpj);
+    // Se a residual já tem esta empresa, basta remover a linha da unidade.
+    const { data: existente } = await supabaseAdmin
+      .from("carteira")
+      .select("cnpj")
+      .eq("cnpj", k)
+      .eq("unit_id", residual)
+      .maybeSingle();
+    if (existente) {
+      const { error } = await supabaseAdmin.from("carteira").delete().eq("cnpj", k).eq("unit_id", alvo.unit_id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin
+        .from("carteira")
+        .update({
+          unit_id: residual,
+          owner_id: null,
+          owner_desde: null,
+          list_id: null,
+          product_id: null,
+          prospectar: false,
+        } as never)
+        .eq("cnpj", k)
+        .eq("unit_id", alvo.unit_id);
+      if (error) throw new Error(error.message);
+    }
+    total += 1;
+  }
+  return { ok: true, total };
+}
+
 
 
 export async function listarListas(escopo: Escopo): Promise<CompanyList[]> {
