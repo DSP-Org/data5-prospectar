@@ -153,17 +153,33 @@ function Consulta() {
                     </span>
                   </span>
                 </label>
-                <Button
-                  disabled={cnpjUnicoLimpo.length === 0 || carregando}
-                  onClick={() => mutCnpjs.mutate({ cnpjs: [cnpjUnicoLimpo], completo: buscaTotal })}
-                >
-                  {mutCnpjs.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Consultar CNPJ
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    disabled={cnpjUnicoLimpo.length === 0 || carregando}
+                    onClick={() => {
+                      if (
+                        buscaTotal &&
+                        !window.confirm(
+                          "“Buscar tudo” ignora o cache e consulta as fontes pagas em tempo real, debitando crédito. Continuar?",
+                        )
+                      )
+                        return;
+                      mutCnpjs.mutate({ cnpjs: [cnpjUnicoLimpo], completo: buscaTotal });
+                    }}
+                  >
+                    {mutCnpjs.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Consultar CNPJ
+                  </Button>
+                  <Badge variant={buscaTotal ? "destructive" : "secondary"}>
+                    {buscaTotal
+                      ? "pode consumir crédito"
+                      : "sem custo quando o cache ou as fontes gratuitas resolvem"}
+                  </Badge>
+                </div>
               </TabsContent>
 
               <TabsContent value="lista" className="space-y-4 pt-4">
