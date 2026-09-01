@@ -387,5 +387,13 @@ export async function buscarMultiFonte(
     empresas.set(cnpj, empresa);
   }
 
+  if (pagasUsadas.length) {
+    try {
+      await registrarConsumo(pagasUsadas, pagas, opts?.origem ?? "consulta", opts?.unitId ?? null);
+    } catch {
+      // registro de consumo nunca pode derrubar a consulta
+    }
+  }
+
   return { empresas, falhas, fontesUsadas: ativas, doCache, pagasUsadas };
 }
