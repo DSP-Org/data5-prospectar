@@ -752,6 +752,10 @@ function BuscaAvancadaCnpja({
   const [sugestoesCnae, setSugestoesCnae] = useState<{ id: string; descricao: string }[]>([]);
   const [cnaeEscolhidos, setCnaeEscolhidos] = useState<string[]>([]);
   const [incluirSecundaria, setIncluirSecundaria] = useState(true);
+  /** Como as atividades escolhidas entram no filtro. */
+  const [modoCnae, setModoCnae] = useState<"qualquer" | "principal" | "secundaria">("qualquer");
+  /** Secundárias escolhidas — sempre um subconjunto das sugestões da pesquisa. */
+  const [cnaeSecundarios, setCnaeSecundarios] = useState<string[]>([]);
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
@@ -1112,26 +1116,94 @@ function BuscaAvancadaCnpja({
               </label>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-xs">
-            <Checkbox
-              checked={incluirSecundaria}
-              onCheckedChange={(v) => setIncluirSecundaria(v === true)}
-            />
-            Considerar também quem tem a atividade como secundária
-          </label>
+          <div className="space-y-2">
+            <div className="text-xs font-medium">Como usar as atividades marcadas</div>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["qualquer", "Principal ou secundária"],
+                  ["principal", "Só atividade principal"],
+                  ["secundaria", "Principal + secundária relacionada"],
+                ] as const
+              ).map(([valor, rotulo]) => (
+                <Button
+                  key={valor}
+                  type="button"
+                  size="sm"
+                  variant={modoCnae === valor ? "default" : "outline"}
+                  onClick={() => {
+                    setModoCnae(valor);
+                    setIncluirSecundaria(valor !== "principal");
+                  }}
+                >
+                  {rotulo}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {modoCnae === "secundaria" ? (
+            <div className="space-y-2 rounded-md border border-dashed p-2">
+              <p className="text-xs text-muted-foreground">
+                Marque quais das mesmas atividades da pesquisa devem aparecer como{" "}
+                <strong>secundária</strong>. A empresa precisa ter uma das marcadas acima como
+                principal <em>e</em> uma destas como secundária — assim a secundária sempre tem
+                relação com a busca e com a atividade principal.
+              </p>
+              <div className="max-h-40 space-y-1 overflow-y-auto rounded-md bg-muted/40 p-2">
+                {sugestoesCnae.map((c) => (
+                  <label
+                    key={`sec-${c.id}`}
+                    className="flex items-start gap-2 rounded px-1 py-1 text-xs hover:bg-background"
+                  >
+                    <Checkbox
+                      className="mt-0.5"
+                      checked={cnaeSecundarios.includes(c.id)}
+                      onCheckedChange={() =>
+                        setCnaeSecundarios((atual) =>
+                          atual.includes(c.id)
+                            ? atual.filter((v) => v !== c.id)
+                            : [...atual, c.id],
+                        )
+                      }
+                    />
+                    <span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{c.id}</span>{" "}
+                      {c.descricao}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               size="sm"
-              disabled={cnaeEscolhidos.length === 0}
+              disabled={
+                cnaeEscolhidos.length === 0 ||
+                (modoCnae === "secundaria" && cnaeSecundarios.length === 0)
+              }
               onClick={() => {
-                setF((atual) =>
-                  incluirSecundaria
-                    ? { ...atual, cnaesPrincipais: [], cnaeQualquer: cnaeEscolhidos.join(",") }
-                    : { ...atual, cnaesPrincipais: cnaeEscolhidos, cnaeQualquer: "" },
-                );
+                setF((atual) => {
+                  if (modoCnae === "principal")
+                    return { ...atual, cnaesPrincipais: cnaeEscolhidos, cnaeQualquer: "", cnaeSecundario: "" };
+                  if (modoCnae === "secundaria")
+                    return {
+                      ...atual,
+                      cnaesPrincipais: cnaeEscolhidos,
+                      cnaeQualquer: "",
+                      cnaeSecundario: cnaeSecundarios.join(","),
+                    };
+                  return { ...atual, cnaesPrincipais: [], cnaeQualquer: cnaeEscolhidos.join(","), cnaeSecundario: "" };
+                });
                 toast.success(
-                  `${cnaeEscolhidos.length} atividade(s) aplicada(s)${incluirSecundaria ? " (principal ou secundária)" : " (só principal)"}.`,
+                  modoCnae === "principal"
+                    ? `${cnaeEscolhidos.length} atividade(s) aplicada(s) como principal.`
+                    : modoCnae === "secundaria"
+                      ? `${cnaeEscolhidos.length} principal(is) + ${cnaeSecundarios.length} secundária(s) relacionada(s).`
+                      : `${cnaeEscolhidos.length} atividade(s) aplicada(s) (principal ou secundária).`,
                 );
               }}
             >
