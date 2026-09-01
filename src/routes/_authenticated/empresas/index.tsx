@@ -874,8 +874,21 @@ function Empresas() {
           {chipsFiltros.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {chipsFiltros.map((c) => (
-                <Badge key={`${c.rotulo}-${c.valor}`} variant="secondary">
+                <Badge key={`${c.rotulo}-${c.valor}`} variant="secondary" className="gap-1">
                   {c.rotulo}: {c.valor}
+                  {limparChip[c.rotulo] && (
+                    <button
+                      type="button"
+                      aria-label={`Remover filtro ${c.rotulo}`}
+                      className="opacity-60 hover:opacity-100"
+                      onClick={() => {
+                        limparChip[c.rotulo]?.();
+                        setPage(1);
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </Badge>
               ))}
             </div>
