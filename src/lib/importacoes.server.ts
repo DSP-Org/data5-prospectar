@@ -303,7 +303,7 @@ export async function reprocessarFalhas(jobId: string, escopo: Escopo) {
   await jobVisivel(jobId, escopo);
   const { data } = await db()
     .from("import_items")
-    .update({ status: "pendente", erro: null })
+    .update({ status: A_ENRIQUECER, erro: SEM_DADOS })
     .eq("job_id", jobId)
     .in("status", ["erro", "nao_encontrado"])
     .select("id");
