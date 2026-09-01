@@ -227,7 +227,6 @@ export async function processarLote(input: {
 
   await db().from("import_jobs").update({ status: "processando" }).eq("id", job.id);
 
-  const pulados: { id: string }[] = [];
 
 
   try {
