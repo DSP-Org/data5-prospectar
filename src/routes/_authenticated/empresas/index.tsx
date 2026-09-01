@@ -651,6 +651,65 @@ function Empresas() {
     setPage(1);
   }
 
+  /** Conta quantos campos de um grupo de avançados estão diferentes do padrão. */
+  const contarAv = (campos: Array<keyof Avancados>) =>
+    campos.filter((c) => av[c] !== AVANCADOS_VAZIOS[c]).length;
+  const zerarAv = (campos: Array<keyof Avancados>) => {
+    setAv((s) => {
+      const novo = { ...s };
+      for (const c of campos) (novo[c] as Avancados[keyof Avancados]) = AVANCADOS_VAZIOS[c];
+      return novo;
+    });
+    setPage(1);
+  };
+
+  const CAMPOS_LOCALIZACAO: Array<keyof Avancados> = ["cidade", "bairro"];
+  const CAMPOS_ATIVIDADE: Array<keyof Avancados> = [
+    "cnae",
+    "setor",
+    "porte",
+    "capitalMin",
+    "capitalMax",
+    "aberturaDe",
+    "aberturaAte",
+  ];
+  const CAMPOS_SITUACAO: Array<keyof Avancados> = ["situacao", "simples", "mei"];
+  const CAMPOS_CONTATO: Array<keyof Avancados> = [
+    "comTelefone",
+    "comEmail",
+    "comSite",
+    "comDecisor",
+  ];
+
+  const ativosLocalizacao = contarAv(CAMPOS_LOCALIZACAO) + (uf !== "todos" ? 1 : 0);
+  const ativosAtividade = contarAv(CAMPOS_ATIVIDADE);
+  const ativosSituacao = contarAv(CAMPOS_SITUACAO) + (grupo !== "todas" ? 1 : 0);
+  const ativosContato = contarAv(CAMPOS_CONTATO);
+  const ativosComercial =
+    (lista !== "todas" ? 1 : 0) +
+    (status !== "todos" ? 1 : 0) +
+    (potencial !== "todas" ? 1 : 0) +
+    (carteira !== "todas" ? 1 : 0);
+
+  const limparLocalizacao = () => {
+    setUf("todos");
+    zerarAv(CAMPOS_LOCALIZACAO);
+  };
+  const limparAtividade = () => zerarAv(CAMPOS_ATIVIDADE);
+  const limparSituacao = () => {
+    setGrupo("todas");
+    zerarAv(CAMPOS_SITUACAO);
+  };
+  const limparContato = () => zerarAv(CAMPOS_CONTATO);
+  const limparComercial = () => {
+    setLista("todas");
+    setStatus("todos");
+    setPotencial("todas");
+    setCarteira("todas");
+    setPage(1);
+  };
+
+
   async function exportarBase(formato: "excel" | "pdf") {
     setExportando(true);
     try {
