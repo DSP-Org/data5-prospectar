@@ -142,7 +142,7 @@ async function gravarEmpresas(payload: Record<string, unknown>[]) {
 
   // Toda gravação vinda das fontes marca a empresa como enriquecida.
   const agora = new Date().toISOString();
-  let linhas = payload.map((l) => ({ enriquecido_em: agora, ...l }));
+  let linhas: Record<string, unknown>[] = payload.map((l) => ({ enriquecido_em: agora, ...l }));
   let resposta = await enviar(linhas);
   for (let tentativa = 0; tentativa < COLUNAS_OPCIONAIS.length; tentativa += 1) {
     const mensagem = resposta.error?.message;
