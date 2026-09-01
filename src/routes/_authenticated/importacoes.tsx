@@ -68,7 +68,6 @@ function Pagina() {
 
   function pausar() {
     parar.current = true;
-    autoIniciado.current = true;
     toast.info("Pausando após o bloco atual…");
   }
 
