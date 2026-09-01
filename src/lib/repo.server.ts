@@ -197,8 +197,17 @@ export async function consultarCnpjs(input: {
   const unitIdAtual = unidadeDeGravacao(input.escopo, input.unitId);
   const salvar = input.salvar !== false;
 
-  const { data: cadastroRows } = await supabaseAdmin.from("companies").select("cnpj").in("cnpj", validos);
-  const noCadastro = new Set(((cadastroRows ?? []) as Row[]).map((r) => String(r["cnpj"])));
+  // Só conta como "já no cadastro" quem já foi enriquecido: registros criados
+  // pela importação (só o CNPJ) precisam ir às fontes na primeira busca.
+  const { data: cadastroRows } = await supabaseAdmin
+    .from("companies")
+    .select("cnpj, enriquecido_em")
+    .in("cnpj", validos);
+  const noCadastro = new Set(
+    ((cadastroRows ?? []) as Row[])
+      .filter((r) => Boolean(r["enriquecido_em"]))
+      .map((r) => String(r["cnpj"])),
+  );
 
   const { data: carteiraRows } = await supabaseAdmin.from("carteira").select("cnpj, unit_id").in("cnpj", validos);
   const carteiraPorCnpj = new Map<string, string>();
