@@ -73,7 +73,34 @@ const FILTROS_INICIAIS: Filtros = {
   comEmail: false,
 };
 
-function Barras({ titulo, itens, total }: { titulo: string; itens: Array<{ label: string; qtd: number }>; total: number }) {
+/** Traduz o recorte da calculadora nos parâmetros de busca da base de empresas. */
+function buscaEmpresas(f: Filtros) {
+  return {
+    ...(f.uf !== "todos" ? { uf: f.uf } : {}),
+    ...(f.cidade.trim() ? { cidade: f.cidade.trim() } : {}),
+    ...(f.cnae.trim() ? { cnae: f.cnae.trim() } : {}),
+    ...(f.porte !== "todos" ? { porte: f.porte } : {}),
+    ...(f.setor !== "todos" ? { setor: f.setor } : {}),
+    ...(f.situacao !== "todas" ? { situacao: f.situacao } : {}),
+    ...(f.listId !== "todas" ? { lista: f.listId } : {}),
+    ...(f.status !== "todos" ? { status: f.status } : {}),
+    ...(f.prospectar ? { prospectar: true } : {}),
+    ...(f.comTelefone ? { comTelefone: true } : {}),
+    ...(f.comEmail ? { comEmail: true } : {}),
+  };
+}
+
+function Barras({
+  titulo,
+  itens,
+  total,
+  linkDe,
+}: {
+  titulo: string;
+  itens: Array<{ label: string; qtd: number }>;
+  total: number;
+  linkDe?: (label: string) => Record<string, unknown>;
+}) {
   return (
     <Card>
       <CardHeader>
