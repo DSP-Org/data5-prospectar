@@ -752,6 +752,10 @@ function BuscaAvancadaCnpja({
   const [sugestoesCnae, setSugestoesCnae] = useState<{ id: string; descricao: string }[]>([]);
   const [cnaeEscolhidos, setCnaeEscolhidos] = useState<string[]>([]);
   const [incluirSecundaria, setIncluirSecundaria] = useState(true);
+  /** Como as atividades escolhidas entram no filtro. */
+  const [modoCnae, setModoCnae] = useState<"qualquer" | "principal" | "secundaria">("qualquer");
+  /** Secundárias escolhidas — sempre um subconjunto das sugestões da pesquisa. */
+  const [cnaeSecundarios, setCnaeSecundarios] = useState<string[]>([]);
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
