@@ -464,6 +464,8 @@ function aplicarFiltrosCarteira<T>(consulta: T, input: FiltrosCarteira, ignorar:
   else if (input.dono === "sem_dono") q = q.is("owner_id", null);
   else if (input.dono === "outros")
     q = q.not("owner_id", "is", null).neq("owner_id", input.escopo.userId);
+  if (input.dados === "com") q = q.not("enriquecido_em", "is", null);
+  else if (input.dados === "sem") q = q.is("enriquecido_em", null);
   return q as T;
 }
 
