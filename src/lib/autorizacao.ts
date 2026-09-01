@@ -10,10 +10,14 @@
 import { createMiddleware } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { attachAuth } from "./attach-auth";
 
 export function exigirAcesso(...rotas: string[]) {
   return createMiddleware({ type: "function" })
-    .middleware([requireSupabaseAuth])
+    // Keep bearer attachment next to the server-side authorization boundary.
+    // This makes every protected RPC self-contained instead of relying on the
+    // optional global middleware being present in a particular client entry.
+    .middleware([attachAuth, requireSupabaseAuth])
     .server(async ({ next, context }) => {
       const { obterEscopo } = await import("./escopo.server");
       const escopo = await obterEscopo(context.userId);
@@ -31,7 +35,7 @@ export function exigirAcesso(...rotas: string[]) {
 
 /** Só autenticação: para funções que toda tela precisa, como saber quem está logado. */
 export const apenasAutenticado = createMiddleware({ type: "function" })
-  .middleware([requireSupabaseAuth])
+  .middleware([attachAuth, requireSupabaseAuth])
   .server(async ({ next, context }) => {
     const { obterEscopo } = await import("./escopo.server");
     return next({ context: { escopo: await obterEscopo(context.userId) } });
