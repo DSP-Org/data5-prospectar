@@ -9,7 +9,6 @@ import {
   Calculator,
   ChevronDown,
   Kanban,
-  LayoutDashboard,
   ListTodo,
   LogOut,
   ShieldAlert,
@@ -53,11 +52,10 @@ const grupos = [
     id: "geral",
     label: "Geral",
     items: [
-      { to: "/", label: "Painel", icon: LayoutDashboard },
+      { to: "/", label: "Calculadora de mercado", icon: Calculator },
       { to: "/consulta", label: "Atualização Novas", icon: Search },
       { to: "/empresas", label: "Base de Empresas - Geral", icon: Building2 },
       { to: "/listas", label: "Listas", icon: Tags },
-      { to: "/calculadora", label: "Calculadora", icon: Calculator },
       { to: "/importacoes", label: "Importações", icon: Upload },
     ],
   },
@@ -121,7 +119,7 @@ function SemPermissao({ pathname }: { pathname: string }) {
         deste acesso.
       </p>
       <Button asChild variant="outline" className="mt-4">
-        <Link to="/">Voltar ao painel</Link>
+        <Link to="/">Voltar ao início</Link>
       </Button>
     </div>
   );

@@ -1,29 +1,32 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { Activity, Building2, CheckCircle2, Clock, Database, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Building2, Calculator, ChevronDown, Mail, Phone, Target } from "lucide-react";
 
-import { obterPainelFn, testarConexaoFn } from "@/lib/econodata.functions";
-import { STATUS_LABEL, formatCnpj, type Status } from "@/lib/types";
-import { StatusBadge } from "@/components/StatusBadge";
+import { listarListasFn, mercadoAgregadoFn, opcoesFiltroFn } from "@/lib/econodata.functions";
+import { STATUS_LABEL, type Status } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUnidadeAtiva } from "@/lib/unidade-ativa";
-
-const conexaoQuery = queryOptions({ queryKey: ["conexao"], queryFn: () => testarConexaoFn() });
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Painel | Prospectar360" },
+      { title: "Calculadora de mercado | Prospectar360" },
       {
         name: "description",
         content:
-          "Visão geral da sua base de empresas: total salvo, status comercial e últimas consultas.",
+          "Monte um recorte de mercado sobre a sua base de empresas e descubra potencial de faturamento, metas e esforço de prospecção.",
       },
-      { property: "og:title", content: "Painel | Prospectar360" },
+      { property: "og:title", content: "Calculadora de mercado | Prospectar360" },
       {
         property: "og:description",
-        content: "Visão geral da base de empresas consultadas no Prospectar360.",
+        content: "Tamanho de mercado e metas comerciais calculados sobre a base de empresas da sua unidade.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://data5-prospectar.lovable.app/" },
@@ -31,182 +34,465 @@ export const Route = createFileRoute("/_authenticated/")({
     ],
     links: [{ rel: "canonical", href: "https://data5-prospectar.lovable.app/" }],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(conexaoQuery);
-  },
-  component: Painel,
+  component: CalculadoraMercado,
 });
 
-function Painel() {
-  const { unidade } = useUnidadeAtiva();
-  const { data } = useQuery({
-    queryKey: ["painel", unidade],
-    queryFn: () => obterPainelFn({ data: unidade ? { unidade } : {} }),
-  });
-  const { data: conexao } = useSuspenseQuery(conexaoQuery);
+function moeda(n: number) {
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+}
 
-  if (!data) return null;
+function num(n: number) {
+  return n.toLocaleString("pt-BR");
+}
+
+type Filtros = {
+  uf: string;
+  cidade: string;
+  cnae: string;
+  porte: string;
+  setor: string;
+  situacao: string;
+  listId: string;
+  status: string;
+  prospectar: boolean;
+  comTelefone: boolean;
+  comEmail: boolean;
+};
+
+const FILTROS_INICIAIS: Filtros = {
+  uf: "todos",
+  cidade: "",
+  cnae: "",
+  porte: "todos",
+  setor: "todos",
+  situacao: "todas",
+  listId: "todas",
+  status: "todos",
+  prospectar: false,
+  comTelefone: false,
+  comEmail: false,
+};
+
+function Barras({ titulo, itens, total }: { titulo: string; itens: Array<{ label: string; qtd: number }>; total: number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{titulo}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Sem dados no recorte.</p>}
+        {itens.map((i) => {
+          const pct = total ? Math.round((i.qtd / total) * 100) : 0;
+          return (
+            <div key={i.label}>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate" title={i.label}>
+                  {i.label}
+                </span>
+                <span className="tabular text-muted-foreground">
+                  {num(i.qtd)} · {pct}%
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CalculadoraMercado() {
+  const { unidade } = useUnidadeAtiva();
+  const [f, setF] = useState<Filtros>(FILTROS_INICIAIS);
+  const [abertos, setAbertos] = useState(true);
+
+  const [ticket, setTicket] = useState<number | "">(5000);
+  const [meta, setMeta] = useState<number | "">(100000);
+  const [conversao, setConversao] = useState<number | "">(3);
+  const [resposta, setResposta] = useState<number | "">(20);
+  const [comissao, setComissao] = useState<number | "">(5);
+
+  const base = unidade ? { unidade } : {};
+
+  const { data: opcoes } = useQuery({
+    queryKey: ["opcoes-filtro", unidade],
+    queryFn: () => opcoesFiltroFn({ data: base }),
+  });
+  const { data: listas } = useQuery({
+    queryKey: ["listas", unidade],
+    queryFn: () => listarListasFn({ data: base }),
+  });
+  const { data: mercado, isFetching } = useQuery({
+    queryKey: ["mercado", unidade, f],
+    queryFn: () =>
+      mercadoAgregadoFn({
+        data: {
+          ...base,
+          uf: f.uf,
+          cidade: f.cidade || undefined,
+          cnae: f.cnae || undefined,
+          porte: f.porte,
+          setor: f.setor,
+          situacao: f.situacao,
+          listId: f.listId,
+          status: f.status,
+          prospectar: f.prospectar || undefined,
+          comTelefone: f.comTelefone || undefined,
+          comEmail: f.comEmail || undefined,
+        },
+      }),
+  });
+
+  const empresas = mercado?.empresas ?? 0;
+  const ticketNum = Number(ticket) || 0;
+  const metaNum = Number(meta) || 0;
+  const convNum = Number(conversao) || 0;
+  const respNum = Number(resposta) || 0;
+  const comNum = Number(comissao) || 0;
+
+  const potencial = empresas * ticketNum;
+  const clientesNecessarios = ticketNum > 0 ? Math.ceil(metaNum / ticketNum) : 0;
+  const contatosNecessarios = convNum > 0 ? Math.ceil(clientesNecessarios / (convNum / 100)) : 0;
+  const abordagensNecessarias = respNum > 0 ? Math.ceil(contatosNecessarios / (respNum / 100)) : contatosNecessarios;
+  const acionaveis = mercado?.acionaveis ?? 0;
+  const cobertura = abordagensNecessarias > 0 ? Math.round((acionaveis / abordagensNecessarias) * 100) : 0;
+  const comissaoValor = metaNum * (comNum / 100);
+  const pctBase = mercado?.baseTotal ? Math.round((empresas / mercado.baseTotal) * 100) : 0;
 
   const cards = [
-    { label: "Empresas na base", valor: data.total, icon: Database },
-    { label: "Adicionadas em 30 dias", valor: data.ultimos30, icon: Activity },
-    { label: "Consultas realizadas", valor: data.consultas, icon: Search },
-    {
-      label: "Qualificadas + clientes",
-      valor: (data.porStatus["qualificado"] ?? 0) + (data.porStatus["cliente"] ?? 0),
-      icon: CheckCircle2,
-    },
+    { label: "Empresas no recorte", valor: num(empresas), icon: Building2, nota: `${pctBase}% da base da unidade` },
+    { label: "Mercado potencial", valor: moeda(potencial), icon: Target, nota: `${num(empresas)} × ${moeda(ticketNum)}` },
+    { label: "Com telefone", valor: num(mercado?.comTelefone ?? 0), icon: Phone, nota: "contato direto disponível" },
+    { label: "Com e-mail", valor: num(mercado?.comEmail ?? 0), icon: Mail, nota: "contato digital disponível" },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <section className="grade-papel rounded-md border border-border bg-card p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold">Painel</h1>
+            <h1 className="text-3xl font-semibold">Calculadora de mercado</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sua central de dados empresariais alimentada pela API Econodata.
+              Escolha um recorte da sua base de empresas e veja o potencial de faturamento e o esforço de
+              prospecção necessário.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-2 rounded-sm border px-3 py-1.5 text-xs ${
-                conexao.ok
-                  ? "border-chart-4/40 bg-chart-4/10 text-chart-4"
-                  : "border-destructive/40 bg-destructive/10 text-destructive"
-              }`}
+          <Button asChild variant="outline">
+            <Link
+              to="/empresas"
+              search={f.listId !== "todas" && f.listId !== "sem_lista" ? { lista: f.listId } : {}}
             >
-              <span className="h-2 w-2 rounded-full bg-current" />
-              {conexao.ok ? `API conectada — ${conexao.cliente ?? "conta ativa"}` : `API: ${conexao.erro}`}
-            </span>
-            <Button asChild>
-              <Link to="/consulta">Nova consulta</Link>
-            </Button>
-          </div>
+              Abrir base de empresas
+            </Link>
+          </Button>
         </div>
       </section>
+
+      <Collapsible open={abertos} onOpenChange={setAbertos}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger className="flex w-full items-center justify-between">
+              <CardTitle className="text-base">Recorte de mercado</CardTitle>
+              <ChevronDown className={`h-4 w-4 transition-transform ${abertos ? "" : "-rotate-90"}`} />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Estado</Label>
+                <Select value={f.uf} onValueChange={(v) => setF((s) => ({ ...s, uf: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {(opcoes?.ufs ?? []).map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="cidade">Município</Label>
+                <Input
+                  id="cidade"
+                  value={f.cidade}
+                  placeholder="Ex.: Salvador"
+                  onChange={(e) => setF((s) => ({ ...s, cidade: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="cnae">Atividade econômica (CNAE)</Label>
+                <Input
+                  id="cnae"
+                  value={f.cnae}
+                  placeholder="Código ou descrição"
+                  onChange={(e) => setF((s) => ({ ...s, cnae: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Porte estimado</Label>
+                <Select value={f.porte} onValueChange={(v) => setF((s) => ({ ...s, porte: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {(opcoes?.portes ?? []).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Setor</Label>
+                <Select value={f.setor} onValueChange={(v) => setF((s) => ({ ...s, setor: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {(opcoes?.setores ?? []).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Situação cadastral</Label>
+                <Select value={f.situacao} onValueChange={(v) => setF((s) => ({ ...s, situacao: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    {(opcoes?.situacoes ?? []).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Lista</Label>
+                <Select value={f.listId} onValueChange={(v) => setF((s) => ({ ...s, listId: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    <SelectItem value="sem_lista">Sem lista</SelectItem>
+                    {(listas ?? []).map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Status comercial</Label>
+                <Select value={f.status} onValueChange={(v) => setF((s) => ({ ...s, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {(Object.keys(STATUS_LABEL) as Status[]).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-3 pt-6">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="prospectar"
+                    checked={f.prospectar}
+                    onCheckedChange={(v) => setF((s) => ({ ...s, prospectar: v }))}
+                  />
+                  <Label htmlFor="prospectar">Somente marcadas para prospectar</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="comTelefone"
+                    checked={f.comTelefone}
+                    onCheckedChange={(v) => setF((s) => ({ ...s, comTelefone: v }))}
+                  />
+                  <Label htmlFor="comTelefone">Somente com telefone</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="comEmail"
+                    checked={f.comEmail}
+                    onCheckedChange={(v) => setF((s) => ({ ...s, comEmail: v }))}
+                  />
+                  <Label htmlFor="comEmail">Somente com e-mail</Label>
+                </div>
+              </div>
+
+              <div className="md:col-span-3">
+                <Button variant="ghost" size="sm" onClick={() => setF(FILTROS_INICIAIS)}>
+                  Limpar recorte
+                </Button>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <Card key={c.label}>
-            <CardContent className="flex items-center justify-between p-5">
+            <CardContent className="flex items-start justify-between p-5">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">{c.label}</p>
-                <p className="mt-2 font-display text-3xl font-semibold tabular">{c.valor}</p>
+                <p className="mt-2 font-display text-2xl font-semibold tabular">
+                  {isFetching ? "…" : c.valor}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{c.nota}</p>
               </div>
-              <c.icon className="h-8 w-8 text-accent" />
+              <c.icon className="h-7 w-7 shrink-0 text-accent" />
             </CardContent>
           </Card>
         ))}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">Empresas recentes</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Calculator className="h-4 w-4" /> Meta e conversão
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {data.recentes.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma empresa salva ainda. Comece por uma{" "}
-                <Link to="/consulta" className="text-accent underline underline-offset-4">
-                  consulta de CNPJ
-                </Link>
-                .
-              </p>
-            )}
-            {data.recentes.map((e) => (
-              <Link
-                key={`${e.cnpj}:${e.unit_id}`}
-                to="/empresas/$cnpj"
-                params={{ cnpj: e.cnpj.replace(/\D/g, "") }}
-                className="flex items-center justify-between gap-4 rounded-sm border border-border px-4 py-3 transition-colors hover:border-accent"
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="ticket">Ticket médio (R$)</Label>
+              <Input
+                id="ticket"
+                type="number"
+                value={ticket}
+                onChange={(e) => setTicket(e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="meta">Meta de faturamento (R$)</Label>
+              <Input
+                id="meta"
+                type="number"
+                value={meta}
+                onChange={(e) => setMeta(e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="conversao">Conversão contato → cliente (%)</Label>
+              <Input
+                id="conversao"
+                type="number"
+                value={conversao}
+                onChange={(e) => setConversao(e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="resposta">Taxa de resposta (%)</Label>
+              <Input
+                id="resposta"
+                type="number"
+                value={resposta}
+                onChange={(e) => setResposta(e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="comissao">Comissão (%)</Label>
+              <Input
+                id="comissao"
+                type="number"
+                value={comissao}
+                onChange={(e) => setComissao(e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTicket(5000);
+                  setMeta(100000);
+                  setConversao(3);
+                  setResposta(20);
+                  setComissao(5);
+                }}
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{e.razao_social}</p>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {formatCnpj(e.cnpj)} · {e.cidade ?? "—"}/{e.uf ?? "—"}
-                  </p>
-                </div>
-                <StatusBadge status={e.status as Status} />
-              </Link>
-            ))}
+                Restaurar padrão
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Funil comercial</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {(Object.keys(STATUS_LABEL) as Status[]).map((s) => {
-                const qtd = data.porStatus[s] ?? 0;
-                const pct = data.total ? Math.round((qtd / data.total) * 100) : 0;
-                return (
-                  <div key={s}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{STATUS_LABEL[s]}</span>
-                      <span className="tabular text-muted-foreground">{qtd}</span>
-                    </div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Esforço para bater a meta</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground">Clientes necessários</p>
+              <p className="text-2xl font-semibold tabular">{num(clientesNecessarios)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Contatos necessários</p>
+              <p className="text-2xl font-semibold tabular">{num(contatosNecessarios)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Empresas a abordar</p>
+              <p className="text-2xl font-semibold tabular">{num(abordagensNecessarias)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Comissão estimada</p>
+              <p className="text-2xl font-semibold text-accent">{moeda(comissaoValor)}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <p className="text-xs text-muted-foreground">
+                Cobertura do recorte ({num(acionaveis)} empresas com contato)
+              </p>
+              <div className="mt-1 h-2 w-full rounded-full bg-muted">
+                <div
+                  className={`h-full rounded-full ${cobertura >= 100 ? "bg-chart-4" : "bg-destructive"}`}
+                  style={{ width: `${Math.min(100, cobertura)}%` }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {cobertura >= 100
+                  ? "O recorte tem empresas suficientes para o esforço planejado."
+                  : `O recorte cobre ${cobertura}% do esforço necessário — amplie os filtros ou importe mais empresas.`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-4 w-4" /> Últimas consultas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {data.log.length === 0 && (
-                <p className="text-sm text-muted-foreground">Sem consultas registradas.</p>
-              )}
-              {data.log.map((l) => (
-                <div key={l.id} className="border-b border-border pb-2 text-xs last:border-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium uppercase text-muted-foreground">{l.tipo}</span>
-                    <span
-                      className={
-                        l.resultado === "ok" ? "text-chart-4" : "text-destructive"
-                      }
-                    >
-                      {l.resultado === "ok" ? `${l.quantidade} resultado(s)` : l.resultado}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 truncate font-mono text-muted-foreground">{l.entrada}</p>
-                  {l.mensagem && <p className="text-destructive">{l.mensagem}</p>}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {data.topUf.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Building2 className="h-4 w-4" /> Principais estados
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {data.topUf.map((u) => (
-                  <span
-                    key={u.uf}
-                    className="rounded-sm border border-border px-2 py-1 text-xs tabular"
-                  >
-                    {u.uf} · {u.qtd}
-                  </span>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Barras titulo="Por estado" itens={mercado?.topUf ?? []} total={empresas} />
+        <Barras titulo="Por porte" itens={mercado?.topPorte ?? []} total={empresas} />
+        <Barras titulo="Por atividade" itens={mercado?.topAtividade ?? []} total={empresas} />
       </div>
     </div>
   );

@@ -19,11 +19,10 @@ export const PAPEIS_MATRIZ = PAPEIS.filter((p) => p.id !== "master");
 export type Pagina = { rota: string; label: string; grupo: string; masterOnly?: boolean };
 
 export const PAGINAS: Pagina[] = [
-  { rota: "/", label: "Painel", grupo: "Geral" },
+  { rota: "/", label: "Calculadora de mercado", grupo: "Geral" },
   { rota: "/consulta", label: "Atualização Novas", grupo: "Geral" },
   { rota: "/empresas", label: "Base de Empresas - Geral", grupo: "Geral" },
   { rota: "/listas", label: "Listas", grupo: "Geral" },
-  { rota: "/calculadora", label: "Calculadora", grupo: "Geral" },
   { rota: "/importacoes", label: "Importações", grupo: "Geral" },
   { rota: "/clientes-potenciais", label: "Clientes potenciais", grupo: "Prospectar" },
   { rota: "/funil", label: "Funil", grupo: "Prospectar" },

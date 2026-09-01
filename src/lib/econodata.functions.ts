@@ -100,7 +100,7 @@ export const consultarChavesFn = createServerFn({ method: "POST" })
   });
 
 export const opcoesFiltroFn = createServerFn({ method: "GET" })
-  .middleware([exigirAcesso("/empresas")])
+  .middleware([exigirAcesso("/empresas", "/", "/calculadora")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { opcoesFiltro } = await import("./repo.server");
@@ -233,7 +233,7 @@ export const marcarProspectarFn = createServerFn({ method: "POST" })
   });
 
 export const listarListasFn = createServerFn({ method: "GET" })
-  .middleware([exigirAcesso("/empresas", "/listas", "/clientes-potenciais", "/consulta", "/funil", "/importacoes")])
+  .middleware([exigirAcesso("/empresas", "/listas", "/clientes-potenciais", "/consulta", "/funil", "/importacoes", "/", "/calculadora")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { listarListas } = await import("./repo.server");
@@ -290,4 +290,30 @@ export const contarSemListaFn = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { contarSemLista } = await import("./repo.server");
     return contarSemLista(restringirUnidade(context.escopo, data.unidade));
+  });
+
+export const mercadoAgregadoFn = createServerFn({ method: "GET" })
+  .middleware([exigirAcesso("/", "/calculadora")])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        unidade: z.string().uuid().optional(),
+        uf: z.string().max(10).optional(),
+        cidade: z.string().max(120).optional(),
+        cnae: z.string().max(120).optional(),
+        porte: z.string().max(60).optional(),
+        setor: z.string().max(120).optional(),
+        situacao: z.string().max(60).optional(),
+        listId: z.string().max(40).optional(),
+        status: z.string().max(30).optional(),
+        prospectar: z.boolean().optional(),
+        comTelefone: z.boolean().optional(),
+        comEmail: z.boolean().optional(),
+      })
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { mercadoAgregado } = await import("./repo.server");
+    const { unidade, ...filtros } = data;
+    return mercadoAgregado({ ...filtros, escopo: restringirUnidade(context.escopo, unidade) });
   });
