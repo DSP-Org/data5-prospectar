@@ -187,7 +187,7 @@ export function ImportarEmpresas() {
             </TabsContent>
           </Tabs>
 
-          <PreviaLote cnpjs={cnpjs} onPlano={() => undefined} />
+          <PreviaLote cnpjs={cnpjs} onPlano={() => undefined} somenteResumo />
 
           <div className="space-y-2">
             <Label>Vincular à lista</Label>

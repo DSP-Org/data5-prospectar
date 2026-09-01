@@ -26,9 +26,12 @@ export type PlanoLote = {
 export function PreviaLote({
   cnpjs,
   onPlano,
+  somenteResumo = false,
 }: {
   cnpjs: string[];
   onPlano: (plano: PlanoLote | null) => void;
+  /** Só os números, sem a escolha de escopo (usado na fila de importação). */
+  somenteResumo?: boolean;
 }) {
   const previaLote = useServerFn(previaLoteFn);
   const [modo, setModo] = useState<ModoEscopo>("novos_vencidos");
@@ -113,6 +116,7 @@ export function PreviaLote({
           : "O cache está desligado nas configurações: toda consulta vai às fontes."}
       </p>
 
+      {somenteResumo ? null : (
       <div className="space-y-2">
         <Label className="text-xs">O que consultar</Label>
         <RadioGroup value={modo} onValueChange={(v) => setModo(v as ModoEscopo)} className="gap-2">
@@ -136,10 +140,20 @@ export function PreviaLote({
           </label>
         </RadioGroup>
       </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
-        Até <strong>{externos}</strong> empresa(s) podem chegar às fontes externas nesta ação; o
-        restante sai do banco sem custo.
+        {somenteResumo ? (
+          <>
+            Na fila, até <strong>{dados.novos.length + dados.vencidos.length}</strong> empresa(s)
+            podem chegar às fontes externas; o restante sai do banco sem custo.
+          </>
+        ) : (
+          <>
+            Até <strong>{externos}</strong> empresa(s) podem chegar às fontes externas nesta ação; o
+            restante sai do banco sem custo.
+          </>
+        )}
       </p>
 
       {dados.invalidos.length > 0 ? (
