@@ -85,6 +85,20 @@ const UFS = [
   "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ];
 
+export type BuscaEmpresas = {
+  lista?: string;
+  uf?: string;
+  cidade?: string;
+  cnae?: string;
+  porte?: string;
+  setor?: string;
+  situacao?: string;
+  status?: string;
+  prospectar?: boolean;
+  comTelefone?: boolean;
+  comEmail?: boolean;
+};
+
 export const Route = createFileRoute("/_authenticated/empresas/")({
   validateSearch: (search: Record<string, unknown>): BuscaEmpresas => {
     const txt = (k: string) => (typeof search[k] === "string" && search[k] ? { [k]: search[k] as string } : {});
