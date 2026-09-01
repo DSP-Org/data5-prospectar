@@ -54,7 +54,9 @@ const grupos = [
     items: [
       { to: "/", label: "Calculadora de mercado", icon: Calculator },
       { to: "/consulta", label: "Atualização Novas", icon: Search },
-      { to: "/empresas", label: "Base de Empresas - Geral", icon: Building2 },
+      // A Base de Empresas deixou de ser um destino do menu: ela é a tela de
+      // resultado do recorte feito na calculadora. A rota continua existindo
+      // (e protegida por /empresas nas permissões), acessada pelos links.
       { to: "/listas", label: "Listas", icon: Tags },
       { to: "/importacoes", label: "Importações", icon: Upload },
     ],
