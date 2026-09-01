@@ -29,6 +29,8 @@ export type FetchOpts = {
   economico?: boolean | undefined;
   /** Força consulta em tempo real nos órgãos públicos (consome crédito). */
   online?: boolean | undefined;
+  /** Trava de custo: só aceita dados já em cache da fonte, nunca debita crédito. */
+  somenteCache?: boolean | undefined;
   /** Módulos adicionais pedidos à CNPJá. */
   modulos?: ModulosCnpja | undefined;
 };
@@ -513,11 +515,13 @@ const cnpja: DataSource = {
     const out: LoteResultado = new Map();
     if (!key) return out;
     // Modo econômico: prioriza a base em cache da CNPJá (sem consumo de crédito).
-    const strategy: CnpjaStrategy = opts?.online
-      ? "ONLINE"
-      : opts?.economico
-        ? "CACHE_IF_FRESH"
-        : "CACHE_IF_ERROR";
+    const strategy: CnpjaStrategy = opts?.somenteCache
+      ? "CACHE"
+      : opts?.online
+        ? "ONLINE"
+        : opts?.economico
+          ? "CACHE_IF_FRESH"
+          : "CACHE_IF_ERROR";
     const maxAge = opts?.maxAgeDias && opts.maxAgeDias > 0 ? opts.maxAgeDias : 45;
     let limite: string | null = null;
     await comLimite(cnpjs, 3, async (cnpj) => {

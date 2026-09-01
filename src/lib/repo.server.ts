@@ -256,6 +256,8 @@ export async function consultarCnpjs(input: {
     const { empresas, falhas } = await buscarMultiFonte(aConsultar, {
       forcar: input.forcar,
       completo: input.completo,
+      origem: aConsultar.length > 1 ? "lote" : "consulta",
+      unitId: unitIdAtual,
     });
 
 
@@ -335,7 +337,7 @@ export async function consultarChave(input: {
     };
     try {
       // Respeita cache/TTL e Modo Econômico para não gastar crédito à toa.
-      const { empresas } = await buscarMultiFonte([mapped.cnpj]);
+      const { empresas } = await buscarMultiFonte([mapped.cnpj], { origem: "busca por nome" });
       const m = empresas.get(mapped.cnpj);
       if (m) final = m as unknown as Record<string, unknown>;
     } catch {

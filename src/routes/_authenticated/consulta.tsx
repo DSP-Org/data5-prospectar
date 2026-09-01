@@ -18,6 +18,7 @@ import { conversarFiltrosFn } from "@/lib/ia-filtros.functions";
 import { formatCnpj, type LookupItem } from "@/lib/types";
 import { UFS, listarCnaes, listarMunicipios, type CnaeIbge, type MunicipioIbge } from "@/lib/ibge";
 import { Combobox, ComboboxMulti } from "@/components/Combobox";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
@@ -142,7 +143,10 @@ function Consulta() {
                     aria-label="Buscar tudo"
                   />
                   <span>
-                    <span className="block text-sm font-medium">Buscar tudo</span>
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      Buscar tudo
+                      <Badge variant="destructive">consome crédito</Badge>
+                    </span>
                     <span className="block text-xs text-muted-foreground">
                       Ignora o cache, consulta todas as fontes ativas em tempo real e pede os
                       módulos extras da CNPJá (Simples/MEI, inscrições estaduais, SUFRAMA,
@@ -150,17 +154,33 @@ function Consulta() {
                     </span>
                   </span>
                 </label>
-                <Button
-                  disabled={cnpjUnicoLimpo.length === 0 || carregando}
-                  onClick={() => mutCnpjs.mutate({ cnpjs: [cnpjUnicoLimpo], completo: buscaTotal })}
-                >
-                  {mutCnpjs.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Consultar CNPJ
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    disabled={cnpjUnicoLimpo.length === 0 || carregando}
+                    onClick={() => {
+                      if (
+                        buscaTotal &&
+                        !window.confirm(
+                          "“Buscar tudo” ignora o cache e consulta as fontes pagas em tempo real, debitando crédito. Continuar?",
+                        )
+                      )
+                        return;
+                      mutCnpjs.mutate({ cnpjs: [cnpjUnicoLimpo], completo: buscaTotal });
+                    }}
+                  >
+                    {mutCnpjs.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Consultar CNPJ
+                  </Button>
+                  <Badge variant={buscaTotal ? "destructive" : "secondary"}>
+                    {buscaTotal
+                      ? "pode consumir crédito"
+                      : "sem custo quando o cache ou as fontes gratuitas resolvem"}
+                  </Badge>
+                </div>
               </TabsContent>
 
               <TabsContent value="lista" className="space-y-4 pt-4">
@@ -182,17 +202,20 @@ function Consulta() {
                   Em lote o sistema usa o cache e as fontes gratuitas primeiro para economizar
                   créditos. Use a aba “CNPJ individual” quando precisar do “Buscar tudo”.
                 </p>
-                <Button
-                  disabled={cnpjs.length === 0 || carregando}
-                  onClick={() => mutCnpjs.mutate({ cnpjs, completo: false })}
-                >
-                  {mutCnpjs.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Consultar {cnpjs.length > 1 ? `${cnpjs.length} CNPJs` : "CNPJ"}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    disabled={cnpjs.length === 0 || carregando}
+                    onClick={() => mutCnpjs.mutate({ cnpjs, completo: false })}
+                  >
+                    {mutCnpjs.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Consultar {cnpjs.length > 1 ? `${cnpjs.length} CNPJs` : "CNPJ"}
+                  </Button>
+                  <Badge variant="secondary">cache e fontes gratuitas primeiro</Badge>
+                </div>
               </TabsContent>
 
 
@@ -1301,10 +1324,22 @@ function BuscaAvancadaCnpja({
 
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => mut.mutate(null)} disabled={mut.isPending}>
+        <Button
+          onClick={() => {
+            if (
+              !window.confirm(
+                "A busca por filtros usa a API paga do CNPJá e debita crédito a cada página de resultados. Continuar?",
+              )
+            )
+              return;
+            mut.mutate(null);
+          }}
+          disabled={mut.isPending}
+        >
           {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           Buscar
         </Button>
+        <Badge variant="destructive">consome crédito</Badge>
         <Button
           variant="outline"
           onClick={() => {

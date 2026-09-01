@@ -127,5 +127,7 @@ export type EconomiaConfig = {
   modo: ModoConsulta;
   /** Dias de validade do cache local; 0 desliga o cache. */
   ttlDias: number;
+  /** Trava de custo: nenhuma consulta pode debitar crédito de fonte paga. */
+  somenteGratis: boolean;
 };
 

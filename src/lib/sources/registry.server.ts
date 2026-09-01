@@ -21,6 +21,8 @@ const enabledKey = (id: SourceId) => `source_${id}_enabled`;
 const PRIORITY_KEY = "sources_priority";
 const MODE_KEY = "sources_modo";
 const TTL_KEY = "sources_cache_ttl_dias";
+/** Trava global de custo: nenhuma consulta pode debitar crédito. */
+const SOMENTE_GRATIS_KEY = "sources_somente_gratis";
 const moduloKey = (id: keyof ModulosCnpja) => `cnpja_modulo_${id}`;
 
 
@@ -75,7 +77,78 @@ function mascarar(v: string | null) {
 export function economiaDe(s: Settings): EconomiaConfig {
   const modo: ModoConsulta = s[MODE_KEY] === "completo" ? "completo" : "economico";
   const ttl = Number(s[TTL_KEY] ?? "30");
-  return { modo, ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30 };
+  return {
+    modo,
+    ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30,
+    somenteGratis: s[SOMENTE_GRATIS_KEY] === "true",
+  };
+}
+
+/** A trava de custo está ligada? (usada também fora da orquestração) */
+export async function somenteGratisAtivo(): Promise<boolean> {
+  const s = await lerSettings();
+  return s[SOMENTE_GRATIS_KEY] === "true";
+}
+
+/** Registra consultas que consumiram crédito de fonte paga. */
+async function registrarConsumo(
+  cnpjs: string[],
+  fontes: SourceId[],
+  origem: string,
+  unitId?: string | null,
+) {
+  if (cnpjs.length === 0 || fontes.length === 0) return;
+  const fonte = fontes.join("+");
+  const linhas = cnpjs.map((cnpj) => ({
+    fonte,
+    cnpj,
+    origem,
+    unit_id: unitId ?? null,
+    creditos: 1,
+  }));
+  await supabaseAdmin.from("consumo_consultas").insert(linhas as never);
+}
+
+export type ResumoConsumo = {
+  hoje: number;
+  mes: number;
+  total: number;
+  porFonte: Array<{ fonte: string; qtd: number }>;
+  porOrigem: Array<{ origem: string; qtd: number }>;
+  ultimos: Array<{ cnpj: string; fonte: string; origem: string; created_at: string }>;
+};
+
+/** Agregados de consumo pago para o painel de Configurações. */
+export async function resumoConsumo(): Promise<ResumoConsumo> {
+  const { data } = await supabaseAdmin
+    .from("consumo_consultas")
+    .select("cnpj,fonte,origem,created_at")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  const linhas = (data ?? []) as Array<{
+    cnpj: string;
+    fonte: string;
+    origem: string;
+    created_at: string;
+  }>;
+  const agora = new Date();
+  const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).toISOString();
+  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+  const contar = (campo: "fonte" | "origem") => {
+    const m = new Map<string, number>();
+    for (const l of linhas) m.set(l[campo], (m.get(l[campo]) ?? 0) + 1);
+    return [...m.entries()]
+      .map(([k, qtd]) => ({ [campo]: k, qtd }))
+      .sort((a, b) => b.qtd - a.qtd) as never[];
+  };
+  return {
+    hoje: linhas.filter((l) => l.created_at >= inicioDia).length,
+    mes: linhas.filter((l) => l.created_at >= inicioMes).length,
+    total: linhas.length,
+    porFonte: contar("fonte"),
+    porOrigem: contar("origem"),
+    ultimos: linhas.slice(0, 10),
+  };
 }
 
 /** Módulos adicionais da CNPJá configurados pelo master. */
@@ -135,9 +208,15 @@ export async function salvarModulosCnpja(input: { [K in keyof ModulosCnpja]?: bo
   return { ok: true };
 }
 
-export async function salvarEconomia(input: { modo?: ModoConsulta | undefined; ttlDias?: number | undefined }) {
+export async function salvarEconomia(input: {
+  modo?: ModoConsulta | undefined;
+  ttlDias?: number | undefined;
+  somenteGratis?: boolean | undefined;
+}) {
   if (input.modo) await gravar(MODE_KEY, input.modo);
   if (input.ttlDias !== undefined) await gravar(TTL_KEY, String(Math.max(0, Math.min(365, Math.round(input.ttlDias)))));
+  if (input.somenteGratis !== undefined)
+    await gravar(SOMENTE_GRATIS_KEY, input.somenteGratis ? "true" : "false");
   return { ok: true };
 }
 
@@ -240,15 +319,19 @@ export async function buscarMultiFonte(
     modo?: ModoConsulta | undefined;
     /** Busca máxima: ignora cache, consulta online e liga todos os módulos da CNPJá. */
     completo?: boolean | undefined;
+    /** De onde veio a consulta (para o painel de consumo). */
+    origem?: string | undefined;
+    unitId?: string | null | undefined;
   },
 ): Promise<ResultadoMultiFonte> {
   const s = await lerSettings();
   const prioridade = ordemPrioridade(s);
   const ativas = prioridade.filter((id) => ativa(id, s, Boolean(chaveDaFonte(id, s))));
-  const { modo: modoSalvo, ttlDias } = economiaDe(s);
-  const buscaTotal = opts?.completo === true;
-  const modo = buscaTotal ? "completo" : (opts?.modo ?? modoSalvo);
-  const forcar = opts?.forcar === true || buscaTotal;
+  const { modo: modoSalvo, ttlDias, somenteGratis } = economiaDe(s);
+  // Com a trava de custo ligada, nada pode ir online: nem "buscar tudo".
+  const buscaTotal = opts?.completo === true && !somenteGratis;
+  const modo = somenteGratis ? "economico" : buscaTotal ? "completo" : (opts?.modo ?? modoSalvo);
+  const forcar = (opts?.forcar === true || buscaTotal) && !somenteGratis;
 
   const empresas = new Map<string, EmpresaMesclada>();
   const doCache: string[] = [];
@@ -271,14 +354,17 @@ export async function buscarMultiFonte(
     maxAgeDias: ttlDias > 0 ? ttlDias : 45,
     economico: modo === "economico" && !forcar,
     online: buscaTotal,
+    somenteCache: somenteGratis,
     // "Buscar tudo" força consulta online, mas os módulos extras da CNPJá
     // continuam obedecendo os toggles de Configurações (cada um custa crédito).
     modulos: modulosCnpjaDe(s),
   };
 
 
-  // Só conta como crédito gasto quando a fonte paga de fato retornou dados.
+  // Só conta como crédito gasto quando a fonte paga de fato retornou dados
+  // e a trava de custo estava desligada (com ela, a fonte paga só lê cache).
   const contarPagas = (candidatos: string[]) => {
+    if (somenteGratis) return;
     for (const cnpj of candidatos) {
       if (pagas.some((id) => resultados.get(id)?.get(cnpj))) pagasUsadas.push(cnpj);
     }
@@ -299,6 +385,14 @@ export async function buscarMultiFonte(
 
   for (const [cnpj, empresa] of mesclarTodos(pendentes, prioridade, resultados)) {
     empresas.set(cnpj, empresa);
+  }
+
+  if (pagasUsadas.length) {
+    try {
+      await registrarConsumo(pagasUsadas, pagas, opts?.origem ?? "consulta", opts?.unitId ?? null);
+    } catch {
+      // registro de consumo nunca pode derrubar a consulta
+    }
   }
 
   return { empresas, falhas, fontesUsadas: ativas, doCache, pagasUsadas };

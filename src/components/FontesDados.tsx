@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Database, RefreshCw, Save } from "lucide-react";
+import { ArrowDown, ArrowUp, Database, RefreshCw, Save, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   listarFontesFn,
+  resumoConsumoFn,
   salvarEconomiaFn,
   salvarFonteFn,
   salvarModulosCnpjaFn,
@@ -66,7 +67,8 @@ export function FontesDados() {
   });
 
   const mutEconomia = useMutation({
-    mutationFn: (v: { modo?: ModoConsulta; ttlDias?: number }) => salvarEconomia({ data: v }),
+    mutationFn: (v: { modo?: ModoConsulta; ttlDias?: number; somenteGratis?: boolean }) =>
+      salvarEconomia({ data: v }),
     onSuccess: () => {
       invalidate();
       toast.success("Preferências de consulta salvas.");
@@ -82,6 +84,8 @@ export function FontesDados() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const consumo = useQuery({ queryKey: ["consumo-consultas"], queryFn: () => resumoConsumoFn() });
 
   const economia = fontes.data?.economia;
   const modulos = fontes.data?.modulosCnpja;
@@ -113,6 +117,29 @@ export function FontesDados() {
       </CardHeader>
       <CardContent className="space-y-4">
         {fontes.isLoading && <p className="text-sm text-muted-foreground">Carregando fontes…</p>}
+
+        {economia && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-md">
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Somente fontes gratuitas
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Trava de custo: com ela ligada nenhuma consulta debita crédito. As fontes pagas
+                  passam a responder só com o que já está em cache, o &quot;buscar tudo&quot; deixa de ir
+                  online e a busca avançada por filtros fica bloqueada.
+                </p>
+              </div>
+              <Switch
+                checked={economia.somenteGratis}
+                aria-label="Ativar trava somente fontes gratuitas"
+                onCheckedChange={(v) => mutEconomia.mutate({ somenteGratis: v })}
+              />
+            </div>
+          </div>
+        )}
 
         {economia && (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
@@ -188,6 +215,54 @@ export function FontesDados() {
             </div>
           </div>
         )}
+
+        {consumo.data && (
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Wallet className="h-4 w-4 text-primary" />
+              Consumo de fontes pagas
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Cada linha é um CNPJ que precisou de fonte paga. Consultas atendidas por cache ou por
+              fontes gratuitas não aparecem aqui.
+            </p>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {[
+                { rotulo: "Hoje", valor: consumo.data.hoje },
+                { rotulo: "Este mês", valor: consumo.data.mes },
+                { rotulo: "Total", valor: consumo.data.total },
+              ].map((k) => (
+                <div key={k.rotulo} className="rounded-md border border-border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">{k.rotulo}</p>
+                  <p className="text-xl font-semibold">{k.valor}</p>
+                </div>
+              ))}
+            </div>
+            {consumo.data.porOrigem.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {consumo.data.porOrigem.map((o) => (
+                  <Badge key={o.origem} variant="outline">
+                    {o.origem}: {o.qtd}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {consumo.data.ultimos.length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {consumo.data.ultimos.map((u, i) => (
+                  <li key={`${u.cnpj}-${i}`} className="flex justify-between gap-2">
+                    <span>
+                      {u.cnpj} · {u.fonte}
+                    </span>
+                    <span>{new Date(u.created_at).toLocaleString("pt-BR")}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+
 
 
 
