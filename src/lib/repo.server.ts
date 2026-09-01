@@ -1082,40 +1082,55 @@ export async function consultarChaves(input: {
 }
 
 /** Valores distintos existentes na base, para alimentar os filtros da busca avançada. */
-export async function opcoesFiltro(escopo: Escopo) {
-  const q = restringirPorUnidade(
-    supabaseAdmin.from("v_carteira").select("uf, cidade, porte_estimado, situacao, setores"),
-    escopo,
-  );
+export async function opcoesFiltro(escopo: Escopo, recorte?: Omit<FiltrosCarteira, "escopo">) {
+  const filtros: FiltrosCarteira = { ...(recorte ?? {}), escopo };
+  const base = () =>
+    restringirPorUnidade(
+      supabaseAdmin.from("v_carteira").select("uf, cidade, porte_estimado, situacao, setores, cnae_descricao"),
+      escopo,
+    );
+  // Cada dimensão ignora o próprio filtro, mas respeita o restante do recorte —
+  // assim os selects mostram só o que existe dentro da base recortada.
+  const ler = async (ignorar: DimensaoFiltro[]) =>
+    ((await aplicarFiltrosCarteira(base(), filtros, ignorar).limit(5000)).data ?? []) as Array<{
+      uf: string | null;
+      cidade: string | null;
+      porte_estimado: string | null;
+      situacao: string | null;
+      setores: string[] | null;
+      cnae_descricao: string | null;
+    }>;
 
-  const { data } = await q.limit(5000);
-  const ufs = new Set<string>();
-  const cidades = new Set<string>();
-  const portes = new Set<string>();
-  const situacoes = new Set<string>();
-  const setores = new Set<string>();
-  for (const r of (data ?? []) as Array<{
-    uf: string | null;
-    cidade: string | null;
-    porte_estimado: string | null;
-    situacao: string | null;
-    setores: string[] | null;
-  }>) {
-    if (r.uf) ufs.add(r.uf);
-    if (r.cidade) cidades.add(r.cidade);
-    if (r.porte_estimado) portes.add(r.porte_estimado);
-    if (r.situacao) situacoes.add(r.situacao);
-    for (const s of r.setores ?? []) if (s) setores.add(s);
-  }
+  const [linhasUf, linhasCidade, linhasPorte, linhasSituacao, linhasSetor, linhasCnae] = await Promise.all([
+    ler(["uf"]),
+    ler(["cidade"]),
+    ler(["porte"]),
+    ler(["situacao"]),
+    ler(["setor"]),
+    ler(["cnae"]),
+  ]);
+
   const ord = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const coletar = <T,>(linhas: T[], pega: (r: T) => string[] | string | null) => {
+    const s = new Set<string>();
+    for (const l of linhas) {
+      const v = pega(l);
+      if (Array.isArray(v)) for (const x of v) if (x) s.add(x);
+      else if (v) s.add(v);
+    }
+    return ord(s);
+  };
+
   return {
-    ufs: ord(ufs),
-    cidades: ord(cidades).slice(0, 300),
-    portes: ord(portes),
-    situacoes: ord(situacoes),
-    setores: ord(setores).slice(0, 200),
+    ufs: coletar(linhasUf, (r) => r.uf),
+    cidades: coletar(linhasCidade, (r) => r.cidade).slice(0, 300),
+    portes: coletar(linhasPorte, (r) => r.porte_estimado),
+    situacoes: coletar(linhasSituacao, (r) => r.situacao),
+    setores: coletar(linhasSetor, (r) => r.setores).slice(0, 200),
+    atividades: coletar(linhasCnae, (r) => r.cnae_descricao).slice(0, 300),
   };
 }
+
 
 /** Lê o status da chave da API Econodata salva no banco. Nunca retorna o valor completo. */
 export async function obterStatusChaveApi() {
