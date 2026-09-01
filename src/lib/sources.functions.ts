@@ -58,6 +58,7 @@ export const salvarEconomiaFn = createServerFn({ method: "POST" })
       .object({
         modo: z.enum(["economico", "completo"]).optional(),
         ttlDias: z.number().int().min(0).max(365).optional(),
+        somenteGratis: z.boolean().optional(),
       })
       .parse(d),
   )
@@ -65,6 +66,15 @@ export const salvarEconomiaFn = createServerFn({ method: "POST" })
     exigirMaster(context.escopo);
     const { salvarEconomia } = await import("./sources/registry.server");
     return salvarEconomia(data);
+  });
+
+/** Histórico de consultas que consumiram crédito de fonte paga. */
+export const resumoConsumoFn = createServerFn({ method: "GET" })
+  .middleware([exigirAcesso("/configuracoes")])
+  .handler(async ({ context }) => {
+    exigirMaster(context.escopo);
+    const { resumoConsumo } = await import("./sources/registry.server");
+    return resumoConsumo();
   });
 
 export const salvarModulosCnpjaFn = createServerFn({ method: "POST" })
