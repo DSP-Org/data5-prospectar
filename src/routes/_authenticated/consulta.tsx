@@ -76,14 +76,21 @@ function Consulta() {
   const listas = useListas();
   const { unidade } = useUnidadeAtiva();
   const consultarCnpjs = useServerFn(consultarCnpjsFn);
+  const [plano, setPlano] = useState<PlanoLote | null>(null);
 
 
   const alvoLista = listId === "nenhuma" ? null : listId;
 
   const mutCnpjs = useMutation({
-    mutationFn: (p: { cnpjs: string[]; completo: boolean }) =>
+    mutationFn: (p: { cnpjs: string[]; completo: boolean; forcar?: boolean }) =>
       consultarCnpjs({
-        data: { cnpjs: p.cnpjs, listId: alvoLista, completo: p.completo, unitId: unidade ?? undefined },
+        data: {
+          cnpjs: p.cnpjs,
+          listId: alvoLista,
+          completo: p.completo,
+          forcar: p.forcar ?? false,
+          unitId: unidade ?? undefined,
+        },
       }),
     onSuccess: (res) => {
       setItens(res.itens);
