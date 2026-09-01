@@ -45,7 +45,7 @@ import {
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
-import { ImportarEmpresas } from "@/components/ImportarEmpresas";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -661,11 +661,14 @@ function Empresas() {
         <div>
           <h1 className="text-3xl font-semibold">Base de Empresas - Geral</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {total} empresa(s) salva(s) a partir da Econodata.
+            {total} empresa(s) no recorte atual. Monte o recorte na{" "}
+            <Link to="/" className="underline underline-offset-2 hover:text-accent">
+              calculadora de mercado
+            </Link>
+            .
           </p>
         </div>
         <div className="flex gap-2">
-        <ImportarEmpresas />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
