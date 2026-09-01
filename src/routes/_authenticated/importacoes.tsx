@@ -138,9 +138,10 @@ function Pagina() {
         <header>
           <h1 className="font-display text-2xl font-semibold">Importações</h1>
           <p className="text-sm text-muted-foreground">
-            O arquivo é recebido na hora e o enriquecimento roda depois, em blocos. Você pode
-            retomar de onde parou e reprocessar os CNPJs que falharam.
+            A importação cadastra os CNPJs na hora, sem consultar fonte nenhuma. Buscar os dados
+            nas fontes é um passo à parte: rode quando quiser, pause e retome de onde parou.
           </p>
+
         </header>
 
         {lista.length === 0 ? (
