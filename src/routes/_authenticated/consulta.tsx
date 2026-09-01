@@ -748,6 +748,10 @@ function BuscaAvancadaCnpja({
   const [filtrosAbertos, setFiltrosAbertos] = useState(true);
   const [avancadosAbertos, setAvancadosAbertos] = useState(false);
   const [conversa, setConversa] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  /** Candidatos de CNAE sugeridos pela IA — o usuário escolhe quais valem. */
+  const [sugestoesCnae, setSugestoesCnae] = useState<{ id: string; descricao: string }[]>([]);
+  const [cnaeEscolhidos, setCnaeEscolhidos] = useState<string[]>([]);
+  const [incluirSecundaria, setIncluirSecundaria] = useState(true);
 
   useEffect(() => {
     if (nomeInicial) setF((atual) => ({ ...atual, nome: nomeInicial }));
