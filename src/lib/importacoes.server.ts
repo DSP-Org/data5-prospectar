@@ -170,14 +170,15 @@ async function contarPorStatus(jobId: string) {
     const { count } = await q;
     return (count ?? 0) as number;
   };
-  const [total, pendentes, concluidos, naoEncontrados, erros] = await Promise.all([
+  const [total, pendentes, aEnriquecer, concluidos, naoEncontrados, erros] = await Promise.all([
     conta(),
     conta("pendente"),
+    conta(A_ENRIQUECER),
     conta("concluido"),
     conta("nao_encontrado"),
     conta("erro"),
   ]);
-  return { total, pendentes, concluidos, naoEncontrados, erros };
+  return { total, pendentes: pendentes + aEnriquecer, concluidos, naoEncontrados, erros };
 }
 
 async function recontar(jobId: string) {
@@ -187,7 +188,7 @@ async function recontar(jobId: string) {
     concluidos: c.concluidos,
     nao_encontrados: c.naoEncontrados,
     erros: c.erros,
-    status: c.pendentes > 0 ? "processando" : "concluido",
+    status: c.pendentes > 0 ? "aguardando" : "concluido",
   };
   await db().from("import_jobs").update(patch).eq("id", jobId);
   return { ...patch, pendentes: c.pendentes };
