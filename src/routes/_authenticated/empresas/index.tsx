@@ -46,6 +46,7 @@ import {
 } from "@/lib/types";
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Combobox } from "@/components/Combobox";
 import { Badge } from "@/components/ui/badge";
 
 import { Button } from "@/components/ui/button";
