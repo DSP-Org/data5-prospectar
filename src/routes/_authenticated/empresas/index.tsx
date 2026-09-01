@@ -651,6 +651,25 @@ function Empresas() {
   }
 
   /** Etiquetas do recorte ativo (vindo da calculadora ou do refino local). */
+  const limparChip: Record<string, () => void> = {
+    Busca: () => setBusca(""),
+    Status: () => setStatus("todos"),
+    UF: () => setUf("todos"),
+    Lista: () => setLista("todas"),
+    Natureza: () => setGrupo("todas"),
+    "Cliente potencial": () => setPotencial("todas"),
+    Carteira: () => setCarteira("todas"),
+    Cidade: () => setAvancado("cidade", ""),
+    Bairro: () => setAvancado("bairro", ""),
+    CNAE: () => setAvancado("cnae", ""),
+    Porte: () => setAvancado("porte", "todos"),
+    Situação: () => setAvancado("situacao", "todas"),
+    Setor: () => setAvancado("setor", "todos"),
+    "Com telefone": () => setAvancado("comTelefone", false),
+    "Com e-mail": () => setAvancado("comEmail", false),
+    "Com site": () => setAvancado("comSite", false),
+    "Com decisor": () => setAvancado("comDecisor", false),
+  };
   const chipsFiltros = resumoFiltros().filter((r) => r.rotulo);
 
   function limparTudo() {
