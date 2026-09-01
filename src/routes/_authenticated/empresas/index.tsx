@@ -1276,7 +1276,27 @@ function Empresas() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-1">
+                      <Label>Dados das fontes</Label>
+                      <Select
+                        value={dados}
+                        onValueChange={(v) => {
+                          setDados(v);
+                          setPage(1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Dados das fontes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Com ou sem dados</SelectItem>
+                          <SelectItem value="com">Somente com dados</SelectItem>
+                          <SelectItem value="sem">Somente sem dados (só CNPJ)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
                   {ativosComercial > 0 && (
                     <Button variant="ghost" size="sm" onClick={limparComercial}>
                       <FilterX className="h-4 w-4" /> Limpar gestão comercial
