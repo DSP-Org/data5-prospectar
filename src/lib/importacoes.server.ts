@@ -34,15 +34,37 @@ const db = () => supabaseAdmin as unknown as {
   from: (t: string) => any;
 };
 
-/** Etapa 1: grava a fila e devolve o job criado. */
+const JA_NA_BASE = "Já estava na base — só vinculado à unidade.";
+
+/** Quebra a lista em blocos (limite do PostgREST em filtros `in`). */
+function blocos<T>(itens: T[], tam: number): T[][] {
+  const saida: T[][] = [];
+  for (let i = 0; i < itens.length; i += tam) saida.push(itens.slice(i, i + tam));
+  return saida;
+}
+
+/**
+ * Etapa 1: grava a fila e devolve o job criado.
+ *
+ * Quem já está no cadastro compartilhado é resolvido aqui mesmo, em massa
+ * (só cria o vínculo com a unidade/lista) e nunca entra como pendente — a
+ * fila de processamento fica apenas com os CNPJs realmente novos.
+ */
 export async function criarImportacao(input: {
   escopo: Escopo;
   arquivo: string;
   cnpjs: string[];
   listId?: string | null | undefined;
   unitId?: string | null | undefined;
-}): Promise<{ jobId: string; total: number; invalidos: number }> {
+}): Promise<{
+  jobId: string;
+  total: number;
+  invalidos: number;
+  jaNaBase: number;
+  novos: number;
+}> {
   const validos: string[] = [];
+  const vistos = new Set<string>();
   let invalidos = 0;
   for (const raw of input.cnpjs) {
     const f = formatCnpjApi(raw);
@@ -50,11 +72,24 @@ export async function criarImportacao(input: {
       if (raw.trim()) invalidos += 1;
       continue;
     }
-    if (!validos.includes(f)) validos.push(f);
+    if (!vistos.has(f)) {
+      vistos.add(f);
+      validos.push(f);
+    }
   }
   if (validos.length === 0) throw new Error("Nenhum CNPJ válido no arquivo.");
 
   const unit = unidadeDeGravacao(input.escopo, input.unitId);
+
+  // Separa, antes de enfileirar, quem já está no cadastro compartilhado.
+  const existentes = new Set<string>();
+  for (const bloco of blocos(validos, 400)) {
+    const { data } = await db().from("companies").select("cnpj").in("cnpj", bloco);
+    for (const r of (data ?? []) as { cnpj: string }[]) existentes.add(r.cnpj);
+  }
+  const jaNaBase = unit ? validos.filter((c) => existentes.has(c)) : [];
+  const novos = validos.filter((c) => !jaNaBase.includes(c));
+
   const { data: job, error } = await db()
     .from("import_jobs")
     .insert({
@@ -63,21 +98,43 @@ export async function criarImportacao(input: {
       unit_id: unit,
       criado_por: input.escopo.userId,
       total: validos.length,
-      status: "pendente",
+      concluidos: jaNaBase.length,
+      status: novos.length > 0 ? "pendente" : "concluido",
     })
     .select("id")
     .single();
   if (error || !job) throw new Error(error?.message ?? "Falha ao criar a importação.");
 
+  // Vincula em massa o que já existe: nenhuma consulta externa, nenhum crédito.
+  if (jaNaBase.length && unit) {
+    const { vincularCarteira } = await import("./repo.server");
+    for (const bloco of blocos(jaNaBase, 500))
+      await vincularCarteira(bloco, unit, input.listId ?? null);
+  }
+
   // Grava os itens em blocos para não estourar o tamanho da requisição.
   const TAM = 500;
-  for (let i = 0; i < validos.length; i += TAM) {
-    const linhas = validos.slice(i, i + TAM).map((cnpj) => ({ job_id: job.id, cnpj }));
+  const linhasTodas = [
+    ...jaNaBase.map((cnpj) => ({
+      job_id: job.id,
+      cnpj,
+      status: "concluido",
+      erro: JA_NA_BASE,
+    })),
+    ...novos.map((cnpj) => ({ job_id: job.id, cnpj, status: "pendente" })),
+  ];
+  for (const linhas of blocos(linhasTodas, TAM)) {
     const { error: e2 } = await db().from("import_items").insert(linhas);
     if (e2) throw new Error(e2.message);
   }
 
-  return { jobId: job.id as string, total: validos.length, invalidos };
+  return {
+    jobId: job.id as string,
+    total: validos.length,
+    invalidos,
+    jaNaBase: jaNaBase.length,
+    novos: novos.length,
+  };
 }
 
 async function jobVisivel(jobId: string, escopo: Escopo): Promise<ImportJob> {
@@ -89,20 +146,43 @@ async function jobVisivel(jobId: string, escopo: Escopo): Promise<ImportJob> {
   return data as ImportJob;
 }
 
+/** Contagem agregada no banco (não baixa linhas: importações grandes passavam do limite de 1.000). */
+async function contarPorStatus(jobId: string) {
+  const conta = async (status?: string) => {
+    let q = db().from("import_items").select("id", { count: "exact", head: true }).eq("job_id", jobId);
+    if (status) q = q.eq("status", status);
+    const { count } = await q;
+    return (count ?? 0) as number;
+  };
+  const [total, pendentes, concluidos, naoEncontrados, erros] = await Promise.all([
+    conta(),
+    conta("pendente"),
+    conta("concluido"),
+    conta("nao_encontrado"),
+    conta("erro"),
+  ]);
+  return { total, pendentes, concluidos, naoEncontrados, erros };
+}
+
 async function recontar(jobId: string) {
-  const { data } = await db().from("import_items").select("status").eq("job_id", jobId);
-  const linhas = (data ?? []) as { status: string }[];
-  const conta = (s: string) => linhas.filter((l) => l.status === s).length;
-  const pendentes = conta("pendente");
+  const c = await contarPorStatus(jobId);
   const patch = {
-    total: linhas.length,
-    concluidos: conta("concluido"),
-    nao_encontrados: conta("nao_encontrado"),
-    erros: conta("erro"),
-    status: pendentes > 0 ? "processando" : "concluido",
+    total: c.total,
+    concluidos: c.concluidos,
+    nao_encontrados: c.naoEncontrados,
+    erros: c.erros,
+    status: c.pendentes > 0 ? "processando" : "concluido",
   };
   await db().from("import_jobs").update(patch).eq("id", jobId);
-  return { ...patch, pendentes };
+  return { ...patch, pendentes: c.pendentes };
+}
+
+
+/** Marca um grupo inteiro de itens de uma vez (uma escrita por grupo, não por CNPJ). */
+async function marcar(ids: string[], patch: Record<string, unknown>) {
+  if (ids.length === 0) return;
+  for (const bloco of blocos(ids, 200))
+    await db().from("import_items").update(patch).in("id", bloco);
 }
 
 /** Etapa 2: processa um bloco de pendentes do job. */
@@ -112,7 +192,7 @@ export async function processarLote(input: {
   tamanho?: number | undefined;
 }) {
   const job = await jobVisivel(input.jobId, input.escopo);
-  const tamanho = Math.min(Math.max(input.tamanho ?? 15, 1), 30);
+  const tamanho = Math.min(Math.max(input.tamanho ?? 30, 1), 60);
 
   const { data } = await db()
     .from("import_items")
@@ -130,7 +210,7 @@ export async function processarLote(input: {
 
   await db().from("import_jobs").update({ status: "processando" }).eq("id", job.id);
 
-  // Se o CNPJ já está no cadastro compartilhado, pula a consulta e só garante o vínculo com esta unidade.
+  // Rede de segurança: itens reprocessados podem ter entrado no cadastro nesse meio-tempo.
   const { data: jaExistem } = await db()
     .from("companies")
     .select("cnpj")
@@ -142,20 +222,13 @@ export async function processarLote(input: {
     if (job.unit_id) {
       const { vincularCarteira } = await import("./repo.server");
       await vincularCarteira(pulados.map((p) => p.cnpj), job.unit_id, job.list_id);
-      for (const item of pulados) {
-        await db()
-          .from("import_items")
-          .update({ status: "concluido", erro: null })
-          .eq("id", item.id);
-      }
+      await marcar(pulados.map((p) => p.id), { status: "concluido", erro: JA_NA_BASE });
     } else {
       // Sem unidade ativa não há onde vincular — reporta erro em vez de "concluído" falso.
-      for (const item of pulados) {
-        await db()
-          .from("import_items")
-          .update({ status: "erro", erro: "Nenhuma unidade ativa para vincular esta empresa." })
-          .eq("id", item.id);
-      }
+      await marcar(pulados.map((p) => p.id), {
+        status: "erro",
+        erro: "Nenhuma unidade ativa para vincular esta empresa.",
+      });
     }
   }
   pendentes = pendentes.filter((p) => !existentes.has(p.cnpj));
@@ -173,26 +246,22 @@ export async function processarLote(input: {
       salvar: true,
     });
 
+    const ok: string[] = [];
+    const semRetorno: { id: string; erro: string }[] = [];
     for (const item of pendentes) {
       const achado = r.itens.find((i) => i.cnpj.replace(/\D/g, "") === item.cnpj.replace(/\D/g, ""));
-      const status = achado?.encontrada ? "concluido" : "nao_encontrado";
-      await db()
-        .from("import_items")
-        .update({
-          status,
-          erro: achado?.encontrada ? null : (achado?.erro ?? "Não encontrada nas fontes ativas."),
-          tentativas: 1,
-        })
-        .eq("id", item.id);
+      if (achado?.encontrada) ok.push(item.id);
+      else semRetorno.push({ id: item.id, erro: achado?.erro ?? "Não encontrada nas fontes ativas." });
     }
+    await marcar(ok, { status: "concluido", erro: null, tentativas: 1 });
+    // Agrupa por mensagem para continuar sendo poucas escritas.
+    const porErro = new Map<string, string[]>();
+    for (const s of semRetorno) porErro.set(s.erro, [...(porErro.get(s.erro) ?? []), s.id]);
+    for (const [erro, ids] of porErro)
+      await marcar(ids, { status: "nao_encontrado", erro, tentativas: 1 });
   } catch (e) {
     const msg = (e as Error).message;
-    for (const item of pendentes) {
-      await db()
-        .from("import_items")
-        .update({ status: "erro", erro: msg, tentativas: 1 })
-        .eq("id", item.id);
-    }
+    await marcar(pendentes.map((p) => p.id), { status: "erro", erro: msg, tentativas: 1 });
   }
 
   const resumo = await recontar(job.id);
@@ -201,17 +270,16 @@ export async function processarLote(input: {
 
 export async function statusImportacao(jobId: string, escopo: Escopo) {
   const job = await jobVisivel(jobId, escopo);
-  const { data } = await db().from("import_items").select("status").eq("job_id", jobId);
-  const linhas = (data ?? []) as { status: string }[];
-  const conta = (s: string) => linhas.filter((l) => l.status === s).length;
+  const c = await contarPorStatus(jobId);
   return {
     job,
-    pendentes: conta("pendente"),
-    concluidos: conta("concluido"),
-    naoEncontrados: conta("nao_encontrado"),
-    erros: conta("erro"),
+    pendentes: c.pendentes,
+    concluidos: c.concluidos,
+    naoEncontrados: c.naoEncontrados,
+    erros: c.erros,
   };
 }
+
 
 export async function listarImportacoes(escopo: Escopo) {
   let q = db().from("import_jobs").select("*").order("created_at", { ascending: false }).limit(50);

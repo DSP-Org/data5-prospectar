@@ -97,7 +97,7 @@ function Pagina() {
     try {
       for (;;) {
         if (parar.current) break;
-        const r = await processar({ data: { jobId, tamanho: 15 } });
+        const r = await processar({ data: { jobId, tamanho: 30 } });
         qc.invalidateQueries({ queryKey: ["importacoes"] });
         if (r.processados === 0 || r.pendentes === 0) break;
       }
