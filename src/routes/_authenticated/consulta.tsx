@@ -69,7 +69,7 @@ function Consulta() {
   const [itens, setItens] = useState<LookupItem[]>([]);
   const [buscaTotal, setBuscaTotal] = useState(false);
   const [cnpjUnico, setCnpjUnico] = useState("");
-  const [subAba, setSubAba] = useState("ficha");
+  const [aba, setAba] = useState("individual");
   const [termoPago, setTermoPago] = useState("");
 
 
@@ -118,11 +118,11 @@ function Consulta() {
       <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <Card>
           <CardContent className="pt-6">
-            <Tabs defaultValue="individual">
+            <Tabs value={aba} onValueChange={setAba}>
               <TabsList>
-                <TabsTrigger value="individual">CNPJ individual</TabsTrigger>
+                <TabsTrigger value="individual">Buscar por nome ou CNPJ (grátis)</TabsTrigger>
                 <TabsTrigger value="lista">Lista de CNPJs</TabsTrigger>
-                <TabsTrigger value="cnpja">Janela CNPJá</TabsTrigger>
+                <TabsTrigger value="cnpja">Busca avançada (plano pago)</TabsTrigger>
               </TabsList>
 
               <TabsContent value="individual" className="space-y-4 pt-4">
@@ -181,6 +181,16 @@ function Consulta() {
                       : "sem custo quando o cache ou as fontes gratuitas resolvem"}
                   </Badge>
                 </div>
+
+                <div className="border-t border-border/60 pt-4">
+                  <JanelaCnpja
+                    listId={alvoLista}
+                    onEscalar={(termo) => {
+                      setTermoPago(termo);
+                      setAba("cnpja");
+                    }}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="lista" className="space-y-4 pt-4">
@@ -200,7 +210,7 @@ function Consulta() {
                 </div>
                 <p className="rounded-md border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
                   Em lote o sistema usa o cache e as fontes gratuitas primeiro para economizar
-                  créditos. Use a aba “CNPJ individual” quando precisar do “Buscar tudo”.
+                  créditos. Use a aba “Buscar por nome ou CNPJ” quando precisar do “Buscar tudo”.
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
@@ -223,24 +233,7 @@ function Consulta() {
 
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
-                <Tabs value={subAba} onValueChange={setSubAba}>
-                  <TabsList>
-                    <TabsTrigger value="ficha">Buscar por nome ou CNPJ (grátis)</TabsTrigger>
-                    <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="ficha" className="pt-4">
-                    <JanelaCnpja
-                      listId={alvoLista}
-                      onEscalar={(termo) => {
-                        setTermoPago(termo);
-                        setSubAba("avancada");
-                      }}
-                    />
-                  </TabsContent>
-                  <TabsContent value="avancada" className="pt-4">
-                    <BuscaAvancadaCnpja listId={alvoLista} nomeInicial={termoPago} />
-                  </TabsContent>
-                </Tabs>
+                <BuscaAvancadaCnpja listId={alvoLista} nomeInicial={termoPago} />
               </TabsContent>
 
 
