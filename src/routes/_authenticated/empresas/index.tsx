@@ -406,6 +406,8 @@ function Empresas() {
     filtrosAvancadosAtivos(avancadosIniciais),
   );
   const [av, setAv] = useState<Avancados>(avancadosIniciais);
+  /** O recorte nasce na calculadora; aqui o painel fica fechado por padrão. */
+  const [painelAberto, setPainelAberto] = useState(false);
   // Toda mudança de filtro volta para a primeira página.
   const setAvancado = <K extends keyof Avancados>(campo: K, valor: Avancados[K]) => {
     setAv((s) => ({ ...s, [campo]: valor }));
