@@ -165,14 +165,14 @@ function Pagina() {
                     </p>
                   </div>
                   <Badge variant={pendentes === 0 ? "secondary" : "default"}>
-                    {pendentes === 0 ? "Concluída" : `${pendentes} pendente(s)`}
+                    {pendentes === 0 ? "Tudo com dados" : `${pendentes} sem dados`}
                   </Badge>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Progress value={pct} />
                   <p className="text-sm text-muted-foreground">
-                    {feitos} de {j.total} processados · {j.concluidos} importada(s) ·{" "}
-                    {j.nao_encontrados} sem retorno · {j.erros} com erro
+                    {j.total} CNPJ(s) cadastrados · {j.concluidos} com dados ·{" "}
+                    {pendentes} sem dados · {j.nao_encontrados} sem retorno · {j.erros} com erro
                   </p>
                   <Etapas job={j} rodando={rodando === j.id} />
                   <div className="flex flex-wrap gap-2">
@@ -190,10 +190,10 @@ function Pagina() {
                       >
                         <Play className="h-4 w-4" />
                         {pendentes === 0
-                          ? "Sem pendências"
+                          ? "Tudo enriquecido"
                           : feitos > 0
-                            ? "Retomar"
-                            : "Processar"}
+                            ? "Continuar enriquecendo"
+                            : "Enriquecer agora"}
                       </Button>
                     )}
                     <Button
