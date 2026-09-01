@@ -100,7 +100,7 @@ function Pagina() {
         qc.invalidateQueries({ queryKey: ["importacoes"] });
         if (r.processados === 0 || r.pendentes === 0) break;
       }
-      toast.success(parar.current ? "Importação pausada." : "Importação processada.");
+      toast.success(parar.current ? "Enriquecimento pausado." : "Enriquecimento concluído.");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -112,18 +112,7 @@ function Pagina() {
     }
   }
 
-  // Retoma sozinho a primeira importação com pendências ao abrir a tela.
-  const autoIniciado = useRef(false);
-  useEffect(() => {
-    if (autoIniciado.current || rodando || !jobs.data) return;
-    const alvo = (jobs.data as unknown as Job[]).find(
-      (j) => j.total - (j.concluidos + j.nao_encontrados + j.erros) > 0,
-    );
-    if (!alvo) return;
-    autoIniciado.current = true;
-    void rodar(alvo.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs.data]);
+
 
 
   useEffect(() => () => void (parar.current = true), []);
