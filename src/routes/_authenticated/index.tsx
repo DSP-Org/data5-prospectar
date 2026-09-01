@@ -180,14 +180,28 @@ function CalculadoraMercado() {
               prospecção necessário.
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link
-              to="/empresas"
-              search={f.listId !== "todas" && f.listId !== "sem_lista" ? { lista: f.listId } : {}}
-            >
-              Abrir base de empresas
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/empresas" search={buscaEmpresas(f)}>
+                Ver empresas deste recorte
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/empresas" search={{ ...buscaEmpresas(f), comTelefone: true }}>
+                Só com telefone
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/empresas" search={{ ...buscaEmpresas(f), comEmail: true }}>
+                Só com e-mail
+              </Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/empresas" search={{ ...buscaEmpresas(f), prospectar: true }}>
+                Marcadas para prospectar
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
