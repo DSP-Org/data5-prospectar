@@ -720,15 +720,42 @@ function Empresas() {
       </header>
 
       <Card>
-        <CardContent className="grid gap-3 p-4 md:grid-cols-4">
-          <Input
-            placeholder="Buscar por nome, CNPJ ou cidade"
-            value={busca}
-            onChange={(e) => {
-              setBusca(e.target.value);
-              setPage(1);
-            }}
-          />
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="min-w-[240px] flex-1"
+              placeholder="Buscar por nome, CNPJ ou cidade"
+              value={busca}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPage(1);
+              }}
+            />
+            <Button variant="outline" onClick={() => setPainelAberto((v) => !v)}>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", painelAberto && "rotate-180")} />
+              Refinar aqui
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/">Ajustar recorte na calculadora</Link>
+            </Button>
+            {chipsFiltros.length > 0 && (
+              <Button variant="ghost" onClick={limparTudo}>
+                <FilterX className="h-4 w-4" /> Limpar recorte
+              </Button>
+            )}
+          </div>
+
+          {chipsFiltros.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {chipsFiltros.map((c) => (
+                <Badge key={`${c.rotulo}-${c.valor}`} variant="secondary">
+                  {c.rotulo}: {c.valor}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <div className={cn("grid gap-3 md:grid-cols-4", !painelAberto && "hidden")}>
           <Select
             value={status}
             onValueChange={(v) => {
