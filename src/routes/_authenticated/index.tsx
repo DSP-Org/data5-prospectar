@@ -183,12 +183,9 @@ function CalculadoraMercado() {
           <Button asChild variant="outline">
             <Link
               to="/empresas"
-              search={{
-                ...(f.uf !== "todos" ? { uf: f.uf } : {}),
-                ...(f.status !== "todos" ? { status: f.status } : {}),
-              }}
+              search={f.listId !== "todas" && f.listId !== "sem_lista" ? { lista: f.listId } : {}}
             >
-              Abrir recorte na base
+              Abrir base de empresas
             </Link>
           </Button>
         </div>
