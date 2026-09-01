@@ -815,7 +815,8 @@ function BuscaAvancadaCnpja({
           .filter(Boolean);
       }
 
-      let cnaesIds: string[] = [];
+      /** Candidatos ordenados por aderência — nada é aplicado sem o usuário escolher. */
+      let cnaeSugestoes: { id: string; descricao: string }[] = [];
       if ((s.cnaeTermos?.length ?? 0) > 0) {
         const lista = cnaes.data ?? (await listarCnaes());
         const PARADAS = new Set([
@@ -827,12 +828,25 @@ function BuscaAvancadaCnpja({
             .split(/[^a-z0-9]+/)
             .filter((w) => w.length >= 3 && !PARADAS.has(w));
 
+        const achados = new Map<string, { id: string; descricao: string; peso: number; tamanho: number }>();
+        const guardar = (c: CnaeIbge, peso: number) => {
+          const atualPeso = achados.get(c.id)?.peso ?? -1;
+          if (peso > atualPeso) {
+            achados.set(c.id, {
+              id: c.id,
+              descricao: c.descricao,
+              peso,
+              tamanho: normalizar(c.descricao).length,
+            });
+          }
+        };
+
         for (const termo of s.cnaeTermos ?? []) {
           const codigo = termo.replace(/\D/g, "");
           if (codigo.length >= 4) {
-            const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 5);
+            const exato = lista.filter((c) => c.id.startsWith(codigo)).slice(0, 8);
             if (exato.length > 0) {
-              cnaesIds.push(...exato.map((c) => c.id));
+              for (const c of exato) guardar(c, 100);
               continue;
             }
           }
@@ -840,29 +854,31 @@ function BuscaAvancadaCnpja({
           if (palavras.length === 0) continue;
 
           const pontuados = lista
-            .map((c) => {
-              const desc = normalizar(c.descricao);
-              const acertos = palavras.filter((p) => desc.includes(p)).length;
-              return { id: c.id, acertos, tamanho: desc.length };
-            })
+            .map((c) => ({
+              c,
+              acertos: palavras.filter((p) => normalizar(c.descricao).includes(p)).length,
+            }))
             .filter((x) => x.acertos > 0);
 
           const melhor = Math.max(...pontuados.map((x) => x.acertos), 0);
           if (melhor === 0) continue;
-          const minimo = Math.max(1, Math.min(melhor, Math.ceil(palavras.length / 2)));
 
-          cnaesIds.push(
-            ...pontuados
-              .filter((x) => x.acertos >= minimo)
-              .sort((a, b) => b.acertos - a.acertos || a.tamanho - b.tamanho)
-              .slice(0, 8)
-              .map((x) => x.id),
-          );
+          // Só entram os que casam com TODAS as palavras do termo (ou com o melhor casamento possível).
+          for (const x of pontuados
+            .filter((x) => x.acertos >= melhor)
+            .sort((a, b) => normalizar(a.c.descricao).length - normalizar(b.c.descricao).length)
+            .slice(0, 10)) {
+            guardar(x.c, x.acertos);
+          }
         }
-        cnaesIds = [...new Set(cnaesIds)].slice(0, 20);
+
+        cnaeSugestoes = [...achados.values()]
+          .sort((a, b) => b.peso - a.peso || a.tamanho - b.tamanho)
+          .slice(0, 25)
+          .map(({ id, descricao }) => ({ id, descricao }));
       }
 
-      return { r, historico, uf, municipiosIds, cnaesIds };
+      return { r, historico, uf, municipiosIds, cnaeSugestoes };
     },
     onSuccess: ({ r, historico, uf, municipiosIds, cnaesIds }) => {
       const s = r.filtros;
