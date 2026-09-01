@@ -26,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 function extrairCnpjs(texto: string) {
   const achados = texto.match(/\d[\d./-]{12,19}/g) ?? [];
@@ -39,6 +41,7 @@ export function ImportarEmpresas() {
   const [aberto, setAberto] = useState(false);
   const [cnpjs, setCnpjs] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState("");
+  const [colado, setColado] = useState("");
   const [lista, setLista] = useState("nenhuma");
   const [enviando, setEnviando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +55,7 @@ export function ImportarEmpresas() {
   function limpar() {
     setCnpjs([]);
     setArquivo("");
+    setColado("");
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -130,29 +134,57 @@ export function ImportarEmpresas() {
         <DialogHeader>
           <DialogTitle>Importar empresas</DialogTitle>
           <DialogDescription>
-            Envie um arquivo CSV ou TXT com CNPJs. O sistema recebe a lista na hora e o
+            Envie um arquivo CSV/TXT ou cole a lista de CNPJs. O sistema recebe a lista na hora e o
             enriquecimento roda depois, em blocos, na tela de Importações.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="arquivo-cnpjs">Arquivo (.csv ou .txt)</Label>
-            <input
-              id="arquivo-cnpjs"
-              ref={inputRef}
-              type="file"
-              accept=".csv,.txt,text/csv,text/plain"
-              disabled={importando}
-              onChange={(e) => void aoSelecionar(e.target.files?.[0])}
-              className="block w-full cursor-pointer rounded-md border border-input bg-background p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground"
-            />
-            {arquivo ? (
-              <p className="text-sm text-muted-foreground">
-                {arquivo}: {cnpjs.length} CNPJ(s) válido(s) encontrado(s).
+          <Tabs defaultValue="arquivo">
+            <TabsList>
+              <TabsTrigger value="arquivo">Enviar arquivo</TabsTrigger>
+              <TabsTrigger value="colar">Colar lista de CNPJs</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="arquivo" className="space-y-2 pt-4">
+              <Label htmlFor="arquivo-cnpjs">Arquivo (.csv ou .txt)</Label>
+              <input
+                id="arquivo-cnpjs"
+                ref={inputRef}
+                type="file"
+                accept=".csv,.txt,text/csv,text/plain"
+                disabled={importando}
+                onChange={(e) => void aoSelecionar(e.target.files?.[0])}
+                className="block w-full cursor-pointer rounded-md border border-input bg-background p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:text-secondary-foreground"
+              />
+              {arquivo ? (
+                <p className="text-sm text-muted-foreground">
+                  {arquivo}: {cnpjs.length} CNPJ(s) válido(s) encontrado(s).
+                </p>
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="colar" className="space-y-2 pt-4">
+              <Label htmlFor="cnpjs-colados">CNPJs</Label>
+              <Textarea
+                id="cnpjs-colados"
+                rows={6}
+                className="font-mono text-sm"
+                placeholder={"38.024.964/0001-42\n03076832000180"}
+                value={colado}
+                disabled={importando}
+                onChange={(e) => {
+                  setColado(e.target.value);
+                  setArquivo("");
+                  if (inputRef.current) inputRef.current.value = "";
+                  setCnpjs(extrairCnpjs(e.target.value));
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Separe por linha, vírgula ou espaço. {cnpjs.length} CNPJ(s) válido(s).
               </p>
-            ) : null}
-          </div>
+            </TabsContent>
+          </Tabs>
 
           <div className="space-y-2">
             <Label>Vincular à lista</Label>
