@@ -225,7 +225,7 @@ export async function consultarCnpjs(input: {
           .eq("unit_id", unitIdAtual);
       }
       for (const c of await empresasDaCarteira(minhasNoCadastro, unitIdAtual))
-        itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true });
+        itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true, origem: "base" });
     }
 
     // Cadastro já existe mas minha unidade ainda não vinculou: vincula sem gastar crédito.
@@ -235,7 +235,7 @@ export async function consultarCnpjs(input: {
       if (unitIdAtual && salvar) {
         await vincularCarteira(paraVincular, unitIdAtual, input.listId ?? null);
         for (const c of await empresasDaCarteira(paraVincular, unitIdAtual))
-          itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true });
+          itens.push({ cnpj: c.cnpj, encontrada: true, company: c, salva: true, origem: "base" });
       } else {
         const { data: previa } = await supabaseAdmin.from("companies").select("*").in("cnpj", paraVincular);
         for (const r of (previa ?? []) as Row[])
@@ -244,6 +244,7 @@ export async function consultarCnpjs(input: {
             encontrada: true,
             company: comCarteiraNeutra(r, unitIdAtual),
             salva: false,
+            origem: "base",
           });
       }
     }
@@ -297,6 +298,7 @@ export async function consultarCnpjs(input: {
       encontrada: true,
       company: salva ?? comCarteiraNeutra(m as Row, unitIdAtual),
       salva: Boolean(salva),
+      origem: "fontes",
     });
   }
 
