@@ -86,8 +86,23 @@ const UFS = [
 ];
 
 export const Route = createFileRoute("/_authenticated/empresas/")({
-  validateSearch: (search: Record<string, unknown>): { lista?: string } =>
-    typeof search["lista"] === "string" ? { lista: search["lista"] } : {},
+  validateSearch: (search: Record<string, unknown>): BuscaEmpresas => {
+    const txt = (k: string) => (typeof search[k] === "string" && search[k] ? { [k]: search[k] as string } : {});
+    const bool = (k: string) => (search[k] === true || search[k] === "true" ? { [k]: true } : {});
+    return {
+      ...txt("lista"),
+      ...txt("uf"),
+      ...txt("cidade"),
+      ...txt("cnae"),
+      ...txt("porte"),
+      ...txt("setor"),
+      ...txt("situacao"),
+      ...txt("status"),
+      ...bool("prospectar"),
+      ...bool("comTelefone"),
+      ...bool("comEmail"),
+    } as BuscaEmpresas;
+  },
   head: () => ({
     meta: [
       { title: "Base de empresas | Prospectar360" },
