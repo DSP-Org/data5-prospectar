@@ -35,6 +35,9 @@ const db = () => supabaseAdmin as unknown as {
 };
 
 const JA_NA_BASE = "Já estava na base — só vinculado à unidade.";
+const SEM_DADOS = "Cadastrado sem dados — aguardando enriquecimento.";
+/** Item cadastrado que ainda não passou pelas fontes externas. */
+const A_ENRIQUECER = "a_enriquecer";
 
 /** Quebra a lista em blocos (limite do PostgREST em filtros `in`). */
 function blocos<T>(itens: T[], tam: number): T[][] {
