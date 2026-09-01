@@ -931,7 +931,9 @@ export async function mercadoAgregado(input: FiltrosMercado) {
 
   return {
     baseTotal: baseTotal ?? 0,
-    empresas: linhas.length,
+    empresas: totalRecorte ?? linhas.length,
+    amostra: linhas.length,
+
     comTelefone,
     comEmail,
     acionaveis,
