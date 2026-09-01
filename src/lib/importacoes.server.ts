@@ -178,6 +178,13 @@ async function recontar(jobId: string) {
 }
 
 
+/** Marca um grupo inteiro de itens de uma vez (uma escrita por grupo, não por CNPJ). */
+async function marcar(ids: string[], patch: Record<string, unknown>) {
+  if (ids.length === 0) return;
+  for (const bloco of blocos(ids, 200))
+    await db().from("import_items").update(patch).in("id", bloco);
+}
+
 /** Etapa 2: processa um bloco de pendentes do job. */
 export async function processarLote(input: {
   escopo: Escopo;
@@ -185,7 +192,7 @@ export async function processarLote(input: {
   tamanho?: number | undefined;
 }) {
   const job = await jobVisivel(input.jobId, input.escopo);
-  const tamanho = Math.min(Math.max(input.tamanho ?? 15, 1), 30);
+  const tamanho = Math.min(Math.max(input.tamanho ?? 30, 1), 60);
 
   const { data } = await db()
     .from("import_items")
@@ -203,7 +210,7 @@ export async function processarLote(input: {
 
   await db().from("import_jobs").update({ status: "processando" }).eq("id", job.id);
 
-  // Se o CNPJ já está no cadastro compartilhado, pula a consulta e só garante o vínculo com esta unidade.
+  // Rede de segurança: itens reprocessados podem ter entrado no cadastro nesse meio-tempo.
   const { data: jaExistem } = await db()
     .from("companies")
     .select("cnpj")
@@ -215,20 +222,13 @@ export async function processarLote(input: {
     if (job.unit_id) {
       const { vincularCarteira } = await import("./repo.server");
       await vincularCarteira(pulados.map((p) => p.cnpj), job.unit_id, job.list_id);
-      for (const item of pulados) {
-        await db()
-          .from("import_items")
-          .update({ status: "concluido", erro: null })
-          .eq("id", item.id);
-      }
+      await marcar(pulados.map((p) => p.id), { status: "concluido", erro: JA_NA_BASE });
     } else {
       // Sem unidade ativa não há onde vincular — reporta erro em vez de "concluído" falso.
-      for (const item of pulados) {
-        await db()
-          .from("import_items")
-          .update({ status: "erro", erro: "Nenhuma unidade ativa para vincular esta empresa." })
-          .eq("id", item.id);
-      }
+      await marcar(pulados.map((p) => p.id), {
+        status: "erro",
+        erro: "Nenhuma unidade ativa para vincular esta empresa.",
+      });
     }
   }
   pendentes = pendentes.filter((p) => !existentes.has(p.cnpj));
@@ -246,26 +246,22 @@ export async function processarLote(input: {
       salvar: true,
     });
 
+    const ok: string[] = [];
+    const semRetorno: { id: string; erro: string }[] = [];
     for (const item of pendentes) {
       const achado = r.itens.find((i) => i.cnpj.replace(/\D/g, "") === item.cnpj.replace(/\D/g, ""));
-      const status = achado?.encontrada ? "concluido" : "nao_encontrado";
-      await db()
-        .from("import_items")
-        .update({
-          status,
-          erro: achado?.encontrada ? null : (achado?.erro ?? "Não encontrada nas fontes ativas."),
-          tentativas: 1,
-        })
-        .eq("id", item.id);
+      if (achado?.encontrada) ok.push(item.id);
+      else semRetorno.push({ id: item.id, erro: achado?.erro ?? "Não encontrada nas fontes ativas." });
     }
+    await marcar(ok, { status: "concluido", erro: null, tentativas: 1 });
+    // Agrupa por mensagem para continuar sendo poucas escritas.
+    const porErro = new Map<string, string[]>();
+    for (const s of semRetorno) porErro.set(s.erro, [...(porErro.get(s.erro) ?? []), s.id]);
+    for (const [erro, ids] of porErro)
+      await marcar(ids, { status: "nao_encontrado", erro, tentativas: 1 });
   } catch (e) {
     const msg = (e as Error).message;
-    for (const item of pendentes) {
-      await db()
-        .from("import_items")
-        .update({ status: "erro", erro: msg, tentativas: 1 })
-        .eq("id", item.id);
-    }
+    await marcar(pendentes.map((p) => p.id), { status: "erro", erro: msg, tentativas: 1 });
   }
 
   const resumo = await recontar(job.id);
@@ -274,17 +270,16 @@ export async function processarLote(input: {
 
 export async function statusImportacao(jobId: string, escopo: Escopo) {
   const job = await jobVisivel(jobId, escopo);
-  const { data } = await db().from("import_items").select("status").eq("job_id", jobId);
-  const linhas = (data ?? []) as { status: string }[];
-  const conta = (s: string) => linhas.filter((l) => l.status === s).length;
+  const c = await contarPorStatus(jobId);
   return {
     job,
-    pendentes: conta("pendente"),
-    concluidos: conta("concluido"),
-    naoEncontrados: conta("nao_encontrado"),
-    erros: conta("erro"),
+    pendentes: c.pendentes,
+    concluidos: c.concluidos,
+    naoEncontrados: c.naoEncontrados,
+    erros: c.erros,
   };
 }
+
 
 export async function listarImportacoes(escopo: Escopo) {
   let q = db().from("import_jobs").select("*").order("created_at", { ascending: false }).limit(50);
