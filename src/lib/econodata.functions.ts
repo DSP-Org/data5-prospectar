@@ -100,7 +100,7 @@ export const consultarChavesFn = createServerFn({ method: "POST" })
   });
 
 export const opcoesFiltroFn = createServerFn({ method: "GET" })
-  .middleware([exigirAcesso("/empresas")])
+  .middleware([exigirAcesso("/empresas", "/", "/calculadora")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { opcoesFiltro } = await import("./repo.server");
@@ -233,7 +233,7 @@ export const marcarProspectarFn = createServerFn({ method: "POST" })
   });
 
 export const listarListasFn = createServerFn({ method: "GET" })
-  .middleware([exigirAcesso("/empresas", "/listas", "/clientes-potenciais", "/consulta", "/funil", "/importacoes")])
+  .middleware([exigirAcesso("/empresas", "/listas", "/clientes-potenciais", "/consulta", "/funil", "/importacoes", "/", "/calculadora")])
   .inputValidator((d: unknown) => z.object({ unidade: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { listarListas } = await import("./repo.server");
