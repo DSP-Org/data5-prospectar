@@ -523,6 +523,29 @@ function Empresas() {
     onError: (e) => toast.error((e as Error).message),
   });
 
+  const enriquecerLote = useServerFn(consultarCnpjsFn);
+  const mutEnriquecer = useMutation({
+    mutationFn: async (cnpjs: string[]) => {
+      // Blocos pequenos para não estourar o tempo da requisição.
+      let ok = 0;
+      for (let i = 0; i < cnpjs.length; i += 20) {
+        const bloco = cnpjs.slice(i, i + 20);
+        const r = (await enriquecerLote({
+          data: { cnpjs: bloco, salvar: true, unitId: unidade ?? null },
+        })) as { empresas?: unknown[] };
+        ok += r.empresas?.length ?? 0;
+      }
+      return ok;
+    },
+    onSuccess: (ok) => {
+      toast.success(`${ok} empresa(s) atualizada(s) com dados das fontes.`);
+      setSelecionados([]);
+      void qc.invalidateQueries({ queryKey: ["empresas"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+
   const mutProspectar = useMutation({
     mutationFn: ({ cnpjs, valor }: { cnpjs: string[]; valor: boolean }) =>
       marcar({ data: { cnpjs, valor, unidade: unidade ?? undefined } }),
