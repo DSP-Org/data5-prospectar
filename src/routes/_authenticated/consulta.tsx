@@ -201,17 +201,20 @@ function Consulta() {
                   Em lote o sistema usa o cache e as fontes gratuitas primeiro para economizar
                   créditos. Use a aba “CNPJ individual” quando precisar do “Buscar tudo”.
                 </p>
-                <Button
-                  disabled={cnpjs.length === 0 || carregando}
-                  onClick={() => mutCnpjs.mutate({ cnpjs, completo: false })}
-                >
-                  {mutCnpjs.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Consultar {cnpjs.length > 1 ? `${cnpjs.length} CNPJs` : "CNPJ"}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    disabled={cnpjs.length === 0 || carregando}
+                    onClick={() => mutCnpjs.mutate({ cnpjs, completo: false })}
+                  >
+                    {mutCnpjs.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Consultar {cnpjs.length > 1 ? `${cnpjs.length} CNPJs` : "CNPJ"}
+                  </Button>
+                  <Badge variant="secondary">cache e fontes gratuitas primeiro</Badge>
+                </div>
               </TabsContent>
 
 
