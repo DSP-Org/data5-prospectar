@@ -880,13 +880,16 @@ function BuscaAvancadaCnpja({
 
       return { r, historico, uf, municipiosIds, cnaeSugestoes };
     },
-    onSuccess: ({ r, historico, uf, municipiosIds, cnaesIds }) => {
+    onSuccess: ({ r, historico, uf, municipiosIds, cnaeSugestoes }) => {
       const s = r.filtros;
       const fala = r.mensagem || (r.aplicar ? s?.explicacao ?? "Filtros preenchidos." : "…");
       setConversa([...historico, { role: "assistant" as const, content: fala }]);
       setPedidoIa("");
 
       if (!r.aplicar || !s) return;
+
+      setSugestoesCnae(cnaeSugestoes);
+      setCnaeEscolhidos(cnaeSugestoes.slice(0, 3).map((c) => c.id));
 
       setF((atual) => ({
         ...atual,
@@ -895,7 +898,6 @@ function BuscaAvancadaCnpja({
         uf: uf || atual.uf,
         municipiosIbge: municipiosIds.length > 0 ? municipiosIds : uf ? [] : atual.municipiosIbge,
         bairro: s.bairro ?? atual.bairro,
-        cnaesPrincipais: cnaesIds.length > 0 ? cnaesIds : atual.cnaesPrincipais,
         porteIds: (s.porteIds?.length ?? 0) > 0 ? (s.porteIds as string[]) : atual.porteIds,
         situacaoIds: (s.situacaoIds?.length ?? 0) > 0 ? (s.situacaoIds as string[]) : atual.situacaoIds,
         capitalMin: s.capitalMin != null ? String(s.capitalMin) : atual.capitalMin,
