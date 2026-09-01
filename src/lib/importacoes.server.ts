@@ -90,8 +90,8 @@ export async function criarImportacao(input: {
     const { data } = await db().from("companies").select("cnpj").in("cnpj", bloco);
     for (const r of (data ?? []) as { cnpj: string }[]) existentes.add(r.cnpj);
   }
-  const jaNaBase = unit ? validos.filter((c) => existentes.has(c)) : [];
-  const novos = validos.filter((c) => !jaNaBase.includes(c));
+  const jaNaBase = validos.filter((c) => existentes.has(c));
+  const novos = validos.filter((c) => !existentes.has(c));
 
   const { data: job, error } = await db()
     .from("import_jobs")
@@ -102,16 +102,29 @@ export async function criarImportacao(input: {
       criado_por: input.escopo.userId,
       total: validos.length,
       concluidos: jaNaBase.length,
-      status: novos.length > 0 ? "pendente" : "concluido",
+      status: novos.length > 0 ? "aguardando" : "concluido",
     })
     .select("id")
     .single();
   if (error || !job) throw new Error(error?.message ?? "Falha ao criar a importação.");
 
-  // Vincula em massa o que já existe: nenhuma consulta externa, nenhum crédito.
-  if (jaNaBase.length && unit) {
+  // Cadastro imediato dos novos: só o CNPJ, sem consultar fonte nenhuma.
+  if (novos.length) {
+    for (const bloco of blocos(novos, 500)) {
+      const { error: e1 } = await db()
+        .from("companies")
+        .upsert(
+          bloco.map((cnpj) => ({ cnpj })),
+          { onConflict: "cnpj", ignoreDuplicates: true },
+        );
+      if (e1) throw new Error(e1.message);
+    }
+  }
+
+  // Vincula em massa à unidade/lista: nenhuma consulta externa, nenhum crédito.
+  if (unit) {
     const { vincularCarteira } = await import("./repo.server");
-    for (const bloco of blocos(jaNaBase, 500))
+    for (const bloco of blocos(validos, 500))
       await vincularCarteira(bloco, unit, input.listId ?? null);
   }
 
@@ -124,7 +137,7 @@ export async function criarImportacao(input: {
       status: "concluido",
       erro: JA_NA_BASE,
     })),
-    ...novos.map((cnpj) => ({ job_id: job.id, cnpj, status: "pendente" })),
+    ...novos.map((cnpj) => ({ job_id: job.id, cnpj, status: A_ENRIQUECER, erro: SEM_DADOS })),
   ];
   for (const linhas of blocos(linhasTodas, TAM)) {
     const { error: e2 } = await db().from("import_items").insert(linhas);
