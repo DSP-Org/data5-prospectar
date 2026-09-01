@@ -725,6 +725,7 @@ function Empresas() {
     (lista !== "todas" ? 1 : 0) +
     (status !== "todos" ? 1 : 0) +
     (potencial !== "todas" ? 1 : 0) +
+    (dados !== "todas" ? 1 : 0) +
     (carteira !== "todas" ? 1 : 0);
 
   const limparLocalizacao = () => {
@@ -742,8 +743,10 @@ function Empresas() {
     setStatus("todos");
     setPotencial("todas");
     setCarteira("todas");
+    setDados("todas");
     setPage(1);
   };
+
 
 
   async function exportarBase(formato: "excel" | "pdf") {
