@@ -405,6 +405,7 @@ function Empresas() {
   const [grupo, setGrupo] = useState("todas");
   const [potencial, setPotencial] = useState(inicial.prospectar ? "sim" : "todas");
   const [carteira, setCarteira] = useState("todas");
+  const [dados, setDados] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
   const [colunas, setColunas] = useState<string[]>(
