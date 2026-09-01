@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -138,6 +139,32 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    const encerrarSessao = () => {
+      void queryClient.cancelQueries().then(() => {
+        queryClient.clear();
+        void router.navigate({ to: "/auth", replace: true });
+      });
+    };
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        encerrarSessao();
+        return;
+      }
+      if (event !== "SIGNED_IN" && event !== "USER_UPDATED") return;
+      void router.invalidate();
+      void queryClient.invalidateQueries();
+    });
+
+    window.addEventListener("prospectar360:auth-required", encerrarSessao);
+    return () => {
+      listener.subscription.unsubscribe();
+      window.removeEventListener("prospectar360:auth-required", encerrarSessao);
+    };
+  }, [queryClient, router]);
 
   return (
     <QueryClientProvider client={queryClient}>

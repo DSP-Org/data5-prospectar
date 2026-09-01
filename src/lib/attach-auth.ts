@@ -4,24 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Anexa o bearer token em toda chamada de server function.
- * Substitui o `attachSupabaseAuth` gerado porque tenta renovar a sessão
- * quando o token expirou (o gerado apenas lê getSession e envia vazio,
- * gerando "Unauthorized: No authorization header provided").
+ * O cliente já renova a sessão automaticamente e serializa essa operação.
+ * Chamar refreshSession() aqui cria uma segunda renovação concorrente e pode
+ * invalidar o refresh token que acabou de ser usado.
  */
 export const attachAuth = createMiddleware({ type: "function" }).client(async ({ next }) => {
-  let token: string | undefined;
+  const { data, error } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
 
-  try {
-    const { data } = await supabase.auth.getSession();
-    token = data.session?.access_token;
-
-    if (!token) {
-      const { data: renovada } = await supabase.auth.refreshSession();
-      token = renovada.session?.access_token;
+  if (error || !token) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("prospectar360:auth-required"));
     }
-  } catch {
-    token = undefined;
+    throw new Error("Sua sessão expirou. Entre novamente para continuar.");
   }
 
-  return next({ headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  return next({ headers: { Authorization: `Bearer ${token}` } });
 });

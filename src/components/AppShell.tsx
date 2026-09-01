@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { ROTAS, labelDaRota } from "@/lib/permissoes";
@@ -129,14 +129,17 @@ function SemPermissao({ pathname }: { pathname: string }) {
 
 function AppShellInterno({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const { unidade, setUnidade } = useUnidadeAtiva();
 
   async function sair() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
     await supabase.auth.signOut();
-    void navigate({ to: "/auth" });
+    void navigate({ to: "/auth", replace: true });
   }
 
   return (
