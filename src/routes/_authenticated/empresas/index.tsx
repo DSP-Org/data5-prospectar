@@ -1443,6 +1443,20 @@ function Empresas() {
             </Button>
             <Button
               size="sm"
+              variant="secondary"
+              disabled={mutEnriquecer.isPending}
+              onClick={() => mutEnriquecer.mutate(selecionados)}
+            >
+              {mutEnriquecer.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Buscar dados nas fontes
+            </Button>
+
+            <Button
+              size="sm"
               disabled={mutProspectar.isPending}
               onClick={() => mutProspectar.mutate({ cnpjs: selecionados, valor: true })}
             >
