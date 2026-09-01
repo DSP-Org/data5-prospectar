@@ -124,7 +124,13 @@ async function persistir(mapped: Persistivel[], listId: string | null, unitId: s
 }
 
 /** Colunas recentes que podem não existir se a migration ainda não foi aplicada. */
-const COLUNAS_OPCIONAIS = ["simples_optante", "simples_desde", "mei_optante", "mei_desde"];
+const COLUNAS_OPCIONAIS = [
+  "simples_optante",
+  "simples_desde",
+  "mei_optante",
+  "mei_desde",
+  "enriquecido_em",
+];
 
 /**
  * Grava as empresas e, se o banco ainda não tiver alguma coluna opcional
@@ -134,8 +140,9 @@ async function gravarEmpresas(payload: Record<string, unknown>[]) {
   const enviar = (linhas: Record<string, unknown>[]) =>
     supabaseAdmin.from("companies").upsert(linhas as never, { onConflict: "cnpj" }).select("*");
 
-  // O PostgREST reporta uma coluna por vez, então tenta de novo a cada descarte.
-  let linhas = payload;
+  // Toda gravação vinda das fontes marca a empresa como enriquecida.
+  const agora = new Date().toISOString();
+  let linhas = payload.map((l) => ({ enriquecido_em: agora, ...l }));
   let resposta = await enviar(linhas);
   for (let tentativa = 0; tentativa < COLUNAS_OPCIONAIS.length; tentativa += 1) {
     const mensagem = resposta.error?.message;
