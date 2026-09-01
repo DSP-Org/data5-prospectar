@@ -955,10 +955,14 @@ function Empresas() {
                   </div>
                   <div className="space-y-1">
                     <Label>Cidade</Label>
-                    <Input
-                      value={av.cidade}
-                      onChange={(e) => setAvancado("cidade", e.target.value)}
-                      placeholder="Ex.: Salvador"
+                    <Combobox
+                      opcoes={(opcoes.data?.cidades ?? []).map((c) => ({ value: c, label: c }))}
+                      valor={av.cidade}
+                      onChange={(v) => setAvancado("cidade", v)}
+                      placeholder="Todas as cidades do recorte"
+                      buscaPlaceholder="Buscar cidade…"
+                      vazio="Nenhuma cidade no recorte."
+                      loading={opcoes.isLoading}
                     />
                   </div>
                   <div className="space-y-1">
