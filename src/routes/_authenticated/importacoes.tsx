@@ -293,7 +293,7 @@ function Etapas({ job, rodando }: { job: Job; rodando: boolean }) {
   const linhas: Array<{ nome: string; detalhe: string; estado: EtapaEstado }> = [
     {
       nome: "1. Arquivo recebido",
-      detalhe: `${job.total} CNPJ(s) válidos na fila`,
+      detalhe: `${job.total} CNPJ(s) válidos`,
       estado: job.total > 0 ? "ok" : "pendente",
     },
     {
@@ -302,19 +302,19 @@ function Etapas({ job, rodando }: { job: Job; rodando: boolean }) {
       estado: job.total > 0 ? "ok" : "pendente",
     },
     {
-      nome: "3. Enriquecimento nas fontes",
-      detalhe:
-        pendentes === 0
-          ? "Todos os blocos processados"
-          : rodando
-            ? `Processando… faltam ${pendentes}`
-            : `${pendentes} aguardando processamento`,
-      estado: pendentes === 0 ? "ok" : rodando ? "andamento" : "pendente",
+      nome: "3. Cadastrados e vinculados à unidade",
+      detalhe: `${job.total} empresa(s) já disponíveis na base`,
+      estado: job.total > 0 ? "ok" : "pendente",
     },
     {
-      nome: "4. Empresas salvas na base",
-      detalhe: `${job.concluidos} empresa(s) disponíveis`,
-      estado: job.concluidos > 0 ? "ok" : pendentes > 0 ? "pendente" : "atencao",
+      nome: "4. Dados buscados nas fontes (opcional)",
+      detalhe:
+        pendentes === 0
+          ? `${job.concluidos} empresa(s) com dados`
+          : rodando
+            ? `Buscando… faltam ${pendentes}`
+            : `${pendentes} ainda sem dados`,
+      estado: pendentes === 0 ? "ok" : rodando ? "andamento" : "pendente",
     },
     {
       nome: "5. Revisão de falhas",
