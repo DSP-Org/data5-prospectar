@@ -73,7 +73,34 @@ const FILTROS_INICIAIS: Filtros = {
   comEmail: false,
 };
 
-function Barras({ titulo, itens, total }: { titulo: string; itens: Array<{ label: string; qtd: number }>; total: number }) {
+/** Traduz o recorte da calculadora nos parâmetros de busca da base de empresas. */
+function buscaEmpresas(f: Filtros) {
+  return {
+    ...(f.uf !== "todos" ? { uf: f.uf } : {}),
+    ...(f.cidade.trim() ? { cidade: f.cidade.trim() } : {}),
+    ...(f.cnae.trim() ? { cnae: f.cnae.trim() } : {}),
+    ...(f.porte !== "todos" ? { porte: f.porte } : {}),
+    ...(f.setor !== "todos" ? { setor: f.setor } : {}),
+    ...(f.situacao !== "todas" ? { situacao: f.situacao } : {}),
+    ...(f.listId !== "todas" ? { lista: f.listId } : {}),
+    ...(f.status !== "todos" ? { status: f.status } : {}),
+    ...(f.prospectar ? { prospectar: true } : {}),
+    ...(f.comTelefone ? { comTelefone: true } : {}),
+    ...(f.comEmail ? { comEmail: true } : {}),
+  };
+}
+
+function Barras({
+  titulo,
+  itens,
+  total,
+  linkDe,
+}: {
+  titulo: string;
+  itens: Array<{ label: string; qtd: number }>;
+  total: number;
+  linkDe?: (label: string) => Record<string, unknown>;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -86,9 +113,20 @@ function Barras({ titulo, itens, total }: { titulo: string; itens: Array<{ label
           return (
             <div key={i.label}>
               <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate" title={i.label}>
-                  {i.label}
-                </span>
+                {linkDe ? (
+                  <Link
+                    to="/empresas"
+                    search={linkDe(i.label)}
+                    className="truncate underline-offset-2 hover:text-accent hover:underline"
+                    title={`Ver empresas: ${i.label}`}
+                  >
+                    {i.label}
+                  </Link>
+                ) : (
+                  <span className="truncate" title={i.label}>
+                    {i.label}
+                  </span>
+                )}
                 <span className="tabular text-muted-foreground">
                   {num(i.qtd)} · {pct}%
                 </span>
@@ -180,14 +218,28 @@ function CalculadoraMercado() {
               prospecção necessário.
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link
-              to="/empresas"
-              search={f.listId !== "todas" && f.listId !== "sem_lista" ? { lista: f.listId } : {}}
-            >
-              Abrir base de empresas
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/empresas" search={buscaEmpresas(f)}>
+                Ver empresas deste recorte
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/empresas" search={{ ...buscaEmpresas(f), comTelefone: true }}>
+                Só com telefone
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/empresas" search={{ ...buscaEmpresas(f), comEmail: true }}>
+                Só com e-mail
+              </Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/empresas" search={{ ...buscaEmpresas(f), prospectar: true }}>
+                Marcadas para prospectar
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -490,9 +542,24 @@ function CalculadoraMercado() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Barras titulo="Por estado" itens={mercado?.topUf ?? []} total={empresas} />
-        <Barras titulo="Por porte" itens={mercado?.topPorte ?? []} total={empresas} />
-        <Barras titulo="Por atividade" itens={mercado?.topAtividade ?? []} total={empresas} />
+        <Barras
+          titulo="Por estado"
+          itens={mercado?.topUf ?? []}
+          total={empresas}
+          linkDe={(uf) => ({ ...buscaEmpresas(f), uf })}
+        />
+        <Barras
+          titulo="Por porte"
+          itens={mercado?.topPorte ?? []}
+          total={empresas}
+          linkDe={(porte) => ({ ...buscaEmpresas(f), porte })}
+        />
+        <Barras
+          titulo="Por atividade"
+          itens={mercado?.topAtividade ?? []}
+          total={empresas}
+          linkDe={(cnae) => ({ ...buscaEmpresas(f), cnae })}
+        />
       </div>
     </div>
   );

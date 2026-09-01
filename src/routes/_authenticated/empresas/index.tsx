@@ -85,9 +85,38 @@ const UFS = [
   "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ];
 
+export type BuscaEmpresas = {
+  lista?: string;
+  uf?: string;
+  cidade?: string;
+  cnae?: string;
+  porte?: string;
+  setor?: string;
+  situacao?: string;
+  status?: string;
+  prospectar?: boolean;
+  comTelefone?: boolean;
+  comEmail?: boolean;
+};
+
 export const Route = createFileRoute("/_authenticated/empresas/")({
-  validateSearch: (search: Record<string, unknown>): { lista?: string } =>
-    typeof search["lista"] === "string" ? { lista: search["lista"] } : {},
+  validateSearch: (search: Record<string, unknown>): BuscaEmpresas => {
+    const txt = (k: string) => (typeof search[k] === "string" && search[k] ? { [k]: search[k] as string } : {});
+    const bool = (k: string) => (search[k] === true || search[k] === "true" ? { [k]: true } : {});
+    return {
+      ...txt("lista"),
+      ...txt("uf"),
+      ...txt("cidade"),
+      ...txt("cnae"),
+      ...txt("porte"),
+      ...txt("setor"),
+      ...txt("situacao"),
+      ...txt("status"),
+      ...bool("prospectar"),
+      ...bool("comTelefone"),
+      ...bool("comEmail"),
+    } as BuscaEmpresas;
+  },
   head: () => ({
     meta: [
       { title: "Base de empresas | Prospectar360" },
@@ -348,13 +377,23 @@ function filtrosAvancados(a: Avancados) {
 }
 
 function Empresas() {
+  const inicial = Route.useSearch();
+  const avancadosIniciais: Avancados = {
+    ...AVANCADOS_VAZIOS,
+    ...(inicial.cidade ? { cidade: inicial.cidade } : {}),
+    ...(inicial.cnae ? { cnae: inicial.cnae } : {}),
+    ...(inicial.porte ? { porte: inicial.porte } : {}),
+    ...(inicial.setor ? { setor: inicial.setor } : {}),
+    ...(inicial.situacao ? { situacao: inicial.situacao } : {}),
+    ...(inicial.comTelefone ? { comTelefone: true } : {}),
+    ...(inicial.comEmail ? { comEmail: true } : {}),
+  };
   const [busca, setBusca] = useState("");
-  const [status, setStatus] = useState("todos");
-  const [uf, setUf] = useState("todos");
-  const { lista: listaInicial } = Route.useSearch();
-  const [lista, setLista] = useState(listaInicial ?? "todas");
+  const [status, setStatus] = useState(inicial.status ?? "todos");
+  const [uf, setUf] = useState(inicial.uf ?? "todos");
+  const [lista, setLista] = useState(inicial.lista ?? "todas");
   const [grupo, setGrupo] = useState("todas");
-  const [potencial, setPotencial] = useState("todas");
+  const [potencial, setPotencial] = useState(inicial.prospectar ? "sim" : "todas");
   const [carteira, setCarteira] = useState("todas");
   const [page, setPage] = useState(1);
   const [exportando, setExportando] = useState(false);
@@ -363,8 +402,10 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const [avancadosAbertos, setAvancadosAbertos] = useState(false);
-  const [av, setAv] = useState({ ...AVANCADOS_VAZIOS });
+  const [avancadosAbertos, setAvancadosAbertos] = useState(
+    filtrosAvancadosAtivos(avancadosIniciais),
+  );
+  const [av, setAv] = useState<Avancados>(avancadosIniciais);
   // Toda mudança de filtro volta para a primeira página.
   const setAvancado = <K extends keyof Avancados>(campo: K, valor: Avancados[K]) => {
     setAv((s) => ({ ...s, [campo]: valor }));
