@@ -133,6 +133,7 @@ export type Database = {
           email_receita: string | null
           emails: string[]
           enquadramento_porte: string[]
+          enriquecido_em: string | null
           faturamento_presumido: string | null
           fonte_principal: string | null
           fontes: string[]
@@ -176,6 +177,7 @@ export type Database = {
           email_receita?: string | null
           emails?: string[]
           enquadramento_porte?: string[]
+          enriquecido_em?: string | null
           faturamento_presumido?: string | null
           fonte_principal?: string | null
           fontes?: string[]
@@ -219,6 +221,7 @@ export type Database = {
           email_receita?: string | null
           emails?: string[]
           enquadramento_porte?: string[]
+          enriquecido_em?: string | null
           faturamento_presumido?: string | null
           fonte_principal?: string | null
           fontes?: string[]
