@@ -142,7 +142,10 @@ function Consulta() {
                     aria-label="Buscar tudo"
                   />
                   <span>
-                    <span className="block text-sm font-medium">Buscar tudo</span>
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      Buscar tudo
+                      <Badge variant="destructive">consome crédito</Badge>
+                    </span>
                     <span className="block text-xs text-muted-foreground">
                       Ignora o cache, consulta todas as fontes ativas em tempo real e pede os
                       módulos extras da CNPJá (Simples/MEI, inscrições estaduais, SUFRAMA,
