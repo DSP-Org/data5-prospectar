@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Database, RefreshCw, Save } from "lucide-react";
+import { ArrowDown, ArrowUp, Database, RefreshCw, Save, ShieldCheck, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   listarFontesFn,
+  resumoConsumoFn,
   salvarEconomiaFn,
   salvarFonteFn,
   salvarModulosCnpjaFn,
