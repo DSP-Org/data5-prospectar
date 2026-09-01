@@ -257,7 +257,7 @@ export async function processarLote(input: {
   }
 
   const resumo = await recontar(job.id);
-  return { processados: pendentes.length + pulados.length, ...resumo };
+  return { processados: pendentes.length, ...resumo };
 }
 
 export async function statusImportacao(jobId: string, escopo: Escopo) {
