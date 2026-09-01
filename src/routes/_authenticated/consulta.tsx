@@ -210,7 +210,7 @@ function Consulta() {
                 </div>
                 <p className="rounded-md border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
                   Em lote o sistema usa o cache e as fontes gratuitas primeiro para economizar
-                  créditos. Use a aba “CNPJ individual” quando precisar do “Buscar tudo”.
+                  créditos. Use a aba “Buscar por nome ou CNPJ” quando precisar do “Buscar tudo”.
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
