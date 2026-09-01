@@ -77,7 +77,7 @@ export function ImportarEmpresas() {
     try {
       const r = await criarImportacao({
         data: {
-          arquivo,
+          arquivo: arquivo || "lista colada",
           cnpjs,
           listId: lista === "nenhuma" ? null : lista,
           unitId: unidade,
