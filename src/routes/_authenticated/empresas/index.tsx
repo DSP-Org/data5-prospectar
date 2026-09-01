@@ -405,10 +405,18 @@ function Empresas() {
   );
   const visiveis = COLUNAS.filter((c) => colunas.includes(c.key));
 
-  const [avancadosAbertos, setAvancadosAbertos] = useState(
-    filtrosAvancadosAtivos(avancadosIniciais),
-  );
   const [av, setAv] = useState<Avancados>(avancadosIniciais);
+  /** Abre já os grupos que chegaram com filtro (recorte da calculadora ou URL). */
+  const [gruposAbertos, setGruposAbertos] = useState<string[]>(() => {
+    const a = avancadosIniciais;
+    const abertos: string[] = [];
+    if (inicial.uf || a.cidade || a.bairro) abertos.push("localizacao");
+    if (a.cnae || a.setor !== "todos" || a.porte !== "todos") abertos.push("atividade");
+    if (a.situacao !== "todas") abertos.push("situacao");
+    if (a.comTelefone || a.comEmail) abertos.push("contato");
+    if (inicial.lista || inicial.status || inicial.prospectar) abertos.push("comercial");
+    return abertos.length > 0 ? abertos : ["localizacao"];
+  });
   /** O recorte nasce na calculadora; aqui o painel fica fechado por padrão. */
   const [painelAberto, setPainelAberto] = useState(false);
   // Toda mudança de filtro volta para a primeira página.
