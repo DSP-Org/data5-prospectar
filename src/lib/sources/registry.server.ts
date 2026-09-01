@@ -77,7 +77,78 @@ function mascarar(v: string | null) {
 export function economiaDe(s: Settings): EconomiaConfig {
   const modo: ModoConsulta = s[MODE_KEY] === "completo" ? "completo" : "economico";
   const ttl = Number(s[TTL_KEY] ?? "30");
-  return { modo, ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30 };
+  return {
+    modo,
+    ttlDias: Number.isFinite(ttl) && ttl >= 0 ? Math.min(ttl, 365) : 30,
+    somenteGratis: s[SOMENTE_GRATIS_KEY] === "true",
+  };
+}
+
+/** A trava de custo está ligada? (usada também fora da orquestração) */
+export async function somenteGratisAtivo(): Promise<boolean> {
+  const s = await lerSettings();
+  return s[SOMENTE_GRATIS_KEY] === "true";
+}
+
+/** Registra consultas que consumiram crédito de fonte paga. */
+async function registrarConsumo(
+  cnpjs: string[],
+  fontes: SourceId[],
+  origem: string,
+  unitId?: string | null,
+) {
+  if (cnpjs.length === 0 || fontes.length === 0) return;
+  const fonte = fontes.join("+");
+  const linhas = cnpjs.map((cnpj) => ({
+    fonte,
+    cnpj,
+    origem,
+    unit_id: unitId ?? null,
+    creditos: 1,
+  }));
+  await supabaseAdmin.from("consumo_consultas").insert(linhas as never);
+}
+
+export type ResumoConsumo = {
+  hoje: number;
+  mes: number;
+  total: number;
+  porFonte: Array<{ fonte: string; qtd: number }>;
+  porOrigem: Array<{ origem: string; qtd: number }>;
+  ultimos: Array<{ cnpj: string; fonte: string; origem: string; created_at: string }>;
+};
+
+/** Agregados de consumo pago para o painel de Configurações. */
+export async function resumoConsumo(): Promise<ResumoConsumo> {
+  const { data } = await supabaseAdmin
+    .from("consumo_consultas")
+    .select("cnpj,fonte,origem,created_at")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  const linhas = (data ?? []) as Array<{
+    cnpj: string;
+    fonte: string;
+    origem: string;
+    created_at: string;
+  }>;
+  const agora = new Date();
+  const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).toISOString();
+  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+  const contar = (campo: "fonte" | "origem") => {
+    const m = new Map<string, number>();
+    for (const l of linhas) m.set(l[campo], (m.get(l[campo]) ?? 0) + 1);
+    return [...m.entries()]
+      .map(([k, qtd]) => ({ [campo]: k, qtd }))
+      .sort((a, b) => b.qtd - a.qtd) as never[];
+  };
+  return {
+    hoje: linhas.filter((l) => l.created_at >= inicioDia).length,
+    mes: linhas.filter((l) => l.created_at >= inicioMes).length,
+    total: linhas.length,
+    porFonte: contar("fonte"),
+    porOrigem: contar("origem"),
+    ultimos: linhas.slice(0, 10),
+  };
 }
 
 /** Módulos adicionais da CNPJá configurados pelo master. */
