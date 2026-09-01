@@ -233,24 +233,7 @@ function Consulta() {
 
 
               <TabsContent value="cnpja" className="space-y-3 pt-4">
-                <Tabs value={subAba} onValueChange={setSubAba}>
-                  <TabsList>
-                    <TabsTrigger value="ficha">Buscar por nome ou CNPJ (grátis)</TabsTrigger>
-                    <TabsTrigger value="avancada">Busca avançada (plano pago)</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="ficha" className="pt-4">
-                    <JanelaCnpja
-                      listId={alvoLista}
-                      onEscalar={(termo) => {
-                        setTermoPago(termo);
-                        setSubAba("avancada");
-                      }}
-                    />
-                  </TabsContent>
-                  <TabsContent value="avancada" className="pt-4">
-                    <BuscaAvancadaCnpja listId={alvoLista} nomeInicial={termoPago} />
-                  </TabsContent>
-                </Tabs>
+                <BuscaAvancadaCnpja listId={alvoLista} nomeInicial={termoPago} />
               </TabsContent>
 
 
