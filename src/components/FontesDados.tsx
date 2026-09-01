@@ -119,6 +119,29 @@ export function FontesDados() {
         {fontes.isLoading && <p className="text-sm text-muted-foreground">Carregando fontes…</p>}
 
         {economia && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-md">
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Somente fontes gratuitas
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Trava de custo: com ela ligada nenhuma consulta debita crédito. As fontes pagas
+                  passam a responder só com o que já está em cache, o &quot;buscar tudo&quot; deixa de ir
+                  online e a busca avançada por filtros fica bloqueada.
+                </p>
+              </div>
+              <Switch
+                checked={economia.somenteGratis}
+                aria-label="Ativar trava somente fontes gratuitas"
+                onCheckedChange={(v) => mutEconomia.mutate({ somenteGratis: v })}
+              />
+            </div>
+          </div>
+        )}
+
+        {economia && (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-md">
