@@ -58,6 +58,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { FichaImpressao } from "@/components/FichaImpressao";
 import { Badge } from "@/components/ui/badge";
+import { SeloOrigem } from "@/components/SeloOrigem";
 import { SOURCE_LABEL } from "@/lib/sources/catalog";
 
 import { Button } from "@/components/ui/button";
