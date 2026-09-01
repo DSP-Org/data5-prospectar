@@ -1065,6 +1065,89 @@ function BuscaAvancadaCnpja({
         </div>
       </div>
 
+      {sugestoesCnae.length > 0 ? (
+        <div className="space-y-3 rounded-md border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-medium">
+              Atividades sugeridas — escolha as que valem ({cnaeEscolhidos.length} de{" "}
+              {sugestoesCnae.length})
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSugestoesCnae([]);
+                setCnaeEscolhidos([]);
+              }}
+            >
+              Descartar sugestões
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Nenhuma atividade entra no filtro sem a sua confirmação.
+          </p>
+          <div className="max-h-56 space-y-1 overflow-y-auto rounded-md bg-muted/40 p-2">
+            {sugestoesCnae.map((c) => (
+              <label key={c.id} className="flex items-start gap-2 rounded px-1 py-1 text-xs hover:bg-background">
+                <Checkbox
+                  className="mt-0.5"
+                  checked={cnaeEscolhidos.includes(c.id)}
+                  onCheckedChange={() =>
+                    setCnaeEscolhidos((atual) =>
+                      atual.includes(c.id) ? atual.filter((v) => v !== c.id) : [...atual, c.id],
+                    )
+                  }
+                />
+                <span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{c.id}</span>{" "}
+                  {c.descricao}
+                </span>
+              </label>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={incluirSecundaria}
+              onCheckedChange={(v) => setIncluirSecundaria(v === true)}
+            />
+            Considerar também quem tem a atividade como secundária
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={cnaeEscolhidos.length === 0}
+              onClick={() => {
+                setF((atual) =>
+                  incluirSecundaria
+                    ? { ...atual, cnaesPrincipais: [], cnaeQualquer: cnaeEscolhidos.join(",") }
+                    : { ...atual, cnaesPrincipais: cnaeEscolhidos, cnaeQualquer: "" },
+                );
+                toast.success(
+                  `${cnaeEscolhidos.length} atividade(s) aplicada(s)${incluirSecundaria ? " (principal ou secundária)" : " (só principal)"}.`,
+                );
+              }}
+            >
+              Aplicar atividades selecionadas
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setCnaeEscolhidos(sugestoesCnae.map((c) => c.id))}
+            >
+              Marcar todas
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setCnaeEscolhidos([])}>
+              Desmarcar todas
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+
+
 
       <Collapsible open={filtrosAbertos} onOpenChange={setFiltrosAbertos}>
         <CollapsibleTrigger asChild>
