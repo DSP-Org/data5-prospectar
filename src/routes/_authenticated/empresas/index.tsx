@@ -820,7 +820,7 @@ function Empresas() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os estados</SelectItem>
-              {UFS.map((u) => (
+              {(opcoes.data?.ufs?.length ? opcoes.data.ufs : UFS).map((u) => (
                 <SelectItem key={u} value={u}>
                   {u}
                 </SelectItem>
