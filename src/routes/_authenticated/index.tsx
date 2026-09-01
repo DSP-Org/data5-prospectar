@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUnidadeAtiva } from "@/lib/unidade-ativa";
+import { ImportarEmpresas } from "@/components/ImportarEmpresas";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -219,6 +220,7 @@ function CalculadoraMercado() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <ImportarEmpresas />
             <Button asChild>
               <Link to="/empresas" search={buscaEmpresas(f)}>
                 Ver empresas deste recorte
