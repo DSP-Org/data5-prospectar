@@ -5,7 +5,7 @@ import { ROTAS, labelDaRota } from "@/lib/permissoes";
 import {
   BarChart3,
   Building,
-  Building2,
+  
   Calculator,
   ChevronDown,
   Kanban,
