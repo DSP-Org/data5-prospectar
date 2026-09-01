@@ -46,6 +46,7 @@ import {
 } from "@/lib/types";
 import { GRUPOS_NATUREZA } from "@/lib/natureza-juridica";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Combobox } from "@/components/Combobox";
 import { Badge } from "@/components/ui/badge";
 
 import { Button } from "@/components/ui/button";
@@ -820,7 +821,7 @@ function Empresas() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os estados</SelectItem>
-              {UFS.map((u) => (
+              {(opcoes.data?.ufs?.length ? opcoes.data.ufs : UFS).map((u) => (
                 <SelectItem key={u} value={u}>
                   {u}
                 </SelectItem>
@@ -955,10 +956,14 @@ function Empresas() {
                   </div>
                   <div className="space-y-1">
                     <Label>Cidade</Label>
-                    <Input
-                      value={av.cidade}
-                      onChange={(e) => setAvancado("cidade", e.target.value)}
-                      placeholder="Ex.: Salvador"
+                    <Combobox
+                      opcoes={(opcoes.data?.cidades ?? []).map((c) => ({ value: c, label: c }))}
+                      valor={av.cidade}
+                      onChange={(v) => setAvancado("cidade", v)}
+                      placeholder="Todas as cidades do recorte"
+                      buscaPlaceholder="Buscar cidade…"
+                      vazio="Nenhuma cidade no recorte."
+                      loading={opcoes.isLoading}
                     />
                   </div>
                   <div className="space-y-1">
@@ -970,11 +975,15 @@ function Empresas() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label>CNAE principal (código ou descrição)</Label>
-                    <Input
-                      value={av.cnae}
-                      onChange={(e) => setAvancado("cnae", e.target.value)}
-                      placeholder="Ex.: 4712 ou mercearia"
+                    <Label>Atividade principal (CNAE)</Label>
+                    <Combobox
+                      opcoes={(opcoes.data?.atividades ?? []).map((a) => ({ value: a, label: a }))}
+                      valor={av.cnae}
+                      onChange={(v) => setAvancado("cnae", v)}
+                      placeholder="Todas as atividades do recorte"
+                      buscaPlaceholder="Buscar atividade…"
+                      vazio="Nenhuma atividade no recorte."
+                      loading={opcoes.isLoading}
                     />
                   </div>
                   <div className="space-y-1">
